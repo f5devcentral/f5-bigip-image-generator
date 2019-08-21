@@ -1,0 +1,614 @@
+{
+  "afm": {
+    "disk": {
+      "host_max": 0,
+      "host_min": 12288,
+      "host_will_grow": "no",
+      "self_max": 0,
+      "self_min": 3900,
+      "self_will_grow": "no"
+    },
+    "included_in_bigip_ve": "yes",
+    "included_in_bigiq_ve": "no",
+    "memory": {
+      "host_max": 4756,
+      "host_min": 765,
+      "host_will_grow": "yes",
+      "self_max": 1024,
+      "self_min": 165,
+      "self_will_grow": "yes",
+      "tmos_max": 0,
+      "tmos_min": 0,
+      "tmos_will_grow": "yes",
+      "ui_max": 0,
+      "ui_min": 128,
+      "ui_will_grow": "no"
+    },
+    "uses_monpd_disk": "no",
+    "uses_mysql_disk": "yes"
+  },
+  "am": {
+    "disk": {
+      "host_max": 0,
+      "host_min": 12288,
+      "host_will_grow": "no",
+      "self_max": 0,
+      "self_min": 20000,
+      "self_will_grow": "yes"
+    },
+    "included_in_bigip_ve": "yes",
+    "included_in_bigiq_ve": "no",
+    "memory": {
+      "host_max": 1624,
+      "host_min": 512,
+      "host_will_grow": "yes",
+      "self_max": 12000,
+      "self_min": 1024,
+      "self_will_grow": "yes",
+      "tmos_max": 0,
+      "tmos_min": 512,
+      "tmos_will_grow": "yes",
+      "ui_max": 0,
+      "ui_min": 2,
+      "ui_will_grow": "no"
+    },
+    "uses_monpd_disk": "no",
+    "uses_mysql_disk": "yes"
+  },
+  "apm": {
+    "disk": {
+      "host_max": 0,
+      "host_min": 12288,
+      "host_will_grow": "no",
+      "self_max": 0,
+      "self_min": 0,
+      "self_will_grow": "no"
+    },
+    "included_in_bigip_ve": "no",
+    "included_in_bigiq_ve": "no",
+    "memory": {
+      "host_max": 0,
+      "host_min": 100,
+      "host_will_grow": "yes",
+      "self_max": 512,
+      "self_min": 128,
+      "self_will_grow": "yes",
+      "tmos_max": 0,
+      "tmos_min": 256,
+      "tmos_will_grow": "yes",
+      "ui_max": 0,
+      "ui_min": 10,
+      "ui_will_grow": "no"
+    },
+    "uses_monpd_disk": "no",
+    "uses_mysql_disk": "yes"
+  },
+  "asm": {
+    "disk": {
+      "host_max": 0,
+      "host_min": 12288,
+      "host_will_grow": "no",
+      "self_max": 0,
+      "self_min": 8050,
+      "self_will_grow": "no"
+    },
+    "included_in_bigip_ve": "yes",
+    "included_in_bigiq_ve": "no",
+    "memory": {
+      "host_max": 0,
+      "host_min": 1280,
+      "host_will_grow": "yes",
+      "self_max": 3072,
+      "self_min": 196,
+      "self_will_grow": "yes",
+      "tmos_max": 0,
+      "tmos_min": 16,
+      "tmos_will_grow": "yes",
+      "ui_max": 0,
+      "ui_min": 0,
+      "ui_will_grow": "no"
+    },
+    "uses_monpd_disk": "yes",
+    "uses_mysql_disk": "yes"
+  },
+  "avr": {
+    "disk": {
+      "host_max": 0,
+      "host_min": 12288,
+      "host_will_grow": "no",
+      "self_max": 0,
+      "self_min": 3900,
+      "self_will_grow": "no"
+    },
+    "included_in_bigip_ve": "yes",
+    "included_in_bigiq_ve": "no",
+    "memory": {
+      "host_max": 768,
+      "host_min": 256,
+      "host_will_grow": "yes",
+      "self_max": 2048,
+      "self_min": 256,
+      "self_will_grow": "yes",
+      "tmos_max": 256,
+      "tmos_min": 64,
+      "tmos_will_grow": "yes",
+      "ui_max": 0,
+      "ui_min": 0,
+      "ui_will_grow": "no"
+    },
+    "uses_monpd_disk": "no",
+    "uses_mysql_disk": "yes"
+  },
+  "dos": {
+    "disk": {
+      "host_max": 0,
+      "host_min": 12288,
+      "host_will_grow": "no",
+      "self_max": 0,
+      "self_min": 7800,
+      "self_will_grow": "no"
+    },
+    "included_in_bigip_ve": "no",
+    "included_in_bigiq_ve": "no",
+    "memory": {
+      "host_max": 3072,
+      "host_min": 1152,
+      "host_will_grow": "yes",
+      "self_max": 6144,
+      "self_min": 320,
+      "self_will_grow": "yes",
+      "tmos_max": 0,
+      "tmos_min": 50,
+      "tmos_will_grow": "yes",
+      "ui_max": 256,
+      "ui_min": 128,
+      "ui_will_grow": "yes"
+    },
+    "uses_monpd_disk": "yes",
+    "uses_mysql_disk": "yes"
+  },
+  "em": {
+    "disk": {
+      "host_max": 0,
+      "host_min": 0,
+      "host_will_grow": "no",
+      "self_max": 0,
+      "self_min": 0,
+      "self_will_grow": "no"
+    },
+    "included_in_bigip_ve": "no",
+    "included_in_bigiq_ve": "yes",
+    "memory": {
+      "host_max": 0,
+      "host_min": 0,
+      "host_will_grow": "yes",
+      "self_max": 0,
+      "self_min": 0,
+      "self_will_grow": "no",
+      "tmos_max": 0,
+      "tmos_min": 256,
+      "tmos_will_grow": "no",
+      "ui_max": 0,
+      "ui_min": 480,
+      "ui_will_grow": "no"
+    },
+    "uses_monpd_disk": "no",
+    "uses_mysql_disk": "no"
+  },
+  "fps": {
+    "disk": {
+      "host_max": 0,
+      "host_min": 12288,
+      "host_will_grow": "no",
+      "self_max": 0,
+      "self_min": 0,
+      "self_will_grow": "no"
+    },
+    "included_in_bigip_ve": "no",
+    "included_in_bigiq_ve": "no",
+    "memory": {
+      "host_max": 0,
+      "host_min": 256,
+      "host_will_grow": "no",
+      "self_max": 512,
+      "self_min": 256,
+      "self_will_grow": "yes",
+      "tmos_max": 1024,
+      "tmos_min": 32,
+      "tmos_will_grow": "yes",
+      "ui_max": 0,
+      "ui_min": 0,
+      "ui_will_grow": "no"
+    },
+    "uses_monpd_disk": "no",
+    "uses_mysql_disk": "yes"
+  },
+  "gtm": {
+    "disk": {
+      "host_max": 0,
+      "host_min": 0,
+      "host_will_grow": "no",
+      "self_max": 0,
+      "self_min": 0,
+      "self_will_grow": "no"
+    },
+    "included_in_bigip_ve": "no",
+    "included_in_bigiq_ve": "no",
+    "memory": {
+      "host_max": 0,
+      "host_min": 128,
+      "host_will_grow": "yes",
+      "self_max": 0,
+      "self_min": 0,
+      "self_will_grow": "no",
+      "tmos_max": 0,
+      "tmos_min": 0,
+      "tmos_will_grow": "yes",
+      "ui_max": 0,
+      "ui_min": 20,
+      "ui_will_grow": "yes"
+    },
+    "uses_monpd_disk": "no",
+    "uses_mysql_disk": "no"
+  },
+  "ilx": {
+    "disk": {
+      "host_max": 0,
+      "host_min": 0,
+      "host_will_grow": "no",
+      "self_max": 0,
+      "self_min": 0,
+      "self_will_grow": "no"
+    },
+    "included_in_bigip_ve": "no",
+    "included_in_bigiq_ve": "no",
+    "memory": {
+      "host_max": 0,
+      "host_min": 664,
+      "host_will_grow": "yes",
+      "self_max": 0,
+      "self_min": 0,
+      "self_will_grow": "no",
+      "tmos_max": 0,
+      "tmos_min": 64,
+      "tmos_will_grow": "yes",
+      "ui_max": 0,
+      "ui_min": 20,
+      "ui_will_grow": "yes"
+    },
+    "uses_monpd_disk": "no",
+    "uses_mysql_disk": "no"
+  },
+  "lc": {
+    "disk": {
+      "host_max": 0,
+      "host_min": 0,
+      "host_will_grow": "no",
+      "self_max": 0,
+      "self_min": 0,
+      "self_will_grow": "no"
+    },
+    "included_in_bigip_ve": "no",
+    "included_in_bigiq_ve": "no",
+    "memory": {
+      "host_max": 0,
+      "host_min": 128,
+      "host_will_grow": "yes",
+      "self_max": 0,
+      "self_min": 0,
+      "self_will_grow": "no",
+      "tmos_max": 0,
+      "tmos_min": 0,
+      "tmos_will_grow": "yes",
+      "ui_max": 0,
+      "ui_min": 20,
+      "ui_will_grow": "yes"
+    },
+    "uses_monpd_disk": "no",
+    "uses_mysql_disk": "no"
+  },
+  "ltm": {
+    "disk": {
+      "host_max": 0,
+      "host_min": 0,
+      "host_will_grow": "no",
+      "self_max": 0,
+      "self_min": 0,
+      "self_will_grow": "no"
+    },
+    "included_in_bigip_ve": "yes",
+    "included_in_bigiq_ve": "no",
+    "memory": {
+      "host_max": 0,
+      "host_min": 0,
+      "host_will_grow": "no",
+      "self_max": 0,
+      "self_min": 0,
+      "self_will_grow": "no",
+      "tmos_max": 0,
+      "tmos_min": 0,
+      "tmos_minimum_override_table": [
+        [
+          768,
+          -1
+        ],
+        [
+          1024,
+          256
+        ],
+        [
+          2048,
+          384
+        ],
+        [
+          4096,
+          1408
+        ],
+        [
+          7680,
+          2048
+        ],
+        [
+          99999,
+          2944
+        ]
+      ],
+      "tmos_will_grow": "yes",
+      "ui_max": 0,
+      "ui_min": 0,
+      "ui_will_grow": "no"
+    },
+    "uses_monpd_disk": "no",
+    "uses_mysql_disk": "no"
+  },
+  "pem": {
+    "disk": {
+      "host_max": 0,
+      "host_min": 12288,
+      "host_will_grow": "no",
+      "self_max": 0,
+      "self_min": 3900,
+      "self_will_grow": "no"
+    },
+    "included_in_bigip_ve": "no",
+    "included_in_bigiq_ve": "no",
+    "memory": {
+      "host_max": 3000,
+      "host_min": 696,
+      "host_will_grow": "yes",
+      "self_max": 1024,
+      "self_min": 256,
+      "self_will_grow": "yes",
+      "tmos_max": 0,
+      "tmos_min": 256,
+      "tmos_will_grow": "yes",
+      "ui_max": 0,
+      "ui_min": 15,
+      "ui_will_grow": "no"
+    },
+    "uses_monpd_disk": "yes",
+    "uses_mysql_disk": "yes"
+  },
+  "swg": {
+    "disk": {
+      "host_max": 0,
+      "host_min": 0,
+      "host_will_grow": "no",
+      "self_max": 0,
+      "self_min": 24000,
+      "self_will_grow": "no"
+    },
+    "included_in_bigip_ve": "no",
+    "included_in_bigiq_ve": "no",
+    "memory": {
+      "host_max": 4864,
+      "host_min": 3968,
+      "host_will_grow": "yes",
+      "self_max": 0,
+      "self_min": 0,
+      "self_will_grow": "no",
+      "tmos_max": 256,
+      "tmos_min": 128,
+      "tmos_will_grow": "yes",
+      "ui_max": 0,
+      "ui_min": 0,
+      "ui_will_grow": "no"
+    },
+    "uses_monpd_disk": "no",
+    "uses_mysql_disk": "no"
+  },
+  "tam": {
+    "disk": {
+      "host_max": 0,
+      "host_min": 0,
+      "host_will_grow": "no",
+      "self_max": 0,
+      "self_min": 0,
+      "self_will_grow": "no"
+    },
+    "included_in_bigip_ve": "no",
+    "included_in_bigiq_ve": "no",
+    "memory": {
+      "host_max": 0,
+      "host_min": 64,
+      "host_will_grow": "no",
+      "self_max": 0,
+      "self_min": 0,
+      "self_will_grow": "no",
+      "tmos_max": 0,
+      "tmos_min": 0,
+      "tmos_will_grow": "no",
+      "ui_max": 0,
+      "ui_min": 0,
+      "ui_will_grow": "no"
+    },
+    "uses_monpd_disk": "no",
+    "uses_mysql_disk": "no"
+  },
+  "tmm": {
+    "disk": {
+      "host_max": 0,
+      "host_min": 0,
+      "host_will_grow": "no",
+      "self_max": 0,
+      "self_min": 0,
+      "self_will_grow": "no"
+    },
+    "included_in_bigip_ve": "yes",
+    "included_in_bigiq_ve": "yes",
+    "memory": {
+      "host_max": 0,
+      "host_min": 0,
+      "host_will_grow": "no",
+      "self_max": 0,
+      "self_min": 220,
+      "self_will_grow": "yes",
+      "tmos_max": 0,
+      "tmos_min": 0,
+      "tmos_will_grow": "no",
+      "ui_max": 130,
+      "ui_min": 80,
+      "ui_will_grow": "yes"
+    },
+    "uses_monpd_disk": "no",
+    "uses_mysql_disk": "no"
+  },
+  "tmos": {
+    "default_datastor_size_MiB": 20000,
+    "default_volume_size_MiB": {
+      "appdata": 25514,
+      "boot": 200,
+      "config": 3243,
+      "log": 3000,
+      "root": 440,
+      "shared": 20480,
+      "swap": 1000,
+      "usr": 4102,
+      "var": 3072,
+      "waagent": 1024
+    },
+    "disk": {
+      "host_max": 0,
+      "host_min": 0,
+      "host_will_grow": "no",
+      "self_max": 0,
+      "self_min": 0,
+      "self_will_grow": "no"
+    },
+    "included_in_bigip_ve": "yes",
+    "included_in_bigiq_ve": "yes",
+    "memory": {
+      "host_max": 0,
+      "host_min": 0,
+      "host_will_grow": "no",
+      "self_max": 0,
+      "self_min": 0,
+      "self_will_grow": "no",
+      "tmos_max": 0,
+      "tmos_min": 0,
+      "tmos_will_grow": "no",
+      "ui_max": 0,
+      "ui_min": 0,
+      "ui_will_grow": "no"
+    },
+    "micro_datastor_size_MiB": 30,
+    "micro_volume_size_MiB": {
+      "appdata": 30,
+      "boot": 200,
+      "config": 489,
+      "log": 500,
+      "root": 440,
+      "shared": 500,
+      "swap": 1000,
+      "usr": 4102,
+      "var": 950,
+      "waagent": 1024
+    },
+    "mos_size_MiB": 300,
+    "mysql_space_MiB": 12288,
+    "uses_monpd_disk": "no",
+    "uses_mysql_disk": "no"
+  },
+  "urldb": {
+    "disk": {
+      "host_max": 0,
+      "host_min": 12288,
+      "host_will_grow": "no",
+      "self_max": 0,
+      "self_min": 24000,
+      "self_will_grow": "no"
+    },
+    "included_in_bigip_ve": "no",
+    "included_in_bigiq_ve": "no",
+    "memory": {
+      "host_max": 5120,
+      "host_min": 2048,
+      "host_will_grow": "yes",
+      "self_max": 0,
+      "self_min": 0,
+      "self_will_grow": "no",
+      "tmos_max": 0,
+      "tmos_min": 0,
+      "tmos_will_grow": "yes",
+      "ui_max": 0,
+      "ui_min": 0,
+      "ui_will_grow": "no"
+    },
+    "uses_monpd_disk": "no",
+    "uses_mysql_disk": "yes"
+  },
+  "vcmp": {
+    "disk": {
+      "host_max": 0,
+      "host_min": 2048,
+      "host_will_grow": "no",
+      "self_max": 0,
+      "self_min": 20000,
+      "self_will_grow": "yes"
+    },
+    "included_in_bigip_ve": "no",
+    "included_in_bigiq_ve": "no",
+    "memory": {
+      "host_max": 0,
+      "host_min": 596,
+      "host_will_grow": "no",
+      "self_max": 0,
+      "self_min": 128,
+      "self_minimum_override_table": [
+        [
+          512,
+          -1
+        ],
+        [
+          768,
+          0
+        ],
+        [
+          1024,
+          256
+        ],
+        [
+          2048,
+          384
+        ],
+        [
+          4096,
+          1408
+        ],
+        [
+          99999,
+          2944
+        ]
+      ],
+      "self_will_grow": "yes",
+      "tmos_max": 0,
+      "tmos_min": 300,
+      "tmos_will_grow": "no",
+      "ui_max": 0,
+      "ui_min": 0,
+      "ui_will_grow": "no"
+    },
+    "uses_monpd_disk": "no",
+    "uses_mysql_disk": "yes"
+  }
+}

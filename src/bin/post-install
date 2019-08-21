@@ -1,0 +1,598 @@
+#!/bin/bash -e
+# Copyright (C) 2018-2019 F5 Networks, Inc
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not
+# use this file except in compliance with the License. You may obtain a copy of
+# the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations under
+# the License.
+
+
+#####################################################################
+# post-install:
+#     VE-specific script, which Will be run after post-pkg script.
+#     $1 is path to root of completely mounted installation slot
+#     $2 is installer temp area where data can be found
+#####################################################################
+
+INST_ROOT=$1
+INST_TEMP_DATA=$2
+DEBUG=0
+
+# shellcheck disable=SC1090
+source "$2"/parameters.sh
+
+VADC_PLATFORM_FILE="$INST_ROOT/lib/f5-platform/id-Z100"
+CHROOT_BIN="/usr/sbin/chroot"
+VADC_FIRST_BOOT="$INST_ROOT/.vadc_first_boot"
+HYPERVISOR_DIR="$INST_ROOT/shared/vadc"
+HYPERVISOR_FILE="$INST_ROOT/shared/vadc/.hypervisor_type"
+SKIP_FSCK_MARKER="$INST_ROOT/fastboot"
+USERROLEPARTITIONS="$INST_ROOT/config/bigip/auth/userrolepartitions"
+LEGACY_LABELING="/etc/.legacy_selinux_labeling"
+
+
+##################################################################
+function log_echo {
+    $PRINT_INFO "$*"
+}
+##################################################################
+
+
+##################################################################
+function log_cat {
+    local f=$1
+
+    if [ "$f" == "" ]; then return ; fi
+
+    log_echo ""
+    log_echo "$f"
+    log_echo "--------------------------"
+    if [ -f "$f" ]; then
+        while read -r ; do
+            log_echo "$REPLY"
+        done < "$f"
+    else
+        log_echo "FILE IS MISSING!"
+    fi
+    log_echo "--------------------------"
+    log_echo ""
+}
+##################################################################
+
+
+##################################################################
+function tee_to_log {
+    while read -r ; do
+        log_echo "$REPLY"
+    done
+}
+##################################################################
+
+
+##################################################################
+function dbg_echo {
+    if [ $DEBUG -ge 1 ]; then log_echo "$*" ; fi
+}
+##################################################################
+
+
+##################################################################
+function dbg_cat {
+    if [ $DEBUG -ge 1 ]; then log_cat "$1" ; fi
+}
+##################################################################
+
+
+##################################################################
+function dbg_tee_to_log {
+    if [ $DEBUG -ge 1 ]; then tee_to_log ; fi
+}
+##################################################################
+
+
+#####################################################################
+# Report the error and exit:
+#
+function err_exit {
+    local err_text="$*"
+
+    if [ "$err_text" == "" ]; then
+        err_text="Missing error text"
+    fi
+
+    $PRINT_ERROR "ERROR - $err_text"
+    exit 1
+}
+#####################################################################
+
+
+# shellcheck disable=SC2012
+#####################################################################
+function print_user_passwd_shadow {
+    local user_name=$1
+    local f_auto_search=$2
+    local f
+    local list_files="$INST_ROOT/etc/passwd $INST_ROOT/etc/shadow"
+
+    dbg_echo "${FUNCNAME[0]} - begin"
+    if [ "$user_name" == "" ]; then
+        err_exit "${FUNCNAME[0]} - missing 1st param"
+    fi
+    if [ "$f_auto_search" == "" ]; then
+        f_auto_search=0
+    fi
+
+    dbg_echo "${FUNCNAME[0]} - f_auto_search = $f_auto_search"
+
+    if [ $f_auto_search -eq 1 ]; then
+        list_files=$(find / -name passwd)
+        list_files="$list_files $(find / -name shadow)"
+    fi
+    log_echo "list_files = $list_files"
+
+    for f in $list_files ; do
+        ls -l "$f" | tee_to_log
+        log_echo "$f"
+        log_echo "----------------"
+        grep "^$user_name" "$f" | tee_to_log
+        log_echo ""
+    done
+    dbg_echo "${FUNCNAME[0]} - end"
+}
+#####################################################################
+
+
+##################################################################
+function dbg_show_env {
+    local fVerbose=$1
+    local d
+    local f
+    local list_dirs=""
+    local list_files=""
+
+    if [ $DEBUG -eq 0 ]; then
+        return
+    fi
+
+    if [ "$fVerbose" == "" ]; then fVerbose=0 ; fi
+
+    log_echo ""
+    log_echo "post-pkg: INST_ROOT = $INST_ROOT"
+    log_echo "post-pkg: INST_TEMP_DATA = $INST_TEMP_DATA"
+
+    log_echo "==========================="
+    log_echo "env:"
+    "$INST_ROOT/bin/env" | tee_to_log
+    log_echo ""
+    log_echo "==========================="
+    log_echo "mount:"
+    mount | tee_to_log
+    log_echo "==========================="
+    log_echo "mapper:"
+    find /dev/mapper -exec ls -l {} + | tee_to_log
+    log_echo "==========================="
+    log_echo "LVs:"
+    /usr/sbin/lvdisplay -c | tee_to_log
+    /usr/sbin/lvdisplay -C | tee_to_log
+
+    log_echo "==========================="
+    log_echo "Platform files:"
+    find "$INST_ROOT/lib/f5-platform/" -name 'id-*'  -exec ls -l {} + | dbg_tee_to_log
+    log_echo ""
+
+    list_files="$INST_ROOT/home/admin/.ssh/identity $INST_ROOT/home/admin/.ssh/identity.pub"
+    dbg_echo "Lookup contents of $list_files"
+    # Print files:
+    for f in $list_files ; do
+        log_cat "$f"
+    done
+
+    if [ $fVerbose -eq 0 ]; then
+        return
+    fi
+
+    log_echo "==========================="
+    log_echo "DEFAULTS:"
+    "$INST_ROOT/usr/bin/head" -15 "$INST_ROOT/usr/share/defaults/defaults.scf" | dbg_tee_to_log
+
+    # All dirs we are interested in:
+    list_dirs="$list_dirs / $INST_ROOT"
+    list_dirs="$list_dirs $INST_ROOT/config $INST_ROOT/usr/share/defaults"
+    list_dirs="$list_dirs $INST_ROOT/etc /etc"
+    list_dirs="$list_dirs $INST_ROOT/config/ssl $INST_ROOT/config/ssl/ssl.key $INST_ROOT/config/ssl/ssl.csr"
+    list_dirs="$list_dirs $INST_ROOT/home/admin/.ssh $INST_ROOT/root/.ssh"
+    # Show dirs:
+    for d in $list_dirs ; do
+        log_echo "==========================="
+        log_echo "find $d -maxdepth 1 -exec ls -l {} +"
+        find "$d" -maxdepth 1 -exec ls -l {} + | tee_to_log
+    done
+    log_echo "==========================="
+    log_echo "Hidden files in the root:"
+    find "$INST_ROOT/" -name '.*' -maxdepth 1  -exec ls -l {} + | tee_to_log
+
+    # All the files we are interested in:
+    list_files="$USERROLEPARTITIONS $HYPERVISOR_FILE"
+    # Print files:
+    for f in $list_files ; do
+        log_cat "$f"
+    done
+
+    print_user_passwd_shadow "root"
+    print_user_passwd_shadow "admin"
+}
+##################################################################
+
+
+#####################################################################
+# Checks if the current virtual disk format is for supported Cloud.
+# Here is the current list of supported Clouds:
+# alibaba, aws, azure, vcloudair, gce, oracle
+#
+# PARAMETERS:
+#   cloud_tag - the name of the disk format/cloud
+#
+# RETURN:
+#   ret_supported_cloud :
+#       0 - the tag is supported cloud
+#       !=0 - the tag is not supported cloud
+#
+function is_supported_cloud {
+    local cloud_tag=$1
+
+    if [ "$cloud_tag" == "alibaba" ] || \
+       [ "$cloud_tag" == "aws" ] || \
+       [ "$cloud_tag" == "azure" ] || \
+       [ "$cloud_tag" == "vcloudair" ] || \
+       [ "$cloud_tag" == "gce" ] ||  \
+       [ "$cloud_tag" == "oracle" ]
+    then
+        ret_supported_cloud=0
+    else
+        ret_supported_cloud=1
+    fi
+
+    dbg_echo "${FUNCNAME[0]} - '$cloud_tag' - ret_supported_cloud=$ret_supported_cloud"
+}
+#####################################################################
+
+
+#####################################################################
+# Generate the file holding hypervisor type.
+function generate_hypervisor_type {
+    # This should be executed only for Cloud installations:
+    if [ "$TMI_VADC_HYPERVISOR" == "" ] || [ "$TMI_VADC_HYPERVISOR" == "0" ]; then
+        return
+    fi
+
+    dbg_echo "${FUNCNAME[0]} - begin"
+    mkdir -p "$HYPERVISOR_DIR"
+    echo "HYPERVISOR=$TMI_VADC_HYPERVISOR" > "$HYPERVISOR_FILE"
+    dbg_echo "${FUNCNAME[0]} - end"
+}
+#####################################################################
+
+
+#####################################################################
+# Disable fsck on public clouds and hypervisors
+function disable_fsck {
+    dbg_echo "${FUNCNAME[0]} - begin - TMI_VADC_HYPERVISOR = $TMI_VADC_HYPERVISOR"
+
+    # Do not run fsck on the first boot
+    # The marker will be removed at that boot
+    touch "$SKIP_FSCK_MARKER"
+
+    # Disable time interval based and mount count based fsck
+    local lvdisplay_list
+    lvdisplay_list=($( lvdisplay | grep 'LV Path' | grep -v 'maint\|swapvol' | awk '{ print $3 }' ))
+
+    for volume in "${lvdisplay_list[@]}"; do
+        local tune2fs_output
+        tune2fs_output=$(LD_LIBRARY_PATH="$INST_ROOT/lib64" "$INST_ROOT/sbin/tune2fs" -i 0 -c 0 "$volume" 2>&1)
+        # shellcheck disable=SC2181
+        if [ $? -ne 0 ]; then
+            log_echo "Failed to unset scheduled fsck for volume $volume : $tune2fs_output"
+        else
+            log_echo "Scheduled fsck for volume $volume was unset: $tune2fs_output"
+        fi
+    done
+
+    # Update /etc/fstab not to run fsck on the boot
+    local fstab_update_result
+    fstab_update_result="$( sed -i -r 's/\S+/0/6' "$INST_ROOT/etc/fstab" )"
+    # shellcheck disable=SC2181
+    if [ $? -ne 0 ]; then
+        log_echo "Failed to disable fsck in /etc/fstab, output: $fstab_update_result"
+    else
+        log_echo "Disabled fsck in /etc/fstab"
+    fi
+
+    dbg_echo "${FUNCNAME[0]} - end"
+}
+#####################################################################
+
+
+#####################################################################
+function cleanup_root_keys_symlinks_on_cloud {
+    dbg_echo "${FUNCNAME[0]} - start."
+
+    is_supported_cloud "$TMI_VADC_HYPERVISOR"
+    if [ $ret_supported_cloud -eq 0 ] ; then
+        rm -v "${INST_ROOT}/root/.ssh/identity"*
+        rc=$?
+        if [ $rc -ne 0 ]; then
+            err_exit "Root ssh key symlink clean-up failed."
+        fi
+    fi
+    dbg_echo "${FUNCNAME[0]} - succeeded."
+}
+#####################################################################
+
+
+#####################################################################
+# Hot-patch autotask for GCE only:
+# Remove the call which will add splash screen in GRUB menu.
+#
+function hot_patch_autotask {
+    local autotask_file="/usr/sbin/autotask"
+
+    if [ "$TMI_VADC_HYPERVISOR" != "gce" ]; then
+        dbg_echo "${FUNCNAME[0]} - skip it as this is not GCE"
+        return
+    fi
+
+    dbg_echo "${FUNCNAME[0]} - begin"
+    dbg_echo "GCE - Remove splash screen in GRUB menu."
+    if [ ! -f $autotask_file ]; then
+        err_exit "Missing $autotask_file"
+    fi
+    chmod +w $autotask_file
+    # shellcheck disable=SC2016
+    sed --in-place \
+            's/\/var\/tmp\/install\/post-i2b-fixup $mkvm_device/\/bin\/true/' \
+            $autotask_file
+    dbg_echo "${FUNCNAME[0]} - end"
+}
+#####################################################################
+
+
+#####################################################################
+# Configuration steps needed to prepare Cloud images.
+#
+# Copy to BIG-IP two markers for the image that is 1 slot or allows all modules
+# The markers will be propagated to /shared by vadc-init
+function copy_gbb_markers {
+    dbg_echo "${FUNCNAME[0]} - begin"
+    ONE_SLOT_MARKER=".one_slot_marker"
+    if [ -f etc/$ONE_SLOT_MARKER ]; then
+        log_echo "post-install: found one slot marker"
+        touch "$INST_ROOT/etc/$ONE_SLOT_MARKER"
+    else
+        log_echo "post-install: did not find one slot marker"
+    fi
+
+    ALL_MODULES_MARKER=".all_modules_marker"
+    if [ -f "etc/$ALL_MODULES_MARKER" ]; then
+        log_echo "post-install: found all modules marker"
+        touch "$INST_ROOT/etc/$ALL_MODULES_MARKER"
+    else
+        log_echo "post-install: did not find all modules marker"
+    fi
+    dbg_echo "${FUNCNAME[0]} - end"
+}
+#####################################################################
+
+
+#####################################################################
+function final_cloud_prepare {
+    if [ "$TMI_VADC_HYPERVISOR" == "" ] || [ "$TMI_VADC_HYPERVISOR" == "0" ]; then
+        return
+    fi
+    dbg_echo "${FUNCNAME[0]} - begin"
+
+    # Show initial environment:
+    dbg_show_env 0
+
+    generate_hypervisor_type
+
+    # Update PAM file for disabling root and enabling admin.
+    # The changes in /etc/passwd and /etc/shadow files will be done
+    # by final_cloud_prepare before SELinux labeling.
+    dbg_echo "In-place changing $USERROLEPARTITIONS for root user."
+    if ! sed -i "s/root 0 \[All\]//" "$USERROLEPARTITIONS"; then
+        dbg_echo "sed -i failed. Contents of <$USERROLEPARTITIONS>"
+        dbg_cat "$USERROLEPARTITIONS"
+    fi
+
+    dbg_echo "Verifying root is removed from $USERROLEPARTITIONS"
+    # Verify root is removed from $USERROLEPARTITIONS:
+    if grep -q "root" "$USERROLEPARTITIONS"; then
+        dbg_cat "$USERROLEPARTITIONS"
+        err_exit "root user is still present inside $USERROLEPARTITIONS"
+    fi
+    dbg_echo "OK"
+
+    dbg_echo "Updating admin account in $USERROLEPARTITIONS"
+    if ! grep -q "admin" "$USERROLEPARTITIONS"; then
+        echo "admin 0 [All]" >> "$USERROLEPARTITIONS"
+    fi
+
+    for user in admin root ; do
+        # Disable password based shell login for user
+        if ! $CHROOT_BIN "${INST_ROOT}" /usr/sbin/usermod -L "$user"; then
+            err_exit "/usr/sbin/usermod failed for '$user' with rc=<$?>"
+        fi
+    done
+
+    # Show final environment:
+    dbg_show_env 1
+    dbg_echo "${FUNCNAME[0]} - end"
+}
+#####################################################################
+
+
+#####################################################################
+# copy user injected files from a predefined location: /etc/injected_files
+function copy_injected_files {
+    local any_errors
+    any_errors=0
+
+    if [[ ! -e "$(realpath .)"/etc/injected_files ]]; then
+        log_echo "No user files to inject"
+        return 0
+    fi
+
+    dbg_echo "${FUNCNAME[0]} - begin"
+    for container in "$(realpath .)"/etc/injected_files/file*; do
+        # extract destination, it is in a single line single word file "dest"
+        local destination_container="$container/dest"
+        # check that the destination container exists
+        if [[ ! -f "$destination_container" ]]; then
+            log_echo "destination container of the injected path $destination_container does not exist"
+            any_errors=1
+            continue
+        fi
+
+        # check that the destination is a single word
+        if [[ $(wc -w "$destination_container" | awk '{print $1;}') != '1' ]]; then
+            log_echo "destination of the injected path must be a single word, but received:"
+            cat "$destination_container"
+            any_errors=1
+            continue
+        fi
+        local destination
+        destination=$(<"$destination_container")
+
+        # destination must be an absolute path
+        if [[ "${destination:0:1}" != '/' ]]; then
+            log_echo "destination of the injected path $destination must be an absolute path"
+            any_errors=1
+            continue
+        fi
+
+        # each container must have either file or directory "src"
+        # to inject a file: copy a file "src"
+        # to inject a directory: copy everything contained in "src"
+        local dest_dir
+        local cp_out
+        if [[ -d "$container/src" ]]; then
+            dest_dir="$INST_ROOT/$destination"
+            mkdir -p "$dest_dir"
+            log_echo "copy injected dir: cp -prf $container/src/* $dest_dir"
+            if ! cp_out=$(cp -prf "$container/src/"* "$dest_dir" 2>&1); then
+                log_echo "copy failed, possible reason: $cp_out"
+                any_errors=1
+            fi
+        elif [[ -f "$container/src" ]]; then
+            dest_dir="$INST_ROOT/${destination%/*}" # dirname is not available
+            local dest_file
+            dest_file=$(basename "$destination")
+            mkdir -p "$dest_dir"
+            log_echo "copy injected file: cp -pf $container/src $dest_dir/$dest_file"
+            if ! cp_out=$(cp -pf "$container/src" "$dest_dir/$dest_file" 2>&1); then
+                log_echo "copy failed, possible reason: $cp_out"
+                any_errors=1
+            fi
+        else
+            log_echo "$container/src neither a file nor a directory, or does not exist, cannot inject it"
+            any_errors=1
+            continue
+        fi
+    done
+
+    dbg_echo "${FUNCNAME[0]} - end"
+    return $any_errors
+}
+#####################################################################
+
+
+#####################################################################
+function modify_selinux_relabeling_behavior {
+    local ETC_DIR=$INST_ROOT/etc
+    local RC_D_DIR=$ETC_DIR/rc.d
+    local RC_SYSINIT_MFG_FILE=rc.sysinit.mfg
+    local RC_SYSINIT=rc.sysinit
+    local FINAL_CLOUD_PREPARE_SYSINIT=final_cloud_prepare.sysinit.mfg
+    local i
+    local rc
+
+    dbg_echo "${FUNCNAME[0]} - begin - TMI_VADC_HYPERVISOR = $TMI_VADC_HYPERVISOR"
+
+    # Source files in the installer...
+    local src_file=( /etc/$RC_SYSINIT_MFG_FILE )
+    local dest_file=($RC_D_DIR/$RC_SYSINIT )
+
+    is_supported_cloud "$TMI_VADC_HYPERVISOR"
+    if [ $ret_supported_cloud -eq 0 ] ; then
+        src_file=("${src_file[@]}" /etc/$FINAL_CLOUD_PREPARE_SYSINIT)
+        dest_file=("${dest_file[@]}" $ETC_DIR/$FINAL_CLOUD_PREPARE_SYSINIT)
+    fi
+
+    if [ ${#src_file[@]} -ne ${#dest_file[@]} ] ; then
+        err_exit "Mismatching src_file and dest_files in ${FUNCNAME[0]}"
+    fi
+    # Take a back-up of the original rc.sysinit. This will be restored by
+    # rc.sysinit.mfg as part of its execution for relabeling selinux.
+    dbg_echo "/bin/mv $RC_D_DIR/$RC_SYSINIT $RC_D_DIR/${RC_SYSINIT}.bck"
+    /bin/mv "$RC_D_DIR/$RC_SYSINIT" "$RC_D_DIR/${RC_SYSINIT}.bck"
+
+    for ((i=0; i<${#src_file[@]}; ++i)); do
+        dbg_echo "cp ${src_file[i]} ${dest_file[i]}"
+        /bin/cp "${src_file[i]}" "${dest_file[i]}"
+        rc=$?
+        if [[ $rc -ne 0 ]]; then
+            err_exit "Failed to copy ${src_file[i]} to ${dest_file[i]} with <$rc>"
+        fi
+        /bin/chmod +x "${dest_file[i]}"
+        rc=$?
+        if [[ $rc -ne 0 ]]; then
+            err_exit "/bin/chmod failed to make ${dest_file[i]} executable with error <$rc>"
+        fi
+    done
+
+    dbg_echo "${FUNCNAME[0]} - end"
+}
+#####################################################################
+
+
+for _ in {1..15} ; do dbg_echo "" ; done
+log_echo "#############################"
+log_echo "post-install - $(date) - START"
+log_echo ""
+
+
+if [ -f "$VADC_PLATFORM_FILE" ]; then
+    # Create the VADC first boot marker:
+    touch "$VADC_FIRST_BOOT"
+
+    # This should be executed only for Cloud installations:
+    if [ "$TMI_VADC_HYPERVISOR" != "" ] && [ "$TMI_VADC_HYPERVISOR" != "0" ]; then
+        final_cloud_prepare
+    fi
+
+    cleanup_root_keys_symlinks_on_cloud
+    disable_fsck
+    hot_patch_autotask
+    copy_gbb_markers
+    copy_injected_files
+
+    if [[ -f "$LEGACY_LABELING" ]]; then
+        dbg_echo "Adding legacy selinux labeling scripts."
+        modify_selinux_relabeling_behavior
+    else
+        dbg_echo "Not a legacy build, so skipping legacy SELinux script copying."
+    fi
+fi
+
+log_echo ""
+log_echo "post-install - $(date) - DONE"
+log_echo "#############################"
+for _ in {1..15} ; do dbg_echo "" ; done
+

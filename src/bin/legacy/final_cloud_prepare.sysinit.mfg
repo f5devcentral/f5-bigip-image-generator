@@ -1,0 +1,347 @@
+#!/bin/bash
+# Copyright (C) 2018-2019 F5 Networks, Inc
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not
+# use this file except in compliance with the License. You may obtain a copy of
+# the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations under
+# the License.
+
+
+#####################################################################
+# /etc/final_cloud_prepare.sysinit.mfg - runs once before selinux labeling during
+# image generation.
+#
+# Perform one-time VADC/Cloud configuration.
+# This script is NOT shipped in BIGIP.
+# It will be executed once during vm_bundle build task at the last
+# boot of the prep VM.
+# It will be invoked by rs.sysinit.mfg script immediately before
+# SELinux relabeling.
+# The VM will be powered off after execution of this script and SELinux
+# relabeling are done.
+#
+#####################################################################
+
+DEBUG=0
+# syslog is not available so early in the boot
+LOG_ENABLED=0
+
+source /etc/init.d/functions
+source /etc/vadc-init/functions
+
+
+#####################################################################
+# Report the error and exit:
+#
+function err_exit() {
+    local i
+    local err_text="$*"
+
+    if [ "$err_text" == "" ]; then
+        err_text="Missing error text"
+    fi
+
+    for i in {1..20}; do echo "" ; done
+    for i in {1..5}; do echo "############ ERROR #############" ; done
+    echo "ERROR - $err_text"
+    for i in {1..20}; do echo "" ; done
+
+    exit 1
+}
+#####################################################################
+
+
+#####################################################################
+function print_user_passwd_shadow() {
+    local user_name=$1
+    local f_auto_search=$2
+    local f
+    local list_files="/etc/passwd /etc/shadow"
+
+    if [ "$user_name" == "" ]; then
+        err_exit "${FUNCNAME[0]} - missing 1st param"
+    fi
+    if [ "$f_auto_search" == "" ]; then
+        f_auto_search=0
+    fi
+
+    dbg_echo "${FUNCNAME[0]} - user_name=$user_name f_auto_search=$f_auto_search"
+
+    if [ $f_auto_search -eq 1 ]; then
+        list_files=$(find / -name passwd)
+        list_files="$list_files $(find / -name shadow)"
+    fi
+    echo "list_files = $list_files"
+
+    for f in $list_files ; do
+        ls -l $f
+        echo $f
+        echo "----------------"
+        grep "^$user_name" $f
+        echo ""
+    done
+}
+#####################################################################
+
+
+##################################################################
+function dbg_show_env() {
+    local fVerbose=$1
+    local d
+    local f
+    local list_dirs=""
+    local list_files=""
+
+    if [ $DEBUG -eq 0 ]; then
+        return
+    fi
+
+    if [ "$fVerbose" == "" ]; then fVerbose=0 ; fi
+
+    dbg_echo ""
+    dbg_echo "==========================="
+    dbg_echo "env:"
+    /bin/env
+    dbg_echo ""
+    dbg_echo "==========================="
+    dbg_echo "mount:"
+    mount
+    dbg_echo "==========================="
+    dbg_echo "mapper:"
+    ls -l /dev/mapper
+    dbg_echo "==========================="
+    dbg_echo "Platform files:"
+    ls -l /lib/f5-platform/id-*
+    dbg_echo ""
+
+    if [ $fVerbose -eq 0 ]; then
+        return
+    fi
+
+    # All dirs we are interested in:
+    list_dirs=""
+    list_dirs="$list_dirs / /etc /shared"
+    # Show dirs:
+    for d in $list_dirs ; do
+        dbg_echo "==========================="
+        dbg_echo "ls -l $d"
+        ls -l $d
+    done
+    dbg_echo "==========================="
+    dbg_echo "Hidden files in the root:"
+    ls -l -d /.*
+    dbg_echo "==========================="
+
+    show_all_authorized_keys
+}
+##################################################################
+
+
+#####################################################################
+# Enables ssh access to 'admin' user.
+# Final authorized_keys will be configured inside the boot-up script.
+#
+function enable_ssh_for_admin() {
+    # Update Linux system files.
+    dbg_echo "Replace the shell of admin user with tmsh:"
+    sed -i "s/^\(admin:x:0:[0-9]*:Admin User:\/home\/admin:\)\(.*\)/\1\/usr\/bin\/tmsh/" /etc/passwd
+    sed -i 's/\(admin:\)\([^:]*\)\(:.*\)/\1!!\3/' /etc/shadow
+
+    if [ $DEBUG -ge 1 ]; then
+        print_user_passwd_shadow "admin"
+    fi
+}
+#####################################################################
+
+
+#####################################################################
+function stop_xe_guest_tool() {
+    toolname="xe-guest-utilities"
+
+    # check if xe-guest-toools are installed to begin with:
+    dbg_echo "Check if the ${toolname} RPM is installed:"
+
+    if rpm -q --quiet ${toolname} ; then
+        dbg_echo "${toolname} is found to be installed. Disabling as it's an unrequired daemon:"
+        chkconfig --del xe-linux-distribution
+        rc=$?
+        if [ $rc -ne 0 ]; then
+            err_exit "Disabling xe-linux-distribution daemon failed."
+        fi
+    fi
+}
+#####################################################################
+
+
+#####################################################################
+# Disables root account.
+#
+function disable_root() {
+    # Update Linux system files.
+    dbg_echo "Disable default password for root user:"
+    /bin/sed -i 's/\(root:\)\([^:]*\)\(:.*\)/\1!!\3/' /etc/shadow
+
+    if [ $DEBUG -ge 1 ]; then
+        print_user_passwd_shadow "root"
+    fi
+}
+#####################################################################
+
+
+#####################################################################
+# Test that all authorized_keys files are not present anymore.
+#
+function test_all_authorized_keys() {
+    local lines=0
+    local file_size=0
+
+    dbg_echo "Test there are no authorized_keys files."
+    lines=$(find / -name authorized_keys | wc -l)
+    if [ $lines -ne 0 ]; then
+        find / -name authorized_keys
+        err_exit "Some authorized_keys files are still present"
+    fi
+
+    dbg_echo "Test we have backup files for authorized_keys."
+    lines=$(find / -name bigip.a.k.bak | wc -l)
+    if [ $lines -ne $authorized_keys_file_count ]; then
+        ls -l $(find / -name bigip.a.k.bak)
+        err_exit "Not enough authorized_keys backup files: needed $authorized_keys_file_count, found $lines"
+    fi
+
+    dbg_echo "Test all backup files for authorized_keys are empty."
+    for f in $(find / -name bigip.a.k.bak); do
+        # Skip all the symlinks:
+        if [ ! -L $f ]; then
+            file_size=$(ls -l $f | cut -d" " -f 5)
+            if [ $file_size -gt 1 ]; then
+                ls -l $(find / -name bigip.a.k.bak)
+                err_exit "File $f has to be empty, but it has size $file_size"
+            fi
+        fi
+    done
+}
+#####################################################################
+
+
+#####################################################################
+# Show all authorized_keys files and print their content.
+#
+function show_all_authorized_keys() {
+    local list_files
+
+    list_files=$(find / -name authorized_keys)
+    dbg_echo "PREP - Expect empty/non-existent authorized_keys files:"
+    if [ "$list_files" == "" ]; then
+        dbg_echo "PASSED"
+    else
+        log_echo "FAILED"
+        ls -l $list_files
+        for f in $(find / -name authorized_keys); do
+            log_cat $f
+        done
+    fi
+}
+#####################################################################
+
+
+#####################################################################
+# Empty all authorized_keys from the system except the original
+# symlink in "/root/.ssh"
+# Rename all the files because of Amazon security scanner.
+#
+function remove_all_authorized_keys() {
+    local f
+    local list_authorized_keys
+
+    list_authorized_keys=$(find / -name authorized_keys)
+    authorized_keys_file_count=$(echo "$list_authorized_keys" | wc -l)
+
+    dbg_echo "Cleanup content of authorized_keys files:"
+    # 1st pass - empty the content:
+    for f in $list_authorized_keys; do
+        dbg_echo "Emptying $f"
+        if [ -e $f ]; then
+            echo "" > $f
+        fi
+    done
+    # 2nd pass - rename the files as some of them are symlinks:
+    for f in $list_authorized_keys; do
+        # Rename all the files and the symlinks:
+        if [ -e $f -o -L $f ]; then
+            dbg_echo "Renaming $f"
+            mv -v $f $(dirname $f)/bigip.a.k.bak
+            rc=$?
+            if [ $rc -ne 0 ]; then
+                err_exit "Cannot move file: $f $(dirname $f)/bigip.a.k.bak"
+            fi
+        fi
+    done
+}
+#####################################################################
+
+
+#####################################################################
+function process_hb() {
+    dbg_echo "Starting ${FUNCNAME[0]}"
+    INSTANCE_REG_FILE="/shared/vadc/hourly.licensing"
+    if [ -f /etc/hourly.licensing ] ; then
+        mv -vf /etc/hourly.licensing $INSTANCE_REG_FILE
+        dbg_cat $INSTANCE_REG_FILE
+    fi
+}
+#####################################################################
+
+
+#####################################################################
+# Configuration steps needed to prepare Cloud images.
+#
+function final_cloud_prepare() {
+    local d
+
+    dbg_echo "${FUNCNAME[0]} - start"
+
+    # Show initial environment:
+    dbg_show_env 0
+
+    enable_ssh_for_admin
+    disable_root
+    process_hb
+
+    remove_all_authorized_keys
+    test_all_authorized_keys
+
+    stop_xe_guest_tool
+
+    # Show final environment:
+    dbg_show_env 1
+
+    dbg_echo "${FUNCNAME[0]} - end"
+}
+#####################################################################
+
+
+for i in {1..5} ; do dbg_echo "" ; done
+echo "##################################################"
+echo "final_cloud_prepare.sysinit.mfg - $(date) - START"
+echo ""
+
+# At this time /shared is not mounted, so don't try to look for
+# /shared/vadc/.hypervisor_type file.
+# Configuration steps needed to prepare Cloud images.
+final_cloud_prepare
+
+echo ""
+echo "final_cloud_prepare.sysinit.mfg - $(date) - DONE"
+echo "#################################################"
+for i in {1..5} ; do dbg_echo "" ; done
+
+exit 0
+
