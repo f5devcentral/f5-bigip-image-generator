@@ -329,13 +329,13 @@ completed and submitted the F5 Contributor License Agreement.
 
 
 [1]: https://downloads.f5.com/esd/productlines.jsp
-[2]: https://gitlab.f5net.com/vteam-cloud/ve-image-generator/blob/dev/setup-build-env
+[2]: https://github.com/f5devcentral/f5-bigip-image-generator/blob/master/setup-build-env
 [3]: https://docs.aws.amazon.com/vm-import/latest/userguide/vmimport-image-import.html
 [4]: http://manpages.ubuntu.com/manpages/bionic/man1/kvm-ok.1.html
 [5]: https://gitlab.f5net.com/vteam-cloud/ve-image-generator/blob/dev/docs/examples/config.yml
-[6]: https://gitlab.f5net.com/vteam-cloud/ve-image-generator/blob/dev/docs/providers/aws/README.md
-[7]: https://gitlab.f5net.com/vteam-cloud/ve-image-generator/blob/dev/docs/providers/azure/README.md
-[8]: https://gitlab.f5net.com/vteam-cloud/ve-image-generator/blob/dev/docs/providers/gce/README.md
+[6]: https://github.com/f5devcentral/f5-bigip-image-generator/tree/master/docs/providers/aws
+[7]: https://github.com/f5devcentral/f5-bigip-image-generator/tree/master/docs/providers/azure
+[8]: https://github.com/f5devcentral/f5-bigip-image-generator/tree/master/docs/providers/gce
 [9]: https://cloud.google.com/iam/docs/creating-managing-service-accounts
 [10]: https://docs.microsoft.com/en-us/cli/azure/create-an-azure-service-principal-azure-cli?view=azure-cli-latest
 [11]: https://docs.microsoft.com/en-us/rest/api/storageservices/create-container 
