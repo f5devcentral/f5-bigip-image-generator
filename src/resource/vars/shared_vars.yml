@@ -1,0 +1,196 @@
+# Copyright (C) 2019 F5 Networks, Inc
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not
+# use this file except in compliance with the License. You may obtain a copy of
+# the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations under
+# the License.
+
+
+BOOT_LOCATIONS:
+  accepted: "^1$|^2$"
+  description: >-
+    Number of boot locations used in the source ISO file.
+  flag: b
+  required: true
+
+CLEAN:
+  description: >-
+    Delete local files created by previous runs of the same <PLATFORM, MODULES, BOOT_LOCATIONS> combination.
+  parameters: 0
+
+CLOUD:
+  accepted: "^aws$|^azure$|^gce$"
+  description: >-
+    The cloud name used for cloud-specific operations. Internally assigned based on the specified
+    platform.  If PLATFORM is not a cloud, then this will remain unset.
+  internal: true
+
+CLOUD_IMAGE_NAME:
+  description: >-
+    The name of the generated cloud image.  The name is subject to cloud provider naming restrictions 
+    and is not guaranteed to succeed.  If you provide no name, then one is generated automatically 
+    based on the detected properties of the source ISO file.
+
+CONFIG_FILE:
+  description: >-
+    Full path to a YAML configuration file containing a list of parameter key/value pairs used during image
+    generation.
+  flag: c
+
+CONSOLE_PROGRESS_BAR_UPDATE_DELAY:
+  accepted: "^[0-9]+$"
+  default: 5
+  description: >-
+    Sleep duration (in seconds) between the retries for progress-bar updater on console. 
+    This value is used for disk generation tasks. Consult the platform-specific config 
+    files for task-specific retries and delays during cloud image generation.
+  internal: true
+
+DEFAULT_SIG_FILE_EXTENSION:
+  default: ".384.sig"
+  description: >-
+    If ISO_SIG or EHF_ISO_SIG are unset, then the tool searches for a file with 
+    this extension in the same directory as the provided ISO or EHF_ISO.
+  internal: true
+
+DOCS:
+  description: >-
+    Create configuration docs.
+  hidden: true
+  parameters: 0
+
+DOCS_DIR:
+  default: "docs/resource"
+  description: >-
+    Location for configuration docs.
+  internal: true
+
+EHF_ISO:
+  description: >-
+    Full path to an engineering hotfix ISO file for installation on top of the existing ISO file.
+  flag: e
+
+EHF_ISO_SIG:
+  description: >-
+    Full path to an engineering hotfix ISO signature file used to validate the engineering hotfix ISO.
+  flag: x
+
+ENVIRONMENT_VARIABLE_PREFIX:
+  default: "F5_"
+  description: >-
+    Tool will read only variables from the environment that are prefixed with this value. If left undefined,
+    then the tool will not read the variables from the environment, preventing global namespace conflicts.
+  internal: true
+
+HELP:
+  description: >-
+    Print help and usage information, and then exit the program.
+  flag: h
+  parameters: 0
+
+IMAGE_DIR:
+  description: >-
+    The directory where you want generated images to reside. Provide either an absolute path or a
+    relative path. If this directory does not exist, the tool will create it.
+
+IMAGE_TAGS:
+  description: >-
+    List of key value pairs to set as tags/labels for the image.
+
+ISO:
+  description: >-
+    Full path to a BIG-IP ISO file used as a basis for image generation.
+  flag: i
+  required: true
+
+ISO_SIG:
+  description: >-
+    Full path to an ISO signature file used to validate the ISO.
+  flag: s
+
+ISO_SIG_PUBKEY:
+  description: >-
+    Path to the F5 public key. Setting this will enable signature verification for ISOs.
+
+IMAGE_REGISTRATION_URL:
+  description: >-
+    Instance Registration URL.  Register image details using platform, image id, and image name as keys.
+
+IMAGE_REGISTRATION_RETRY_COUNT:
+  accepted: "^[0-9]+$"
+  default: 5
+  description: >-
+    Maximum number of retries for image registration.
+  internal: true
+
+IMAGE_REGISTRATION_RETRY_DELAY:
+  accepted: "^[0-9]+$"
+  default: 30
+  description: >-
+    Sleep duration (in seconds) between retries when registering an image.
+  internal: true
+
+LOG_FILE:
+  description: >-
+    Log filename that overrides the default log filename created in the logs directory. You can use
+    a full path, directory, or filename. If full path, then the log file uses the full path.
+    If directory, then the image generator creates a new log file in the specified directory.
+    If filename, then the tool creates a log file in the logs directory using the specified filename.
+
+LOG_LEVEL:
+  accepted: "^CRITICAL$|^ERROR$|^WARNING$|^INFO$|^DEBUG$|^TRACE$"
+  default: "DEBUG"
+  description: >-
+    Log level to use for the log file, indicating the lowest message severity level that can
+    appear in the log file.
+
+MODULES:
+  accepted: "^all$|^ltm$"
+  description: >-
+    BIG-IP components supported by the specified image.
+  flag: m
+  required: true
+
+OVA_SIGN_ENCRYPTION_TYPE:
+  default: "sha3-512"
+  description: >-
+    Encryption type to use when signing OVA files.
+
+OVA_SIGN_PRIVATE_KEY:
+  description: >-
+    Path to private key file used to sign OVA files.
+
+OVA_SIGN_PUBLIC_KEY:
+  description: >-
+    Path to public key file used to sign OVA files.
+
+PLATFORM:
+  accepted: "^aws$|^azure$|^gce$|^qcow2$|^vhd$|^vmware$"
+  description: >-
+    The target plaform for generated images.
+  flag: p
+  required: true
+
+UPDATE_IMAGE_FILES:
+  description: >-
+    Files you want injected into the image. For each of the injections, required values
+    include source (file or directory) and destination (absolute full path).
+
+VERSION:
+  description: >-
+    Print version information, and then exit the program.
+  flag: v
+  parameters: 0
+
+VERSION_NUMBER:
+  default: 0.1
+  description: >-
+    This is the current version of BIG-IP Image-Generator.
+  internal: true

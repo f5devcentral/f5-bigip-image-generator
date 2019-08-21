@@ -1,0 +1,159 @@
+################################################
+#
+# Comments will be automatically stripped
+#
+# __DISPLAY_NAME__      will be replaced by the makefile
+# __GUEST_OS_ALT_NAME__ will be replaced by the makefile
+# __VMDK_FILE_NAME__    will be replaced by the makefile
+# __VMDK_DATASTOR_FILE_NAME__   will be replaced by the makefile
+# __MEM_SIZE__          will be replaced by the makefile
+# __NUM_CPUS__          will be replaced by the makefile
+#
+.encoding = "UTF-8"
+
+
+################################################
+# BIGIP specific
+displayName = "__DISPLAY_NAME__"
+memsize = "__MEM_SIZE__"
+
+# Guest determines:
+#   which tools ISO to install, default memory size,
+#   which virtual hardware set is applied (e.g. scsi: BUS or LSI or IDE)
+# For most recent linux, it's LSI and then 64-bit means e1000 over vlance
+
+guestOS = "otherlinux-64"    # From a list of known OS's, not free format, http://www.sanbarrow.com/vmx/vmx-guestos.html
+guestOSAltName = "__GUEST_OS_ALT_NAME__"
+
+
+################################################
+# non-BIGIP specific
+#virtualHW.productCompatibility = "hosted"          # auto-generated
+virtualHW.version = "10"
+config.version = "8"
+
+
+################################################
+# PCI Devices
+# Valid PCI slots are: 16-20 and 32-60
+#   SVGA uses 15 (hardcoded)
+#   First SCSI-controller should use 16
+#   -1 means used next free slot
+# To get more than 6 slots, you need to enable one or more bridges.
+
+pciBridge0.present = "true"
+#pciBridge0.pciSlotNumber = "17"
+
+#pciBridge1.present = "true"
+#pciBridge1.pciSlotNumber = "18"
+
+# Add a PCI Express bus so that VMXNet3 will work on Workstation.
+# ESX seems to make this automatically, so this is a copy of what ESX does.
+# (you have to edit ESX .vmx files to see this.)
+pciBridge4.present = "TRUE"
+pciBridge4.virtualDev = "pcieRootPort"
+pciBridge4.functions = "8"
+pciBridge5.present = "TRUE"
+pciBridge5.virtualDev = "pcieRootPort"
+pciBridge5.functions = "8"
+pciBridge6.present = "TRUE"
+pciBridge6.virtualDev = "pcieRootPort"
+pciBridge6.functions = "8"
+pciBridge7.present = "TRUE"
+pciBridge7.virtualDev = "pcieRootPort"
+pciBridge7.functions = "8"
+
+
+################################################
+# Floppy - it will auto-add it unless we specify false
+floppy0.present = "false"
+
+
+################################################
+# Disks
+# SCSI system disk
+scsi0.virtualDev="lsilogic"
+scsi0.present="true"
+scsi0:0.present = "true"
+scsi0:0.fileName = "__VMDK_FILE_NAME__"
+scsi0:0.mode = "persistent"
+scsi0:0.startConnected = "true"
+scsi0:0.writeThrough = "true"
+
+################################################
+# NICs
+ethernet0.present = "true"
+ethernet0.virtualDev = "vmxnet3"
+ethernet0.networkName = "Management"		# overrides connectionType so strip out for vmx
+# either "generated" or "static"  (valid range: 00:50:56:y:x:x; y: 0-3f)
+ethernet0.addressType = "generated"
+#ethernet0.generatedAddress = "00:0c:29:51:c3:34"       # auto-generated (changes when installed)
+#ethernet0.generatedAddressOffset = "0"                 # default (derived) value
+#ethernet0.pciSlotNumber = "17"                         # default (derived) value
+#ethernet0.allow64bitVlance = "true"                    # future
+ethernet0.connectionType = "bridged"
+ethernet0.startConnected = "true"
+
+ethernet1.present = "true"
+ethernet1.networkName = "Internal"			# overrides connectionType so strip out for vmx
+ethernet1.virtualDev = "vmxnet3"
+ethernet1.addressType = "generated"
+#ethernet1.generatedAddress = "00:0c:29:51:c3:3e"       # auto-generated (changes when installed)
+#ethernet1.generatedAddressOffset = "10"                # default (derived) value
+#ethernet1.pciSlotNumber = "18"                         # default (derived) value
+ethernet1.connectionType = "hostonly"
+ethernet1.startConnected = "true"
+
+ethernet2.present = "true"
+ethernet2.networkName = "External"			# overrides connectionType so strip out for vmx
+ethernet2.virtualDev = "vmxnet3"
+ethernet2.addressType = "generated"
+#ethernet2.generatedAddress = "00:0c:29:51:c3:48"       # auto-generated (changes when installed)
+#ethernet2.generatedAddressOffset = "20"                # default (derived) value
+#ethernet2.pciSlotNumber = "19"                         # default (derived) value
+ethernet2.connectionType = "hostonly"
+ethernet2.startConnected = "true"
+
+ethernet3.present = "true"
+ethernet3.networkName = "HA"			# overrides connectionType so strip out for vmx
+ethernet3.virtualDev = "vmxnet3"
+ethernet3.addressType = "generated"
+#ethernet3.generatedAddress = "00:0c:29:51:c3:48"       # auto-generated (changes when installed)
+#ethernet3.generatedAddressOffset = "20"                # default (derived) value
+#ethernet3.pciSlotNumber = "19"                         # default (derived) value
+ethernet3.connectionType = "hostonly"
+ethernet3.startConnected = "true"
+
+
+################################################
+# VM Communication interface (fast, efficient comm btw. VM and host)
+#vmci0.present = "true"
+#vmci0.id = "69"
+#vmci0.pciSlotNumber = "20"                          # default (derived) value
+
+
+################################################
+# Limit CPU's
+numvcpus = "__NUM_CPUS__"
+
+
+################################################
+# No tools, so don't use VMWare Tools to syncTime, etc.
+tools.syncTime = "false"
+tools.remindInstall = "false"
+tools.upgrade.policy = "manual"
+
+
+################################################
+# We don't use any graphics so this amount of vram size is too much but
+# ugly warnings appear if we don't set it this large.
+svga.vramSize="16708800"
+
+
+################################################
+# This is needed in order to resolve an issue:
+# "Repeated characters when typing in remote console"
+# See the KB here:
+# http://kb.vmware.com/selfservice/microsites/search.do?language=en_US&cmd=displayKC&externalId=196
+keyboard.typematicMinDelay = "2000000"
+

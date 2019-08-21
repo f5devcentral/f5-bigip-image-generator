@@ -1,0 +1,91 @@
+# Copyright (C) 2019 F5 Networks, Inc
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not
+# use this file except in compliance with the License. You may obtain a copy of
+# the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations under
+# the License.
+
+
+AWS_ACCESS_KEY_ID:
+  description: >-
+    Public key id string used for AWS account access.
+  protected: true
+  required: true
+
+AWS_BUCKET:
+  description: >-
+    AWS S3 bucket used during image generation.
+  required: true
+
+AWS_CREATE_IMAGE_RETRY_COUNT:
+  accepted: "^[0-9]+$"
+  default: 40
+  description: >-
+    Maximum number of retries for the image to become 'available' after a create_image() operation.
+  internal: true
+
+AWS_CREATE_IMAGE_RETRY_DELAY:
+  accepted: "^[0-9]+$"
+  default: 30
+  description: >-
+    Sleep duration (in seconds) between retries when checking for image status.
+  internal: true
+
+AWS_IMAGE_MAX_RETRY:
+  accepted: "^[0-9]+$"
+  default: 3
+  description: >-
+    The number of times to retry image related operations when running AWS commands.
+
+AWS_IMAGE_NAME_LENGTH_MAX:
+  default: 64
+  description: >-
+    The maximum supported length of image names when uploading images to AWS.  This is set much lower than the official
+    AWS name length restriction in order to make room for the suffixes which AWS automatically adds to the preferred image
+    names.
+  internal: true
+
+AWS_IMAGE_NAME_LENGTH_MIN:
+  default: 3
+  description: >-
+    The minimum supported length of image names when uploading images to AWS.
+  internal: true
+
+AWS_IMPORT_SNAPSHOT_TASK_RETRY_COUNT:
+  accepted: "^[0-9]+$"
+  default: 120
+  description: >-
+    Maximum number of retries for import_snapshot() operation to complete.
+  internal: true
+
+AWS_IMPORT_SNAPSHOT_TASK_RETRY_DELAY:
+  accepted: "^[0-9]+$"
+  default: 30
+  description: >-
+    Sleep duration (in seconds) between retries when checking for import_snapshot() operation to complete.
+  internal: true
+
+AWS_REGION:
+  description: >-
+    Region to use for AWS image generation.
+  required: true
+
+AWS_SECRET_ACCESS_KEY:
+  description: >-
+    Public key string used for AWS account access.
+  protected: true
+  required: true
+
+AWS_IMAGE_SHARE_ACCOUNT_IDS:
+  description: >-
+    List of AWS account IDs or the path to the .yml file containing the list of account IDs with which you want the generated
+    AWS AMI shared.
+
+

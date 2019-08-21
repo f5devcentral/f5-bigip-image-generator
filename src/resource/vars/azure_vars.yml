@@ -1,0 +1,75 @@
+# Copyright (C) 2019 F5 Networks, Inc
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not
+# use this file except in compliance with the License. You may obtain a copy of
+# the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations under
+# the License.
+
+
+AZURE_IMAGE_NAME_LENGTH_MAX:
+  accepted: "^[0-9]+$"
+  default: 1024
+  description: >-
+    source -https://bit.ly/2Q8UHOl
+  internal: true
+
+AZURE_IMAGE_NAME_LENGTH_MIN:
+  accepted: "^[0-9]+$"
+  default: 1
+  description: >-
+    Minimum required number of characters in an Azure image name (https://bit.ly/2m8dSIm).
+  internal: true
+
+AZURE_IMAGE_MAX_RETRY:
+  accepted: "^[0-9]+$"
+  default: 3
+  description: >-
+    The number of times to retry image related operations when running Azure commands.
+
+AZURE_STORAGE_CONNECTION_STRING:
+  description: >-
+    Azure storage connection string used for account access.
+  direct_export: true
+  protected: true
+  required: true
+
+AZURE_STORAGE_CONTAINER_NAME:
+  description: >-
+    Name of Azure storage container to use for generated images.
+  direct_export: true
+  required: true
+
+AZURE_BLOB_UPLOAD_COMPLETED_RETRY_COUNT:
+  accepted: "^[0-9]+$"
+  default: 20
+  description: >-
+    Maximum number of retries for Azure blob upload operation.
+  internal: true
+
+AZURE_BLOB_UPLOAD_COMPLETED_RETRY_DELAY:
+  accepted: "^[0-9]+$"
+  default: 10
+  description: >-
+    Sleep duration (in seconds) between retries when checking for image deletion to succeed.
+  internal: true
+
+AZURE_BLOB_UPLOAD_CONCURRENT_THREAD_COUNT:
+  accepted: "^[0-9]+$"
+  default: 8
+  description: >-
+    Number of parallel threads that can be used to configure the azure PageBlobService while uploading a blob.
+  internal: true
+
+AZURE_BLOB_UPLOAD_TIMEOUT:
+  accepted: "^[0-9]+$"
+  default: 2400
+  description: >-
+    Duration (in seconds) by which the system can complete the blob upload.
+  internal: true

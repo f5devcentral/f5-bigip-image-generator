@@ -1,0 +1,75 @@
+# Copyright (C) 2019 F5 Networks, Inc
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not
+# use this file except in compliance with the License. You may obtain a copy of
+# the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations under
+# the License.
+
+
+GCE_BUCKET:
+  description: >-
+    GCE disk storage bucket used during image generation.
+  required: true
+
+GCE_IMAGE_NAME_LENGTH_MAX:
+  accepted: "^[0-9]+$"
+  default: 63
+  description: >-
+    Maximum allowed number of characters in a GCE image name (https://bit.ly/2GkHIY4).
+  internal: true
+
+GCE_IMAGE_NAME_LENGTH_MIN:
+  accepted: "^[0-9]+$"
+  default: 1
+  description: >-
+    Minimum required number of characters in a GCE image name (https://bit.ly/2GkHIY4).
+  internal: true
+
+GCE_REQUIRED_DISK_NAME:
+  default: "disk.raw"
+  description: >-
+    Required name of the file which the packaged gzipped tar file must include for GCE.
+  internal: true
+
+GOOGLE_APPLICATION_CREDENTIALS:
+  description: >-
+    Service account auth credentials as a JSON string or a file path ending in .json. 
+    For help with generating these credentials, refer to bit.ly/2MYQpHN.
+    .
+  protected: true
+  required: true
+
+GCE_IMAGE_CREATE_COMPLETED_RETRY_COUNT:
+  accepted: "^[0-9]+$"
+  default: 90
+  description: >-
+    Maximum number of retries for GCE image create operation.
+  internal: true
+
+GCE_IMAGE_CREATE_COMPLETED_RETRY_DELAY:
+  accepted: "^[0-9]+$"
+  default: 20
+  description: >-
+    Sleep duration (in seconds) between retries when checking for the image creation to succeed.
+  internal: true
+
+GCE_IMAGE_DELETE_COMPLETED_RETRY_COUNT:
+  accepted: "^[0-9]+$"
+  default: 20
+  description: >-
+    Maximum number of retries for GCE image delete operation.
+  internal: true
+
+GCE_IMAGE_DELETE_COMPLETED_RETRY_DELAY:
+  accepted: "^[0-9]+$"
+  default: 10
+  description: >-
+    Sleep duration (in seconds) between retries when checking for the image deletion to succeed.
+  internal: true

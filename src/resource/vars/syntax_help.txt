@@ -1,0 +1,75 @@
+# These YAML files define the variables which VE-Image-Generator will use internally.  They are not intended to be
+# modified by users.  At runtime users may pass in individual key/value pairs, define them in a YAML config file, or set
+# them as environment variables.  During initialization VE-Image-Generator will then parse those values and
+# handle them according to their corresponding properties in this file. Variable properties include the following:
+# -------------------- #
+# accepted: ~          # Default/implied setting.  ~ means null in YAML.  When this property is set to null all possible
+#                      # inputs are accepted.
+#                      #
+# accepted: foo bar    # Indicates that the only accepted values for this variable are "foo" or "bar".  Note: these
+#                      # values are parsed as regular expressions, so you can use further filtering.
+#                      #
+# default: ~           # Default/implied setting.  ~ means null in YAML.  By default variables defined in this file
+#                      # will have no default value.
+#                      #
+# default: foo         # The default value to use for the variable, if not defined.
+#                      #
+# description: bar     # A description of the variable and its intended purpose.  Used when displaying help
+#                      # and usage information.
+#                      #
+# direct_export: true  # Indicates that you will need to export the variable to the environment after being added
+#                      # to the config system. This is the case for variables which are required by external tools or
+#                      # SDKs.  Although the tool already exports all configured variables that are read in child
+#                      # processes, it does so with a prefix (IE: F5_) in order to minimize possible naming
+#                      # conflicts. Therefore, external tools cannot read these variables, since they
+#                      # don't know to look for the prefix. By setting direct_export to true, the tool exports a 
+#                      # variable both with and without the prefix, thus enabling readability by both external tools as well as the F5 config system.
+#                      #
+# direct_export: false # Default/implied setting.  The tool will not directly export this variable into the environment. 
+#                      # The tool only exports this variable with ENVIRONMENT_VARIABLE_PREFIX prepended.    
+#                      #
+# flag: ~              # Default/implied setting. This variable has no single character flag available. If setting it
+#                      # on the command line it will need the full form of --FOO BAR.
+#                      #
+# flag: x              # This variable can be set by calling VE-Image-Generator with the provided single-character
+#                      # flag on the command line (for example, -x BAR).
+#                      #
+# hidden: false        # Default/implied setting. This indicates that the variable is hidden from the user.
+#                      #
+# internal: true       # This indicates that the variable may not be defined by the user or environment.  This is used
+#                      # for variables which you want to define dynamically or which could potentially disrupt the
+#                      # program if alternative values were provided.
+#                      #
+# internal: false      # Default/implied setting. This indicates that the user or environment can define this variable.
+#                      #
+# parameters: 0        # Indicates that this variable is a boolean flag and should not take additional parameters when
+#                      # passed as a command line argument.  This enables the combination of flags such as -xyz (x, y,
+#                      # and z will all be set to "true").  Set these variables explicitly to true or
+#                      # false, when set as environment variables or listed in a config file.
+#                      #
+# parameters: 1        # Default/implied setting.  Every variable must have a value associated with it.
+#                      #
+# parameters: n        # Indicates that this variable requires multiple arguments in order to work. Separate these arguments
+#                      # by spaces, as follows:
+#                      #   Environment variable:
+#                      #     FOO="BAR BAZ QUX"
+#                      #   Config file value:
+#                      #     FOO: "BAR BAZ QUX"
+#                      #   Command line:
+#                      #     --FOO "BAR" "BAZ" "QUX"
+#                      #
+# protected: false     # Default/implied setting.  This indicates that a variable does not contain sensitive information
+#                      # and that its contents are always safe to log.
+#                      #
+# protected: true      # Indicates that the variable's value can contain sensitive information that you do not want
+#                      # logged.  If there is any uncertainty about the sensitivity of a variable, then the program will
+#                      # check for this flag, before logging the contents of a variable.
+#                      #
+# required: false      # Default/implied setting.  The user is not required to provide a value for this variable.
+#                      # Meaning, there is either an acceptable default value defined in this file, the program will
+#                      # decide on its value via embedded logic, or the variable is only used to enable optional
+#                      # functionality.
+#                      #
+# required: true       # Indicates that the user must define this variable as a command line argument, config file
+#                      # value, or environment variable.
+# -------------------- #

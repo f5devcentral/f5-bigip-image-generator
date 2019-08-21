@@ -1,0 +1,317 @@
+#!/bin/bash -e
+# Copyright (C) 2018-2019 F5 Networks, Inc
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not
+# use this file except in compliance with the License. You may obtain a copy of
+# the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations under
+# the License.
+
+PROJECT_DIR="$(realpath "$(dirname "${BASH_SOURCE[0]}")")"
+# shellcheck source=src/lib/bash/common.sh
+source "$PROJECT_DIR/src/lib/bash/util/distro_info.sh"
+
+###############################################################################
+# This is a standalone script that installs all the necessary packages for
+# the ve-image-generation tool that generates various images for the private
+# and public cloud that BIG-IP VE supports.
+# 
+# The script has been developed and tested on the following Linux distributions:
+#   - Ubuntu 18.04.1 LTS (Bionic Beaver)
+###############################################################################
+
+ADD_DEVTOOLS=false
+
+function print_help {
+    echo "Optional arguments:"
+    echo "  --add-dev-tools       Adds tools to verify code style and functionality"
+}
+
+# Process command line options
+while [[ $# -gt 0 ]]; do
+    key="$1"
+    shift
+    case $key in
+        --add-dev-tools)
+            ADD_DEVTOOLS=true
+            ;;
+        -h|--help)
+            print_help
+            exit 1
+            ;;
+    esac
+done
+
+set -x
+
+# Ensure that we're running on a supported Linux distribution.
+distro="$(get_distro)"
+if ! is_supported_distro "$distro"; then
+    echo "Distro [$distro] is not supported! Unable to run setup script!"
+    exit 1
+fi
+
+# Choose a package installer based on the current Linux distribution.
+if grep -E "(ubuntu)|(debian)" <<< "$distro"; then
+    PACKAGE_INSTALLER="apt-get"
+    export DEBIAN_FRONTEND=noninteractive
+elif grep -E "(centos)|(redhat)" <<< "$distro"; then
+    PACKAGE_INSTALLER="yum"
+else
+    echo "No package installer supported for distro [$distro]! Unable to run setup script!"
+    exit 1
+fi
+
+# Install sudo for packaging tools which are running as root.
+if [[ $EUID -eq 0 ]]; then
+    # Refresh packages to find sudo
+    $PACKAGE_INSTALLER update -y
+
+    # Install sudo
+    $PACKAGE_INSTALLER install -y sudo
+fi
+
+#-----------------------------------------------------------------------------#
+# Packages required for bundle.
+#------------------------------#
+# First of all, install the build/development and distribution specific tools.
+case $PACKAGE_INSTALLER in
+yum)
+    # Install extra repository for some of the packages that are not part
+    # of the standard centos repo.
+    sudo $PACKAGE_INSTALLER install -y epel-release
+
+    # Install the build/development tools like make/gcc etc.
+    sudo $PACKAGE_INSTALLER groupinstall -y "Development Tools"
+
+    # qemu in CentOS provides qemu-system-x86_64 that bundle uses to run a VM
+    # locally to install the BIG-IP ISO. In Ubuntu, qemu package is undefined
+    # as qemu-kvm provides everything.
+    sudo $PACKAGE_INSTALLER install -y qemu
+    ;;
+apt-get)
+    # Refresh the installed packages and repo. This is necessary as subsequent
+    # apt-get for some of the packages can fail due to stale repos.
+    sudo $PACKAGE_INSTALLER update
+
+    # Install the build/development tools like make/gcc etc.
+    sudo $PACKAGE_INSTALLER install -y build-essential
+
+    # Some ubuntu distributions don't have rpm2cpio and cpio installed by default.
+    sudo $PACKAGE_INSTALLER install -y --no-install-recommends rpm2cpio cpio
+    ;;
+*)
+    >&2 echo "Unknown '$PACKAGE_INSTALLER'."
+    exit 1
+    esac
+
+sudo $PACKAGE_INSTALLER install -y --no-install-recommends jq wget curl zip unzip genisoimage
+
+# qemu-kvm package in Ubuntu provides everything that we need for bundle
+# including both qemu-system-x86_64 and qemu-img.
+# In CentOS, qemu-kvm provides qemu-img package and needs qemu for other
+# binaries.
+sudo $PACKAGE_INSTALLER install -y qemu-kvm
+
+# Add the current user to "kvm" group if "kvm" group exists, and the user is not a member.
+if getent group kvm | grep -E &>/dev/null "(.*:){3}.*?\b${USER}\b"; then
+    echo "User '${USER}' is a member of the 'kvm' group"
+    ADDED_USER_TO_KVM_GROUP=false
+else
+    echo "Adding user '${USER}' to the 'kvm' group"
+    sudo usermod -aG kvm "$(id -un)"
+    ADDED_USER_TO_KVM_GROUP=true
+fi
+
+qemu_rules_file="/lib/udev/rules.d/60-qemu-system-common.rules"
+reboot_required_file="/var/run/reboot-required"
+
+if [[ -f $qemu_rules_file ]]; then
+    sudo sed -i 's/\(MODE\)="[^"]*"/\1="0666"/' $qemu_rules_file
+else
+    echo "Could not find $qemu_rules_file. There might be kvm permission issues."
+fi
+#-----------------------------------------------------------------------------#
+
+
+#-----------------------------------------------------------------------------#
+# Python package management
+#------------------------------#
+sudo $PACKAGE_INSTALLER install -y python3-pip
+sudo $PACKAGE_INSTALLER install -y python3-venv
+
+# Create Python virtual environment if it doesn't already exist.
+VENV_DIR="$PROJECT_DIR/.venv"
+if [[ ! -f "$VENV_DIR/pyvenv.cfg" ]]; then
+    python3 -m venv "$VENV_DIR"
+fi
+
+# Active the Python virtual environment
+# shellcheck disable=SC1090
+source "$VENV_DIR/bin/activate"
+pip3 install wheel
+#-----------------------------------------------------------------------------#
+
+
+#-----------------------------------------------------------------------------#
+# AWS Package setup.
+# boto3: a Python SDK which Python code uses to interact with AWS.
+#        bonus trivia:  Boto is not an acronym.  It's a species of pink river
+#        dolphin which lives in the Amazon rain forest.
+#------------------------------#
+pip3 install boto3
+pip3 install moto
+#-----------------------------------------------------------------------------#
+
+
+#-----------------------------------------------------------------------------#
+# gcloud tools installation for GMI.
+#------------------------------#
+# These steps are taken from here in their entirity:
+#   https://cloud.google.com/storage/docs/gsutil_install
+case $PACKAGE_INSTALLER in
+yum)
+    export CLOUDSDK_CORE_DISABLE_PROMPTS=1
+    curl https://sdk.cloud.google.com | bash
+    ;;
+apt-get)
+    # Create an environment variable for the correct distribution:
+    sudo $PACKAGE_INSTALLER install -y lsb-release
+    lsb_rel=$(lsb_release -c -s)
+    export CLOUD_SDK_REPO="cloud-sdk-$lsb_rel"
+
+    # Add the Cloud SDK distribution URI as a package source:
+    echo "deb http://packages.cloud.google.com/apt $CLOUD_SDK_REPO main" \
+            | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
+
+    # Import the Google Cloud public key:
+    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg \
+            | sudo apt-key add -
+
+    # Refresh the list of packages as per the updated gcloud package source
+    # in the above two steps.
+    sudo $PACKAGE_INSTALLER update
+
+    # Install the Cloud SDK:
+    sudo $PACKAGE_INSTALLER install -y google-cloud-sdk
+    ;;
+*)
+    >&2 echo "Unknown '$PACKAGE_INSTALLER'."
+    ;;
+esac
+#-----------------------------------------------------------------------------#
+
+
+#-----------------------------------------------------------------------------#
+# Azure package setup
+#------------------------------#
+# python based azure-cli ARM tool
+pip3 install azure_storage_blob
+#-----------------------------------------------------------------------------#
+
+
+#-----------------------------------------------------------------------------#
+# Alibaba package setup.
+#------------------------------#
+# aliyun python APIs used in alibaba_commands.py
+pip3 install aliyun-python-sdk-core
+pip3 install aliyun-python-sdk-ecs
+
+
+#-----------------------------------------------------------------------------#
+# Google Cloud package setup.
+#------------------------------#
+# required Google Cloud Python SDK modules
+#  - https://pypi.org/project/google-cloud-storage/ (for uploading blob and
+#  metadata tags)
+#  - https://pypi.org/project/google-api-python-client/ (for creating image
+#  with blob url) (optional if directly deploying with blob)
+#  - https://pypi.org/project/google-auth/ (for authenticating to google using
+#  oauth2 credentials.  This is a replacement for the deprecated oauth2client
+#  module)
+pip3 install google-api-python-client google-cloud-storage google-auth
+
+
+#-----------------------------------------------------------------------------#
+# python-requests package setup.
+#------------------------------#
+# This is typically installed on minimal images.
+pip3 install requests
+
+
+#-----------------------------------------------------------------------------#
+# retry package setup.
+#------------------------------#
+# Retry decorator for repeating service calls for recoverable errors
+pip3 install retry
+
+
+#-----------------------------------------------------------------------------#
+# YAML tools setup.
+#------------------------------#
+# yq is used to parse YAML files inside BASH scripts
+# pyyaml is used to parse YAML files inside Python scripts
+pip3 install yq
+pip3 install pyyaml
+
+# distro detection module for platform-specific logic.  Used since platform.distro is deprecated.
+pip3 install distro
+#-----------------------------------------------------------------------------#
+
+
+#-----------------------------------------------------------------------------#
+# Adding tools for verifying project code
+#-----------------------------------------------------------------------------#
+if [[ $ADD_DEVTOOLS = true ]]; then
+    # Install git (used for checking dependency files on pipeline)
+    sudo $PACKAGE_INSTALLER install -y git
+
+    # Install shellcheck (used for linting bash files)
+    sudo $PACKAGE_INSTALLER install -y shellcheck
+
+    # Install pylint (used for linting python files)
+    pip3 install pylint
+
+    # Install anybadge (used for generating images to display on pipeline)
+    pip3 install anybadge
+
+    # Install BATS framework (used for unit testing bash files)
+    sudo $PACKAGE_INSTALLER install -y bats
+
+    # Install bc and dc (used for example unit tests)
+    sudo $PACKAGE_INSTALLER install -y bc
+    sudo $PACKAGE_INSTALLER install -y dc
+    # parted and udev are used by convert qemu unit tests
+    sudo $PACKAGE_INSTALLER install -y parted
+    sudo $PACKAGE_INSTALLER install -y udev
+
+    # install modprobe
+    sudo $PACKAGE_INSTALLER install -y kmod
+
+    # Install update-copyright tool
+    pip3 install update-copyright
+fi
+
+set +x
+
+# Display advisory banners
+if [[ $ADDED_USER_TO_KVM_GROUP = true ]]; then
+    echo "---------------------------------------------------------------------------------"
+    echo "User '${USER}' was added to the 'kvm' group.  You must log out and log back in to"
+    echo "pick up the permissions changes for this user."
+    echo "---------------------------------------------------------------------------------"
+fi
+
+if [[ -f $reboot_required_file ]]; then
+    echo "---------------------------------------------------------------------------------"
+    echo "You must reboot your system to complete the setup process."
+    echo "---------------------------------------------------------------------------------"
+fi
+
+# END.

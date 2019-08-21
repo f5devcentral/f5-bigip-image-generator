@@ -1,0 +1,312 @@
+#!/bin/bash -e
+# Copyright (C) 2018-2019 F5 Networks, Inc
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not
+# use this file except in compliance with the License. You may obtain a copy of
+# the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations under
+# the License.
+
+
+
+# shellcheck source=src/lib/bash/util/config.sh
+source "$(realpath "$(dirname "${BASH_SOURCE[0]}")")/src/lib/bash/util/config.sh"
+# shellcheck source=src/lib/bash/util/python_setup.sh
+source "$(realpath "$(dirname "${BASH_SOURCE[0]}")")/src/lib/bash/util/python_setup.sh"
+# shellcheck source=src/lib/bash/build-image-util.sh
+source "$(realpath "$(dirname "${BASH_SOURCE[0]}")")/src/lib/bash/build-image-util.sh"
+# shellcheck source=src/lib/bash/util/logger.sh
+source "$(realpath "$(dirname "${BASH_SOURCE[0]}")")/src/lib/bash/util/logger.sh"
+
+function trap_cleanup() {
+    log_trace "Cleaning up before EXIT"
+    artifacts_dir="$(get_config_value "ARTIFACTS_DIR")"
+    log_trace "The artifacts directory is $artifacts_dir"
+    # remove any temporary directory inside the artifacts directory
+    rm -rf "$artifacts_dir"/tmp.*
+}
+
+trap trap_cleanup EXIT
+
+function main {
+    # Python setup.  We're using the default values and don't want to pass anything (RE: SC2119)
+    # shellcheck disable=SC2119
+    set_python_environment
+    # shellcheck disable=SC2119
+    set_python_path
+
+    # Config setup.
+    if ! init_config "validate" "$@"; then
+        error_and_exit "init_config has failed"
+    fi
+
+    local cloud iso iso_sig ehf_iso ehf_iso_sig pub_key modules boot_locations platform artifacts_directory \
+          config_file cloud_image_name
+    cloud="$(get_config_value "CLOUD")"
+    iso="$(get_config_value "ISO")"
+    iso_sig="$(get_config_value "ISO_SIG")"
+    ehf_iso="$(get_config_value "EHF_ISO")"
+    ehf_iso_sig="$(get_config_value "EHF_ISO_SIG")"
+    pub_key="$(get_config_value "ISO_SIG_PUBKEY")"
+    modules="$(get_config_value "MODULES")"
+    boot_locations="$(get_config_value "BOOT_LOCATIONS")"
+    platform="$(get_config_value "PLATFORM")"
+    config_file="$(get_config_value "CONFIG_FILE")"
+    cloud_image_name="$(get_config_value "CLOUD_IMAGE_NAME")"
+    if ! verify_iso "$iso" "$iso_sig" "$pub_key"; then
+        error_and_exit "verify_iso has failed"
+    elif ! verify_iso "$ehf_iso" "$ehf_iso_sig" "$pub_key"; then
+        error_and_exit "verify_iso has failed"
+    elif ! prepare_artifacts_directory "$iso" "$modules" "$boot_locations" "$platform"; then
+        error_and_exit "prepare_artifacts_directory has failed"
+    fi
+    artifacts_directory="$(get_config_value "ARTIFACTS_DIR")"
+
+    local script_dir
+    script_dir="$(realpath "$(dirname "${BASH_SOURCE[0]}")")"
+
+    # Initialize logging
+    local log_file
+    log_file="$(get_config_value "LOG_FILE")"
+    log_file="$(init_log_file "$log_file")"
+    if ! touch "$log_file"; then
+        error_and_exit "Do not have permission to write to log file."
+    fi
+    set_config_value "LOG_FILE" "$log_file"
+
+    local log_level
+    log_level=$(get_config_value "LOG_LEVEL" | tr '[:lower:]' '[:upper:]')
+
+    create_logger "$log_file" "$log_level"
+
+    # shellcheck disable=SC2181 
+    if [[ "$?" -ne 0 ]]; then
+        error_and_exit "Logger creation failed"
+    fi
+
+    # Initialize image directory
+    init_image_dir "$(realpath "$script_dir")"
+    local output_dir
+    output_dir="$(get_config_value "IMAGE_DIR")"
+
+    log_info "Starting the image build process"
+
+    # check if old log files should be deleted
+    local clean
+    clean="$(get_config_value "CLEAN")"
+    if [[ $clean ]]; then
+        local output
+        if [[ -f "$log_file" ]]; then
+            if ! output="$(rm "$log_file")"; then
+                error_and_exit "ERROR - were unable to delete existing log file [${log_file}]: $output"
+            fi
+        fi
+    fi
+
+    if ! copy_metadata_filter_config_files "$artifacts_directory"; then
+        error_and_exit "copy_metadata_filter_config_files has failed, check '$log_file' for more details."
+    fi
+
+    # extract VERSION file from the ISO and populate global vars
+    local version_file
+    version_file="VERSION"
+    if ! extract_bigip_version_file_from_iso "$iso" "$artifacts_directory" "$version_file"; then
+        error_and_exit "extract_bigip_version_file_from_iso has failed."
+    fi
+
+    # Convert the BIG-IP version number into an 8 digit numeric version.
+    local version_number
+    if ! version_number=$(get_release_version_number "$artifacts_directory/VersionFile.json") || \
+            ! is_number "$version_number" ; then
+        error_and_exit "Version number retrieval failed. Expected a number but read: $version_number"
+    fi
+    export BIGIP_VERSION_NUMBER="$version_number"
+
+    # extract ve.info.json file from the ISO for disk sizing.
+    local ve_info_json
+    ve_info_json="ve.info.json"
+    if ! extract_ve_info_file_from_iso "$iso" "$artifacts_directory" "$ve_info_json"; then
+        error_and_exit "extract_ve_info_file_from_iso has failed"
+    fi
+
+    # Is this one of the legacy releases?
+    if [[ $BIGIP_VERSION_NUMBER -ge 13010002 ]] && [[ $BIGIP_VERSION_NUMBER -lt 14010000 ]] ; then
+        # Drop a marker file to signal the prepare_raw_disk about using legacy SELinux
+        # labeling scripts.
+        touch "$artifacts_directory/.legacy_selinux_labeling"
+    fi
+
+    # If user provided cloud image name, check/fail early
+    local cloud_image_opt
+    cloud_image_opt="--user-image-name"
+    if [[ ! -z "$cloud_image_name" ]]; then
+        "${script_dir}"/src/bin/prepare_image.py --artifacts-dir "$artifacts_directory" \
+            --platform "$platform" --input "file_placeholder" --check-name \
+            "$cloud_image_opt" "$cloud_image_name"
+    fi
+
+    # shellcheck disable=SC2181
+    if [[ $? -ne 0 ]]; then
+        error_and_exit "User-supplied cloud image name check failed, check '$log_file' for more details."
+    fi
+
+    # Create metadata file.
+    metadata_file="${artifacts_directory}/build-image.json"
+    if ! jq -M -n \
+          --arg description "User inputs" \
+          --arg build_host "$HOSTNAME" \
+          --arg build_source "$(basename "$0")" \
+          --arg build_user "$USER" \
+          --arg platform "$platform" \
+          --arg modules "$modules" \
+          --arg boot_locations "$boot_locations" \
+          --arg config_file "$config_file" \
+          --arg iso "$iso" \
+          --arg iso_sig "$iso_sig" \
+          --arg ehf_iso "$ehf_iso" \
+          --arg ehf_iso_sig "$ehf_iso_sig" \
+          --arg pub_key "$pub_key" \
+        '{ description: $description,
+           build_source: $build_source,
+           build_host: $build_host,
+           build_user: $build_user,
+           platform: $platform,
+           modules: $modules,
+           boot_locations: $boot_locations,
+           config_file: $config_file,
+           iso: $iso,
+           iso_sig: $iso_sig,
+           ehf_iso: $ehf_iso,
+           ehf_iso_sig: $ehf_iso_sig,
+           pub_key: $pub_key }' \
+        > "$metadata_file"
+    then
+          log_error "jq failed to create document."
+          log_error "Removing file $metadata_file"
+          rm "$metadata_file"
+          exit 1
+    fi
+
+    # Warn user about slow operations if running without KVM support.
+    check_kvm_support
+
+    # Check external ovftool is installed.
+    if [[ "$platform" == "aws" ]] || [[ "$platform" == "vmware" ]]; then 
+        if ! command -v ovftool > /dev/null 2>&1; then
+            error_and_exit "ovftool isn't installed or missing from PATH." \
+                    "Please install it before trying again."
+        fi
+    fi
+
+    # Logging start marker.
+    log_info "------======[ Starting disk generation for '$platform' '$modules'" \
+            "'$boot_locations' boot-locations. ]======------"
+
+    # Step1: Prepare the raw disk.
+    local raw_disk
+    raw_disk=$(create_disk_name "raw" "$PRODUCT_NAME" "$PRODUCT_VERSION" \
+            "$PRODUCT_BUILD" "$platform" "$modules" "$boot_locations" "$PROJECT_NAME")
+    # shellcheck disable=SC2181
+    if [[ $? -ne 0 ]]; then
+        error_and_exit "create_disk_name has failed, check '$log_file' for more details."
+    fi
+
+    raw_disk="$artifacts_directory/$raw_disk"
+
+    # Output json for this step.
+    local prepare_disk_json="$artifacts_directory/prepare_raw_disk.json"
+
+    # Input json for this step is the ve.info.json file.
+    # This step:
+    #   => Creates an empty raw disk based on the calculated sizes for partitions and the disk.
+    #   => Prepares the customized initramfs and extracts the vmlinuz from the ISO.
+    #   => Deploys the ISO on the raw disk.
+    #   => Optionally deploys the EHF ISO if provided.
+    #   => Boots BIG-IP once for SELinux labeling.
+    #   => Returns prepare_disk.json for the next step.
+    #
+    "${script_dir}/src/bin/prepare_raw_disk" "$artifacts_directory/$ve_info_json" "$platform" "$modules" "$boot_locations" \
+                                             "$raw_disk" "$prepare_disk_json" "$iso" "$ehf_iso"
+
+    # shellcheck disable=SC2181
+    if [[ $? -ne 0 ]]; then
+        error_and_exit "prepare_raw_disk failed, check '$log_file' for more details."
+    fi
+
+    # Step2: Convert the raw disk into a virtual-disk of the expected format for the
+    # given platform.
+    # Output json file for this step.
+    local prepare_vdisk_json="$artifacts_directory/prepare_virtual_disk.json"
+
+    local extension
+    extension="$(get_disk_extension "$platform")"
+
+    local output_disk
+    output_disk=$(create_disk_name "$extension" "$PRODUCT_NAME" "$PRODUCT_VERSION" \
+            "$PRODUCT_BUILD" "$platform" "$modules" "$boot_locations" "$PROJECT_NAME")
+    # shellcheck disable=SC2181
+    if [[ $? -ne 0 ]]; then
+        error_and_exit "create_disk_name has failed, check '$log_file' for more details."
+    fi
+
+    # Get full paths for staged disk and output disk.
+    staged_disk="${artifacts_directory}/staging/${output_disk}"
+    log_info "Disk will be staged at: $staged_disk"
+    output_disk="${output_dir}/${output_disk}"
+    log_info "Disk will be copied to: $output_disk"
+
+    log_info "Create the cloud machine image for '$platform' from a raw image."
+    produce_virtual_disk "$platform" "$modules" "$boot_locations" "$raw_disk" \
+            "$artifacts_directory" "$prepare_vdisk_json" "$staged_disk" "$log_file"
+
+    # shellcheck disable=SC2181
+    if [[ $? -ne 0 ]]; then
+         error_and_exit "produce_virtual_disk failed, check '$log_file' for more details."
+    fi
+
+    # Copy staged disk to final output location.
+    log_info "Copying staged virtual disk from [${staged_disk}] to [${output_disk}]"
+    if ! execute_cmd cp -f "$staged_disk" "$output_disk"; then
+        error_and_exit "Failed to copy virtual disk from [${staged_disk}] to [${output_disk}]!"
+    fi
+
+    # Logging finish marker.
+    log_info "------======[ Finished disk generation for '$platform' '$modules'" \
+            "'$boot_locations' boot-locations. ]======------"
+
+    if [[ ! -z "$cloud" ]]; then
+        case "$cloud" in
+        azure | aws | gce)
+            # If user didn't supply a cloud image name, create one.
+            if [[ -z "$cloud_image_name" ]]; then
+                cloud_image_opt="--seed-image-name"
+                cloud_image_name="$(compose_cloud_image_name "$PRODUCT_NAME" "$PRODUCT_VERSION" \
+                                    "$PRODUCT_BUILD" "$modules" "$boot_locations" "$PROJECT_NAME")"
+            fi
+
+            "${script_dir}"/src/bin/prepare_image.py --artifacts-dir "$artifacts_directory" \
+                --platform "$platform" --input "$staged_disk" \
+                "$cloud_image_opt" "$cloud_image_name"
+            ;;
+        *)
+            error_and_exit "Unimplemented cloud platform $cloud"
+            ;;
+        esac
+    fi
+    # shellcheck disable=SC2181
+    if [[ $? -ne 0 ]]; then
+        error_and_exit "image creation has failed, check '$log_file' for more details."
+    fi
+
+    log_info "${BASH_SOURCE[0]} HAS FINISHED SUCCESSFULLY."
+}
+
+main "$@"
+
+exit 0

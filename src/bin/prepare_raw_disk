@@ -1,0 +1,140 @@
+#!/bin/bash -e
+# Copyright (C) 2019 F5 Networks, Inc
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not
+# use this file except in compliance with the License. You may obtain a copy of
+# the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations under
+# the License.
+
+
+PROJECT_DIR="$(realpath "$(dirname "${BASH_SOURCE[0]}")/../..")"
+# shellcheck source=src/lib/bash/util/config.sh
+source "$PROJECT_DIR/src/lib/bash/util/config.sh"
+# shellcheck source=src/lib/bash/prepare_raw_disk.sh
+source "$PROJECT_DIR/src/lib/bash/prepare_raw_disk.sh"
+# shellcheck source=src/lib/bash/util/logger.sh
+source "$PROJECT_DIR/src/lib/bash/util/logger.sh"
+
+#####################################################################
+function prepare_raw_disk {
+    local input_json="$1"
+    local platform="$2"
+    local modules="$3"
+    local boot_locations="$4"
+    local disk="$5"
+    local output_json="$6"
+    local iso="$7"
+    local hotfix_iso="$8"
+
+    if [[ $# != 8 ]]; then
+        log_error "Usage: ${FUNCNAME[0]} <input_json> <platform> <modules> <boot_locations>" \
+                "<output_disk> <output_json> <iso> optional [ <ehf_iso> ]"
+        return 1
+    elif ! is_supported_platform "$platform"; then
+        log_error "Unsupported platform = '$platform'"
+        return 1
+    elif ! is_supported_module "$modules"; then
+        log_error "Unknown module '$modules' passed."
+        return 1
+    elif ! is_supported_boot_locations "$boot_locations"; then
+        log_error"Unsupported boot locations '$boot_locations' passed."
+        return 1
+    elif [[ -z "$disk" ]]; then
+        log_error "Empty raw disk argument '$disk'."
+        return 1
+    elif [[ -z "$input_json" ]] || [[ ! -f "$input_json" ]]; then
+        log_error "Empty input json argument '$input_json' or the file doesn't exist."
+        return 1
+    elif [[ -z "$output_json" ]]; then
+        log_error "Empty output json argument '$output_json'."
+        return 1
+    elif [[ -z "$iso" ]] || [[ ! -f "$iso" ]]; then
+        log_error "Empty iso argument '$iso' or the file doesn't exist."
+        return 1
+    fi
+
+    # Check if output_json already contains the correct disk.
+    if check_previous_run_status "$output_json" "$disk" ; then
+        log_info "Skipping raw disk preparation step as a raw disk '$disk' was generated" \
+                "successfully earlier."
+        return 0
+    fi
+
+    local artifacts_dir
+    artifacts_dir="$(get_config_value "ARTIFACTS_DIR")"
+
+    # Intermediate output json file to retrieve the sizes of individual partitions and
+    # total size of the raw disk based on "ve.info.json" file.
+    local raw_disk_json="$artifacts_dir/create_raw_disk.json"
+
+    # Input json file for this step is the ve.info.json file. This step:
+    #   => Calculates the disk size.
+    #   => Populates the create_raw_disk.json file with the disk sizes
+    #   => Creates an empty raw disk with the total disk size.
+    if ! "$PROJECT_DIR/src/bin/create_raw_disk" "$input_json" "$boot_locations" \
+            "$modules" "$platform" "$disk" "$raw_disk_json" ; then
+        log_error "create_raw_disk() failed unexpectedly."
+        return 1
+    fi
+
+    local result
+    TEMP_DIR=$(mktemp -d -p "$artifacts_dir")
+    install_iso_on_disk "$disk" "$raw_disk_json" "$iso" "$hotfix_iso"
+    result=$?
+
+    local status
+    [[ $result == 0 ]] && status="success" || status="failure"
+
+    # Generate the output_json.
+    if jq -M -n \
+            --arg description "Prepared RAW disk status" \
+            --arg build_host "$HOSTNAME" \
+            --arg build_source "$(basename "${BASH_SOURCE[0]}")" \
+            --arg build_user "$USER" \
+            --arg platform "$platform" \
+            --arg modules "$modules" \
+            --arg boot_locations "$boot_locations" \
+            --arg output "$(basename "$disk")" \
+            --arg output_md5 "$(md5sum "$disk" | awk '{print $1;}')" \
+            --arg bigip_iso "$iso" \
+            --arg input_json "$raw_disk_json" \
+            --arg hotfix_iso "$hotfix_iso" \
+            --arg status "$status" \
+            '{ description: $description,
+            build_source: $build_source,
+            build_host: $build_host,
+            build_user: $build_user,
+            platform: $platform,
+            modules: $modules,
+            boot_locations: $boot_locations,
+            bigip_iso: $bigip_iso,
+            input_json: $input_json,
+            hotfix_iso: $hotfix_iso,
+            output: $output,
+            output_md5: $output_md5,
+            status: $status }' \
+            > "$output_json"
+    then
+        log_info "Wrote raw disk preparation output to '$output_json'."
+    else
+        log_error "Failed to write '$output_json'."
+    fi
+
+    # clean-up.
+    rm -fr "$TEMP_DIR"
+
+    return $result
+}
+#####################################################################
+
+# Main program starts here.
+#
+prepare_raw_disk "$@"
+
