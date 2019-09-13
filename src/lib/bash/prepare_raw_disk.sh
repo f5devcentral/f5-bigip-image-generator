@@ -265,7 +265,7 @@ function install_iso_on_disk {
     if [[ -n "$hotfix_iso" ]]; then
         skip_post_install=0
         update_initrd_image "HOTFIX" "$hotfix_iso" "$boot_initrd_base" \
-                "$skip_post_install"
+                "$skip_post_install" "$disk_json"
 
         qemu_logfile="$TEMP_DIR/qemu.hotfix.log"
         exec_qemu_system "$disk" "$hotfix_iso" "$qemu_pidfile" "$boot_vmlinuz" \
