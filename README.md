@@ -8,6 +8,9 @@ You will find the following information:
   * [Supported platforms and prerequisites](#supported-platforms-and-prerequisites)
 * [Setup guide](#setup-guide)
 * [User guide](#user-guide)
+  * [Create config file](#create-config-file)
+  * [Monitor progress](#monitor-progress)
+  * [Locate files](#locate-files)
 * [Troubleshooting guide](#troubleshooting-guide)
 * [Support guide](#support-guide)
 
@@ -118,6 +121,8 @@ This section provides steps for installing the generator tool, and then using th
 
 This section provides steps for creating a [config.yml][5] file that defines frequently used settings and shared variables that the BIG-IP Image Generator will use for creating custom images, running the Image Generator tool, and then customizing log details for monitoring progress. 
 
+### Create config file
+
 1. Create a [config.yml][5] for frequently used settings and shared variables. The BIG-IP Image Generator will only use the variable definitions applicable to the specified provider and ignores other variables.
 
 2. Define the following shared parameters or set as an environment variable. Optionally, use these parameters on the command line with leading dashes (for example, `--platform`). In some cases, you can use a shorthand flag. If a parameter is defined in multiple places, then the priority in descending order is:
@@ -217,7 +222,7 @@ You can locate files in the following directories:
    
 * **artifacts** - Artifacts created during image generation. Directory structure is based on source image, platform, modules, and boot locations.
 * **docs** - Supporting documentation
-* **images** - The Image Generator tool generates a virtual disk image from the BIG-IP product ISO in the default, **images** directory. Use the `IMAGE_DIR` parameter to override this default value and store images in a different directory.
+* **images** - The Image Generator tool generates a virtual disk image from the BIG-IP product ISO in the default, `images` directory. Use the `IMAGE_DIR` parameter to override this default value and store images in a different directory.
 * **logs** - Log files. The `LOG_FILE` parameter can be used to override this default value. Default log file name is based on platform, modules, and boot locations.
 * **src** - build-image script and other source files.
 
