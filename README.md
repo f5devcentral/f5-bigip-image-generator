@@ -175,8 +175,6 @@ command line >  configuration file >  environment variable. To access the Image 
     -  source: "/var/tmp/f5-appsvcs-3.4.0-2.noarch.rpm"
        destination: "/var/config/rest/downloads/f5-appsvcs.noarch.rpm"
    ```    
-    
-    If you specify a cloud provider, then the tool uploads the generated virtual disk image to the cloud provider, and creates a virtual machine image. Depending on your environment, creating a virtual disk takes 10-15 minutes when you enable virtualization; however, if **disabled**, then disk creation takes **1-2 hours**. For this reason, it is strongly recommended that you run the Image Generator tool in environments where **virtualization is enabled**.
 
 5. OPTIONAL: The Image Generator will attempt to use previously created local artifacts, if they exist. Therefore, if you receive an error during file upload to a cloud provider, only the cloud portion of image generation is run for a subsequent image generation. If you want to run the entire process again, use the `--clean` option to remove logs and artifacts associated with the source image, platform, modules, and boot locations.
 
@@ -184,8 +182,6 @@ command line >  configuration file >  environment variable. To access the Image 
    
    1. Build an image, type: `./build-image -i /var/tmp/BIGIP-15.0.0-0.0.39.iso -c config.yml -p qcow2 -m ltm -b 1--image-tag "Name: my-custom-vm-v12.1.1" --image-tag "org: shared-services`
    2. Clean the environment associated with the specified source image, platform, modules, and boot locations, type: `./build-image --clean -i /var/tmp/BIGIP-15.0.0-0.0.39.iso -c config.yml -p qcow2 -m ltm -b 1--image-tag "Name: my-custom-vm-v12.1.1" --image-tag "org: shared-services`.
-
-   The Image Generator tool generates a virtual disk image from the BIG-IP product ISO. Default behavior creates this image in the **images** directory.
 
 6.	OPTIONAL: You can assign image tags to published images; however, rules for image tag definitions change depending upon the target, cloud provider ([AWS][21], [Azure][19], and [GCE ][20]). 
     Currently, the Image Generator tool does not validate for each cloud providers image tag:key and image tag:value pairing. Therefore, if you do NOT 
@@ -221,8 +217,8 @@ You can locate files in the following directories:
    
 * **artifacts** - Artifacts created during image generation. Directory structure is based on source image, platform, modules, and boot locations.
 * **docs** - Supporting documentation
-* **images** - Generated images. The IMAGE_DIR parameter can be used to override this default value.
-* **logs** - Log files. The LOG_FILE parameter can be used to override this default value. Default log file name is based on platform, modules, and boot locations.
+* **images** - The Image Generator tool generates a virtual disk image from the BIG-IP product ISO in the default, **images** directory. Use the `IMAGE_DIR` parameter to override this default value and store images in a different directory.
+* **logs** - Log files. The `LOG_FILE` parameter can be used to override this default value. Default log file name is based on platform, modules, and boot locations.
 * **src** - build-image script and other source files.
 
 ## Troubleshooting guide
