@@ -205,13 +205,13 @@ command line >  configuration file >  environment variable. To access the Image 
 
 
 
-##### Monitor progress
+### Monitor progress
 
 1. The Image Generator will provide high-level progress information on the console. For more details, see the log file associated with the job, located in the logs directory. Log files use the following naming convention: 
 `image-PLATFORM-MODULES-BOOT_LOCATIONS` (for example, image-gce-ltm-1slot). 
 2. To adjust the log level output to the log file, use the `--log-level` parameter.
    
-##### Locate files
+### Locate files
 
 You can locate files in the following directories:
    
