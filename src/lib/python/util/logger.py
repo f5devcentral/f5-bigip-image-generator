@@ -76,7 +76,7 @@ def create_file_handler(logger, path, log_level, mode='a'):
      - path: file path to write logs to
     """
 
-    f_h = logging.FileHandler(path, mode)
+    f_h = logging.FileHandler(path, mode, encoding='utf-8')
     f_h.setLevel(log_level)
     f_h.setFormatter(logging.Formatter('%(asctime)s %(name)s %(levelname)s - %(message)s', \
         '%Y-%m-%d %H:%M:%S'))

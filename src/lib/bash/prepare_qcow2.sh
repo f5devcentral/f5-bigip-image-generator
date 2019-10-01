@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 # Copyright (C) 2019 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
@@ -157,7 +157,8 @@ function prepare_qcow2 {
             --arg build_user "$USER" \
             --arg input "$raw_disk" \
             --arg output "$(basename "$bundle_name")" \
-            --arg output_md5 "$(awk '{print $1;}' < "$bundle_name".md5)" \
+            --arg output_partial_md5 "$(calculate_partial_md5 "$bundle_name")" \
+            --arg output_size "$(get_file_size "$bundle_name")" \
             --arg status "$success_token" \
             '{ description: $description,
             build_host: $build_host,
@@ -165,7 +166,8 @@ function prepare_qcow2 {
             build_user: $build_user,
             input: $input,
             output: $output,
-            output_md5: $output_md5,
+            output_partial_md5: $output_partial_md5,
+            output_size: $output_size,
             status: $status }' \
             > "$output_json"
     then

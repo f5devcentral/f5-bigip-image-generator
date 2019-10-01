@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 # Copyright (C) 2019 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
@@ -151,8 +151,8 @@ function is_supported_boot_locations {
 # For example, prepare_raw_disk can call this function with the prepare_raw_disk.json
 # and the output disk to check if the given object was successfully built.
 #
-# The function re-calculates the md5sum of the given "disk" and checks it against
-# the output_md5 (md5sum of "output") value, if one exists. In case of match, it
+# The function re-calculates partial md5sum of the given "disk" and checks it against
+# the output_partial_md5 (partial md5sum of "output") value, if one exists. In case of match, it
 # returns success.
 # For example, consider this json file:
 # {
@@ -160,7 +160,8 @@ function is_supported_boot_locations {
 #  "build_source": "prepare_ova.sh",
 #  "platform": "aws",
 #  "output": "BIGIP-15.0.0.LTM_1SLOT-aws.zip",
-#  "output_md5": "d41d2cd98f00b204e9700998ecf8427f",
+#  "output_partial_md5": "d41d2cd98f00b204e9700998ecf8427f",
+#  "output_size": "2192284",
 #  "status": "success"
 #}
 #
@@ -211,14 +212,20 @@ function check_previous_run_status {
     # Check if the "object_name" in the json is same as the passed in object_name
     # and the "status" matches the passed-in status.
     if [[ "${info[output]}" == "$(basename "$object_name")" ]]; then
-        if [[ "${info[status]}" == "success" ]] && [[ -n "${info[output_md5]}" ]]; then
+        if [[ "${info[status]}" == "success" ]] && [[ -n "${info[output_partial_md5]}" ]] && \
+                [[ -n "${info[output_size]}" ]]; then
             local object_md5
-            log_info "Generating md5sum of '$object_name' to check against the md5sum in '$json'."
-            object_md5="$(md5sum "$object_name" | awk '{print $1;}')"
-            if [[ "${info[output_md5]}" == "$object_md5" ]]; then
-                return 0
+            object_md5="$(calculate_partial_md5 "$object_name")"
+            if [[ "${info[output_partial_md5]}" == "$object_md5" ]]; then
+                local object_size
+                object_size="$(get_file_size "$object_name")"
+                if [[ "${info[output_size]}" == "$object_size" ]]; then
+                    return 0
+                else
+                    log_info "Size of '$object_name' is not equal to the 'object_size' value from '$json': '$object_size' != '${info[output_size]}'."
+                fi
             else
-                log_info "Unmatching md5sums '$object_md5' != '${info[output_md5]}'."
+                log_info "Partial md5sum of '$object_name' does not match the 'output_partial_md5' value from '$json': '$object_md5' != '${info[output_partial_md5]}'."
             fi
         fi
     fi
@@ -366,6 +373,52 @@ function gen_md5 {
         return 1
     fi
     popd >/dev/null
+}
+#####################################################################
+
+
+#####################################################################
+# Calculate and return MD5 sum for a fixed (small) portion of the file.
+# This is faster than checking the whole file and
+# should be enough for internal verifications.
+#
+function calculate_partial_md5 {
+    local file_path
+    file_path=$1
+
+    if [[ $# != 1 ]]; then
+        log_error "Usage: ${FUNCNAME[0]} <file path>"
+        return 1
+    fi
+
+    if [[ ! -f "$file_path" ]]; then
+        log_error "$file_path is not a file."
+        return 1
+    fi
+
+    dd count=1024 if="$file_path" 2>/dev/null | md5sum | awk '{print $1;}'
+}
+#####################################################################
+
+
+#####################################################################
+# Get file size (in bytes)
+#
+function get_file_size {
+    local file_path
+    file_path=$1
+
+    if [[ $# != 1 ]]; then
+        log_error "Usage: ${FUNCNAME[0]} <file path>"
+        return 1
+    fi
+
+    if [[ ! -f "$file_path" ]]; then
+        log_error "$file_path is not a file."
+        return 1
+    fi
+
+    du "$file_path" | awk '{print $1;}'
 }
 #####################################################################
 

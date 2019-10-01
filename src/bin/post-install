@@ -561,6 +561,27 @@ function modify_selinux_relabeling_behavior {
 }
 #####################################################################
 
+#####################################################################
+# Mount /shared directory into the common root location:
+function ensure_shared_dir_is_mounted() {
+    mount /dev/vg-db-vda/dat.share "$INST_ROOT/shared"
+    rc=$?
+    if [ $rc -ne 0 ]; then
+        log_echo "Cannot mount /shared"
+    fi
+}
+#####################################################################
+
+#####################################################################
+# Unmount /shared directory:
+function ensure_shared_dir_is_unmounted() {
+    umount "$INST_ROOT/shared"
+    rc=$?
+    if [ $rc -ne 0 ]; then
+        log_echo "Cannot unmount /shared"
+    fi
+}
+#####################################################################
 
 for _ in {1..15} ; do dbg_echo "" ; done
 log_echo "#############################"
@@ -581,7 +602,9 @@ if [ -f "$VADC_PLATFORM_FILE" ]; then
     disable_fsck
     hot_patch_autotask
     copy_gbb_markers
+    ensure_shared_dir_is_mounted
     copy_injected_files
+    ensure_shared_dir_is_unmounted
 
     if [[ -f "$LEGACY_LABELING" ]]; then
         dbg_echo "Adding legacy selinux labeling scripts."

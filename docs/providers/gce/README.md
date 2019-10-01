@@ -9,7 +9,7 @@ In GCE, the image generator tool will do the following:
 
 ### Prerequisites
 
-You need the system requirements described [here][3], as well as [sufficient permissions][9] to create or describe the following resources:
+You need the system requirements described [here](../../../README.md), as well as [sufficient permissions][9] to create or describe the following resources:
 
 * Credentials/API Keys
 * SSH Keys uploaded
@@ -44,5 +44,6 @@ It is recommended to pass the credentials via ENV or CLI, rather than putting th
 
 [1]: https://cloud.google.com/storage/docs/creating-buckets
 [9]: https://cloud.google.com/iam/docs/creating-managing-service-accounts
-[3]: https://github.com/f5devcentral/f5-bigip-image-generator#image-generator-prerequisites
+[3]: https://github.com/f5devcentral/f5-bigip-image-generator/blob/master/README.md#image-generator-prerequisites
+
 

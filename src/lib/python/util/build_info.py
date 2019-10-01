@@ -105,8 +105,8 @@ def get_git_hash():
         LOGGER.debug("Skipping git hash lookup since git was not found on the system")
     except CalledProcessError as error:
         return_code = error.returncode
-        LOGGER.warning("Skipping git hash lookup since command [%s] returned with error: %s",
-                       command, error.output)
+        LOGGER.debug("Skipping git hash lookup since command [%s] returned with error: %s",
+                     command, error.output)
     if return_code != 0:
         return "none"
 
@@ -172,7 +172,7 @@ def _command_key_values_to_dict(command, regex):
                              universal_newlines=True,
                              stderr=STDOUT).split('\n')
     except FileNotFoundError:
-        LOGGER.warning("Command [%s] not found on system.  Unable to check version!", command)
+        LOGGER.debug("Command [%s] not found on system.  Skipping version check.", command)
         return dictionary
     except CalledProcessError as error:
         LOGGER.warning("Skipping version information since command [%s] returned with error: %s",

@@ -7,7 +7,7 @@ In Azure, the image generator tool will do the following:
 
 ### Prerequisites
 
-You need the system requirements described [here][3], as well as [sufficient permissions][2] to create or describe the following resources:
+You need the system requirements described [here](../../../README.md), as well as [sufficient permissions][2] to create or describe the following resources:
 
 * Credentials/API keys
 * SSH keys uploaded
@@ -41,6 +41,7 @@ F5 recommends passing the credentials via `ENV` or `CLI`, rather than putting th
 ```
 [1]: https://docs.microsoft.com/en-us/rest/api/storageservices/create-container
 [2]: https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal
-[3]: https://github.com/f5devcentral/f5-bigip-image-generator#image-generator-prerequisites
+[3]: https://github.com/f5devcentral/f5-bigip-image-generator/blob/master/README.md#image-generator-prerequisites
+
 
 

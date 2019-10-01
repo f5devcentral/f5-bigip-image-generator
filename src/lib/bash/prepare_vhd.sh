@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 # Copyright (C) 2019 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
@@ -117,7 +117,8 @@ function prepare_vhd {
             --arg input "$raw_disk" \
             --arg virtual_disk_name "$(basename "$virtual_disk_name")" \
             --arg output "$(basename "$bundle_name")" \
-            --arg output_md5 "$(awk '{print $1;}' < "$bundle_name".md5)" \
+            --arg output_partial_md5 "$(calculate_partial_md5 "$bundle_name")" \
+            --arg output_size "$(get_file_size "$bundle_name")" \
             --arg log_file "$log_file" \
             --arg status "$status" \
             '{ description: $description,
@@ -128,7 +129,8 @@ function prepare_vhd {
             input: $input,
             virtual_disk_name: $virtual_disk_name,
             output: $output,
-            output_md5: $output_md5,
+            output_partial_md5: $output_partial_md5,
+            output_size: $output_size,
             log_file: $log_file,
             status: $status }' \
             > "$output_json"

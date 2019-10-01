@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 # Copyright (C) 2019 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
@@ -14,7 +14,7 @@
 # the License.
 
 
-
+set -e
 # shellcheck source=src/lib/bash/convert.sh
 source "$(realpath "$(dirname "${BASH_SOURCE[0]}")")/../lib/bash/convert.sh"
 

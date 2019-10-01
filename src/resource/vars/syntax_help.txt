@@ -31,7 +31,7 @@
 # flag: ~              # Default/implied setting. This variable has no single character flag available. If setting it
 #                      # on the command line it will need the full form of --FOO BAR.
 #                      #
-# flag: x              # This variable can be set by calling VE-Image-Generator with the provided single-character
+# flag: x              # This variable can be set by calling BIGIP-Image-Generator with the provided single-character
 #                      # flag on the command line (for example, -x BAR).
 #                      #
 # hidden: false        # Default/implied setting. This indicates that the variable is hidden from the user.

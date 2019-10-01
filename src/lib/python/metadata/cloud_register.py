@@ -85,7 +85,7 @@ class CloudImageRegister(MetadataFilter):
         # Check for URL
         cir_url = get_config_value('IMAGE_REGISTRATION_URL')
         if (cir_url is None) and (not skip_post):
-            LOGGER.info('IMAGE_REGISTRATION_URL is not defined. Skip image registration.')
+            LOGGER.trace('IMAGE_REGISTRATION_URL is not defined. Skip image registration.')
             return
 
         # Format data

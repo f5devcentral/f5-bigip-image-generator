@@ -1,8 +1,8 @@
-# Sample config file for AWS
+# Sample F5 BIGIP Image Generator config file
 
-FILES:
-    -  source: "/var/tmp/authorized-keys"
-       destination: "/home/admin/.ssh/authorized-keys"
+UPDATE_IMAGE_FILES:
+    -  source: "/var/tmp/authorized_keys"
+       destination: "/home/admin/.ssh/authorized_keys"
     -  source: "/var/tmp/trusted-ca.pem"
        destination: "/config/ssl/ssl.crt/trusted-ca.pem"
     -  source: "/var/tmp/custom-file"

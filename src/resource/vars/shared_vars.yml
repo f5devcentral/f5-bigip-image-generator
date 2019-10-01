@@ -13,18 +13,6 @@
 # the License.
 
 
-BOOT_LOCATIONS:
-  accepted: "^1$|^2$"
-  description: >-
-    Number of boot locations used in the source ISO file.
-  flag: b
-  required: true
-
-CLEAN:
-  description: >-
-    Delete local files created by previous runs of the same <PLATFORM, MODULES, BOOT_LOCATIONS> combination.
-  parameters: 0
-
 CLOUD:
   accepted: "^aws$|^azure$|^gce$"
   description: >-
@@ -122,6 +110,7 @@ ISO_SIG_PUBKEY:
 IMAGE_REGISTRATION_URL:
   description: >-
     Instance Registration URL.  Register image details using platform, image id, and image name as keys.
+  hidden: true
 
 IMAGE_REGISTRATION_RETRY_COUNT:
   accepted: "^[0-9]+$"
@@ -151,13 +140,6 @@ LOG_LEVEL:
     Log level to use for the log file, indicating the lowest message severity level that can
     appear in the log file.
 
-MODULES:
-  accepted: "^all$|^ltm$"
-  description: >-
-    BIG-IP components supported by the specified image.
-  flag: m
-  required: true
-
 OVA_SIGN_ENCRYPTION_TYPE:
   default: "sha3-512"
   description: >-
@@ -172,16 +154,36 @@ OVA_SIGN_PUBLIC_KEY:
     Path to public key file used to sign OVA files.
 
 PLATFORM:
-  accepted: "^aws$|^azure$|^gce$|^qcow2$|^vhd$|^vmware$"
+  accepted: "^aws$|^azure$|^gce$|^qcow2$|^vhd$|^vmware$|^iso$"
   description: >-
     The target plaform for generated images.
   flag: p
   required: true
 
+REUSE:
+  description: >-
+    Keep local files created by previous runs of the same <PLATFORM, MODULES, BOOT_LOCATIONS> combination.
+  parameters: 0
+
+SUBPROCESS_POLL_MILLIS:
+  default: 100
+  description: >-
+    The number of milliseconds to wait between polling of subprocesses launched by Python. Polling
+    is used to check if the subprocess has returned yet.
+  internal: true
+
 UPDATE_IMAGE_FILES:
   description: >-
     Files you want injected into the image. For each of the injections, required values
     include source (file or directory) and destination (absolute full path).
+
+UPDATE_ISO_RPMS:
+  description: >-
+    Existing files you want updated in existing RPMs of the original ISO image.
+    List each file separately.
+    Each file requires the following values: (hosting) rpm, source (file),
+    and destination (absolute full path).
+  hidden: true
 
 VERSION:
   description: >-
@@ -190,7 +192,7 @@ VERSION:
   parameters: 0
 
 VERSION_NUMBER:
-  default: 0.1
+  default: 1.1
   description: >-
     This is the current version of BIG-IP Image-Generator.
   internal: true

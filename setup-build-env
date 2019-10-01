@@ -17,6 +17,7 @@ PROJECT_DIR="$(realpath "$(dirname "${BASH_SOURCE[0]}")")"
 # shellcheck source=src/lib/bash/common.sh
 source "$PROJECT_DIR/src/lib/bash/util/distro_info.sh"
 
+OEM_DIR="$PROJECT_DIR/oem/"
 ###############################################################################
 # This is a standalone script that installs all the necessary packages for
 # the ve-image-generation tool that generates various images for the private
@@ -105,13 +106,24 @@ apt-get)
 
     # Some ubuntu distributions don't have rpm2cpio and cpio installed by default.
     sudo $PACKAGE_INSTALLER install -y --no-install-recommends rpm2cpio cpio
+
+    if [ -d "$OEM_DIR" ]; then
+        # Ubuntu doesn't use RPMs for package management, but the rpm package is still required in order
+        # to update rpm package contents.
+        sudo $PACKAGE_INSTALLER install -y rpm
+    fi
     ;;
 *)
     >&2 echo "Unknown '$PACKAGE_INSTALLER'."
     exit 1
     esac
 
-sudo $PACKAGE_INSTALLER install -y --no-install-recommends jq wget curl zip unzip genisoimage
+
+sudo $PACKAGE_INSTALLER install -y --no-install-recommends jq wget curl zip unzip
+
+if [ -d "$OEM_DIR" ]; then
+    sudo $PACKAGE_INSTALLER install -y --no-install-recommends isomd5sum
+fi
 
 # qemu-kvm package in Ubuntu provides everything that we need for bundle
 # including both qemu-system-x86_64 and qemu-img.
@@ -260,10 +272,16 @@ pip3 install retry
 pip3 install yq
 pip3 install pyyaml
 
+#-----------------------------------------------------------------------------#
+# Misc Python tools
+#------------------------------#
 # distro detection module for platform-specific logic.  Used since platform.distro is deprecated.
 pip3 install distro
-#-----------------------------------------------------------------------------#
 
+if [ -d "$OEM_DIR" ]; then
+    # pycdlib is used for reading, modifying, and recreating ISO files.
+    pip3 install pycdlib
+fi
 
 #-----------------------------------------------------------------------------#
 # Adding tools for verifying project code
@@ -287,9 +305,15 @@ if [[ $ADD_DEVTOOLS = true ]]; then
     # Install bc and dc (used for example unit tests)
     sudo $PACKAGE_INSTALLER install -y bc
     sudo $PACKAGE_INSTALLER install -y dc
+
     # parted and udev are used by convert qemu unit tests
     sudo $PACKAGE_INSTALLER install -y parted
     sudo $PACKAGE_INSTALLER install -y udev
+
+    if [ -d "$OEM_DIR" ]; then
+        # genisoimage is used to create ISOs during build-image-utils unit tests
+        sudo $PACKAGE_INSTALLER install -y genisoimage
+    fi
 
     # install modprobe
     sudo $PACKAGE_INSTALLER install -y kmod

@@ -20,22 +20,20 @@
 import sys
 from os.path import basename
 from util.injected_files import read_injected_files
-from util.config import get_config_value
-from util.logger import LOGGER, create_file_handler
+from util.logger import LOGGER
+from util.misc import create_log_handler
 
 def main():
-    """main read function"""
-    # Add a file handler to the global LOGGER
-    log_file = get_config_value('LOG_FILE')
-    log_level = get_config_value('LOG_LEVEL').upper()
-    create_file_handler(LOGGER, log_file, log_level)
+    """main read injected iles function"""
+    # create log handler for the global LOGGER
+    create_log_handler()
 
-    if len(sys.argv) != 2:
-        LOGGER.error('%s received %s arguments, expected 2', basename(__file__), len(sys.argv))
+    if len(sys.argv) != 3:
+        LOGGER.error('%s received %s arguments, expected 2', basename(__file__), len(sys.argv) - 1)
         sys.exit(1)
 
     try:
-        read_injected_files(sys.argv[1])
+        read_injected_files(sys.argv[1], sys.argv[2])
     except RuntimeError as runtime_exception:
         LOGGER.exception(runtime_exception)
         sys.exit(1)

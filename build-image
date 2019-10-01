@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 # Copyright (C) 2018-2019 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
@@ -14,7 +14,7 @@
 # the License.
 
 
-
+set -e
 # shellcheck source=src/lib/bash/util/config.sh
 source "$(realpath "$(dirname "${BASH_SOURCE[0]}")")/src/lib/bash/util/config.sh"
 # shellcheck source=src/lib/bash/util/python_setup.sh
@@ -35,11 +35,20 @@ function trap_cleanup() {
 trap trap_cleanup EXIT
 
 function main {
+    # Prevent setup log messages from being written to the previous log file
+    unset LOG_FILE_NAME
+
     # Python setup.  We're using the default values and don't want to pass anything (RE: SC2119)
     # shellcheck disable=SC2119
     set_python_environment
     # shellcheck disable=SC2119
     set_python_path
+
+    oem_dir="$(realpath "$(dirname "${BASH_SOURCE[0]}")")/oem"
+
+    if [ -d "$oem_dir" ]; then
+        set_python_path "${oem_dir}/src/lib/python"
+    fi
 
     # Config setup.
     if ! init_config "validate" "$@"; then
@@ -67,6 +76,7 @@ function main {
         error_and_exit "prepare_artifacts_directory has failed"
     fi
     artifacts_directory="$(get_config_value "ARTIFACTS_DIR")"
+    handle_upgrade "$artifacts_directory"
 
     local script_dir
     script_dir="$(realpath "$(dirname "${BASH_SOURCE[0]}")")"
@@ -79,6 +89,16 @@ function main {
         error_and_exit "Do not have permission to write to log file."
     fi
     set_config_value "LOG_FILE" "$log_file"
+
+    # Check if the old log file should be deleted
+    local reuse
+    reuse="$(get_config_value "REUSE")"
+    if [[ ! "$reuse" ]] && [[ -f "$log_file" ]]; then
+        local output
+        if ! output="$(rm "$log_file")"; then
+            error_and_exit "Unable to delete existing log file [${log_file}]: $output"
+        fi
+    fi
 
     local log_level
     log_level=$(get_config_value "LOG_LEVEL" | tr '[:lower:]' '[:upper:]')
@@ -96,18 +116,6 @@ function main {
     output_dir="$(get_config_value "IMAGE_DIR")"
 
     log_info "Starting the image build process"
-
-    # check if old log files should be deleted
-    local clean
-    clean="$(get_config_value "CLEAN")"
-    if [[ $clean ]]; then
-        local output
-        if [[ -f "$log_file" ]]; then
-            if ! output="$(rm "$log_file")"; then
-                error_and_exit "ERROR - were unable to delete existing log file [${log_file}]: $output"
-            fi
-        fi
-    fi
 
     if ! copy_metadata_filter_config_files "$artifacts_directory"; then
         error_and_exit "copy_metadata_filter_config_files has failed, check '$log_file' for more details."
@@ -145,7 +153,7 @@ function main {
     # If user provided cloud image name, check/fail early
     local cloud_image_opt
     cloud_image_opt="--user-image-name"
-    if [[ ! -z "$cloud_image_name" ]]; then
+    if [[ ! -z "$cloud_image_name" ]] && [[ "$platform" != "iso" ]]; then
         "${script_dir}"/src/bin/prepare_image.py --artifacts-dir "$artifacts_directory" \
             --platform "$platform" --input "file_placeholder" --check-name \
             "$cloud_image_opt" "$cloud_image_name"
@@ -191,6 +199,39 @@ function main {
           log_error "Removing file $metadata_file"
           rm "$metadata_file"
           exit 1
+    fi
+
+    if [[ "$platform" == "iso" ]] && [[ ! -d "$oem_dir" ]]; then
+	error_and_exit "Modifying iso feature is not supported"
+    fi
+
+    if [[ "$platform" == "iso" ]] && [[ -z "$(get_config_value "UPDATE_ISO_RPMS")" ]]; then
+        error_and_exit "Build of iso is requested, but changes (UPDATE_ISO_RPMS) are not specified"
+    fi
+
+    # check if iso should be updated
+    if [[ -n "$(get_config_value "UPDATE_ISO_RPMS")" ]]; then
+        local updated_iso_path
+        updated_iso_path="$(form_updated_iso_path "$platform" "$iso" "$cloud_image_name" "$artifacts_directory")"
+        iso_prefix="$(extract_bigip_prefix_from_iso "$iso")"
+        if "$(realpath "$(dirname "${BASH_SOURCE[0]}")")"/oem/src/bin/update_iso.py \
+           "$updated_iso_path" "$iso_prefix" "$PRODUCT_VERSION" "$PRODUCT_BUILD"; then
+            log_info "Updated iso with altered rpms"
+            if [[ "$platform" == "iso" ]]; then
+                # Save an md5sum alongside the packaged disk
+                if ! gen_md5 "$updated_iso_path"; then
+                    error_and_exit "Failed to generate ${updated_iso_path}.md5"
+                fi
+                publish_image "$updated_iso_path" "$output_dir" "updated iso"
+                log_info "${BASH_SOURCE[0]} HAS FINISHED SUCCESSFULLY."
+                return 0
+            else
+                # use updated iso from now on
+                iso="$updated_iso_path"
+            fi
+        else
+            error_and_exit "Failed to update iso with altered rpms"
+        fi
     fi
 
     # Warn user about slow operations if running without KVM support.
@@ -270,11 +311,8 @@ function main {
          error_and_exit "produce_virtual_disk failed, check '$log_file' for more details."
     fi
 
-    # Copy staged disk to final output location.
     log_info "Copying staged virtual disk from [${staged_disk}] to [${output_disk}]"
-    if ! execute_cmd cp -f "$staged_disk" "$output_disk"; then
-        error_and_exit "Failed to copy virtual disk from [${staged_disk}] to [${output_disk}]!"
-    fi
+    publish_image "$staged_disk" "$output_dir" "staged virtual disk"
 
     # Logging finish marker.
     log_info "------======[ Finished disk generation for '$platform' '$modules'" \

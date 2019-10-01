@@ -1,4 +1,4 @@
-#!/bin/bash
+"""exceptions module"""
 # Copyright (C) 2019 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
@@ -14,10 +14,11 @@
 # the License.
 
 
-set -e
-# Execute this file directly with bash to package a provided AWS/VMWARE raw disk file into an archive at the designated
-# location without needing to source the functions to generate OVA in the calling script. See prepare_ova.prepare_ova
-# for parameter details and related library calls.
-# shellcheck source=src/lib/bash/prepare_ova.sh
-source "$(realpath "$(dirname "${BASH_SOURCE[0]}")")/../lib/bash/prepare_ova.sh"
-prepare_ova "${@:1}"
+
+
+class ReturnCodeError(Exception):
+    """An exception which wraps a return code and an optional message"""
+    def __init__(self, return_code, message=""):
+        super().__init__()
+        self.return_code = return_code
+        self.message = message

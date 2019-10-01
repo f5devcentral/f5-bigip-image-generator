@@ -17,7 +17,8 @@
 import argparse
 from image.image_controller import ImageController
 from util.config import get_config_value
-from util.logger import LOGGER, create_file_handler
+from util.logger import LOGGER
+from util.misc import create_log_handler
 
 def main():
     """main command handler"""
@@ -43,10 +44,8 @@ def main():
        (args.seed_image_name != '' and args.user_image_name != ''):
         raise Exception('You must provide either --seed-image-name or --user-image-name')
 
-    # Add a file handler to the global LOGGER
-    log_file = get_config_value('LOG_FILE')
-    log_level = get_config_value('LOG_LEVEL').upper()
-    create_file_handler(LOGGER, log_file, log_level)
+    # create log handler for the global LOGGER
+    create_log_handler()
 
     if args.check_name:
         # Check name
@@ -72,7 +71,7 @@ def main():
                 LOGGER.info("SUCCESS: Image generation completed.")
             else:
                 LOGGER.warning("FAILURE: Check the log file '%s' and fix the problem "
-                               "before re-running.", log_file)
+                               "before re-running.", get_config_value('LOG_FILE'))
 
 
 if __name__ == "__main__":

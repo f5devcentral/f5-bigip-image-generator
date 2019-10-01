@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 # Copyright (C) 2019 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
@@ -87,12 +87,8 @@ function init_config {
     # If a config file was specified then we'll validate that it's accessible.
     _config_init_bootstrap_key "CONFIG_FILE" "$@"
     local config_file="${CONFIG_VALUES[CONFIG_FILE]}"
-    if [[ ! -z "$config_file" ]]; then
-        if [[ ! -f "$config_file" ]]; then
-            error_and_exit "CONFIG_FILE [${config_file}] is inaccessible!"
-        fi
-    else
-        log_info "CONFIG_FILE not set"
+    if [[ -n "$config_file" && ! -f "$config_file" ]]; then
+        error_and_exit "CONFIG_FILE [${config_file}] is inaccessible!"
     fi
 
     # If the version key has been set then we'll immediately look for the version number, display it, and exit.
@@ -103,11 +99,19 @@ function init_config {
         exit 0
     fi
 
+    if [[ -z "$config_file" ]]; then
+        log_info "CONFIG_FILE not set"
+    fi
+
     # If a platform was specified then we'll load variable definitions for it.
     _config_init_bootstrap_key "PLATFORM" "$@"
     local platform="${CONFIG_VALUES[PLATFORM]}"
     if [[ ! -z "$platform" ]]; then
         log_info "Initializing variable definitions for platform [${platform}]"
+        if [[ "$platform" != "iso" ]]; then
+            # iso alternations are independent of modules and boot locations
+            _config_init_var_definitions "${script_dir}/../../../resource/vars/vm_vars.yml"
+        fi
         _config_init_var_definitions "${script_dir}/../../../resource/vars/${platform}_vars.yml"
         if [[ "$platform" =~ ${CONFIG_ACCEPTED[CLOUD]} ]]; then
             # If the specified platform is a cloud then we'll also set the CLOUD variable.
@@ -296,7 +300,9 @@ function _config_init_bootstrap_key {
     local config_file="${CONFIG_VALUES[CONFIG_FILE]}"
     if [[ ! -z "$config_file" ]]; then
         local config_data
-        config_data="$(_config_get_json_data "$config_file")"
+        if ! config_data="$(_config_get_json_data "$config_file")"; then
+          error_and_exit "$config_data"
+        fi
         if ! value="$(jq -rc ".$bootstrap_key // empty" <<< "$config_data" 2>&1)" && [[ $? -gt 1 ]]; then
             error_and_exit "jq error while scanning ${config_file} for ${bootstrap_key}: $value"
         elif [[ ! -z "$value" ]]; then
@@ -329,8 +335,15 @@ function _config_init_bootstrap_key {
 function _config_init_var_definitions {
     # Retrieve JSON data for the specified file
     local definitions_file="$1"
+    log_debug "Reading yaml definition file $definitions_file"
     local definition_data
-    definition_data="$(_config_get_json_data "$definitions_file")"
+    if ! definition_data="$(_config_get_json_data "$definitions_file")"; then
+      error_and_exit "$config_data"
+    fi
+    # shellcheck disable=SC2181
+    if [[ $? -ne 0 ]]; then
+        error_and_exit "could not convert yaml to json for $definitions_file"
+    fi
 
     # Parse every key in the JSON data.
     local keys key
@@ -593,7 +606,10 @@ function _config_output_docs {
     local platforms="${CONFIG_ACCEPTED[PLATFORM]}"
     platforms="${platforms//^}"
     platforms="${platforms//$}"
-    platforms=(${platforms//|/ })
+    platforms="${platforms//|/ }"
+    # platform "vm" does not exist, but yaml file shared by all vm platforms does
+    platforms="${platforms} vm"
+    platforms=(${platforms})
 
     # Create a doc for each platform
     local platform
@@ -880,7 +896,9 @@ function _config_parse_config_file_values {
 
     log_info "Parsing remaining configuration values from config file [${config_file}]"
     local config_data
-    config_data="$(_config_get_json_data "$config_file")"
+    if ! config_data="$(_config_get_json_data "$config_file")"; then
+      error_and_exit "$config_data"
+    fi
 
     # Attempt to save every key which the user specified into CONFIG_VALUES.  set_user_value will automatically prevent
     # us from writing values which aren't supposed to be configurable.

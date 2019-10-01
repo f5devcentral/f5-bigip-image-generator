@@ -86,7 +86,7 @@ For more information about virtualization support, see [KVM Virtualization][4].
 
 This section provides steps for installing the generator tool, and then using the setup script. The setup script installs tools/SDKs required to generate images for all supported platforms, and takes several minutes to complete. During this setup process, certain services will require a restart.
 
-1. Do one of the following to install the BIG-IP Image Generator source code from gitlab.
+1. Do one of the following to install the BIG-IP Image Generator source code.
 
    * Clone
      
@@ -99,7 +99,7 @@ This section provides steps for installing the generator tool, and then using th
      
    * Download
    
-     1. Point your browser to https://github.com/f5devcentral/f5-bigip-image-generator, open the branch with the tag associated for the release you want to install, click **Download**, and then select the file type (zip, tar.gz, tar.bz2, or tar) you want to install.
+     1. Point your browser to https://github.com/f5devcentral/f5-bigip-image-generator, open the branch with the tag associated with the release you want to install, click **Download**, and then select the file type (zip, tar.gz, tar.bz2, or tar) you want to install.
      2. At your command line, type the following (this example is uses tar.gz file type):
     
         `$ scp -i ~/.ssh/my_key Downloads/f5-bigip-image-generator-1.0.tar.gz ubuntu@image-generator-ip:/home/ubuntu/` <br/>
@@ -131,14 +131,12 @@ command line >  configuration file >  environment variable. To access the Image 
     |Parameter|Flag|Required|Values|Description|
     |:--------|:---|:-------|:-----|:----------|
     |BOOT_LOCATIONS|-b|Yes|[1 \| 2]|Number of boot locations used in the source ISO file.|
-    |CLEAN| |No| |Delete local files created by previous runs of the same <PLATFORM, MODULES, BOOT_LOCATIONS> combination.|
     |CLOUD_IMAGE_NAME| |No|[value]|The name of the generated cloud image.  The name is subject to cloud provider naming restrictions  and is not guaranteed to succeed.  If you provide no name, then one is generated automatically  based on the detected properties of the source ISO file.|
     |CONFIG_FILE|-c|No|[value]|Full path to a YAML configuration file containing a list of parameter key/value pairs used during image generation.|
     |EHF_ISO|-e|No|[value]|Full path to an engineering hotfix ISO file for installation on top of the existing ISO file.|
     |EHF_ISO_SIG|-x|No|[value]|Full path to an engineering hotfix ISO signature file used to validate the engineering hotfix ISO.|
     |HELP|-h|No| |Print help and usage information, and then exit the program.|
     |IMAGE_DIR| |No|[value]|The directory where you want generated images to reside. Provide either an absolute path or a relative path. If this directory does not exist, the tool will create it.|
-    |IMAGE_REGISTRATION_URL| |No|[value]|Instance Registration URL.  Register image details using platform, image id, and image name as keys.|
     |IMAGE_TAGS| |No|[value]|List of key value pairs to set as tags/labels for the image.|
     |ISO|-i|Yes|[value]|Full path to a BIG-IP ISO file used as a basis for image generation.|
     |ISO_SIG|-s|No|[value]|Full path to an ISO signature file used to validate the ISO.|
@@ -150,6 +148,7 @@ command line >  configuration file >  environment variable. To access the Image 
     |OVA_SIGN_PRIVATE_KEY| |No|[value]|Path to private key file used to sign OVA files.|
     |OVA_SIGN_PUBLIC_KEY| |No|[value]|Path to public key file used to sign OVA files.|
     |PLATFORM|-p|Yes|[aws \| azure \| gce \| qcow2 \| vhd \| vmware]|The target plaform for generated images.|
+    |REUSE| |No| |Keep local files created by previous runs of the same <PLATFORM, MODULES, BOOT_LOCATIONS> combination.|    
     |UPDATE_IMAGE_FILES| |No|[value]|Files you want injected into the image. For each of the injections, required values include source (file or directory) and destination (absolute full path).|
     |VERSION|-v|No| |Print version information, and then exit the program.|
 
@@ -181,15 +180,15 @@ command line >  configuration file >  environment variable. To access the Image 
        destination: "/var/config/rest/downloads/f5-appsvcs.noarch.rpm"
    ```    
 
-5. OPTIONAL: The Image Generator will attempt to use previously created local artifacts, if they exist. Therefore, if you receive an error during file upload to a cloud provider, only the cloud portion of image generation is run for a subsequent image generation. If you want to run the entire process again, use the `--clean` option to remove logs and artifacts associated with the source image, platform, modules, and boot locations.
+5. OPTIONAL: The default behavior of the Image Generator does not attempt to use previously created local artifacts. To enable this feature, use the `--reuse` option. If you receive an error during file-upload to a cloud provider, then only the cloud portion of image generation will rerun for a subsequent image generation. Be aware that if you have already generated the virtual disk during previous runs, then using this option will prevent you from applying the '--update_image_files' option.
 
    **Example:**
    
    1. Build an image, type: `./build-image -i /var/tmp/BIGIP-15.0.0-0.0.39.iso -c config.yml -p qcow2 -m ltm -b 1--image-tag "Name: my-custom-vm-v12.1.1" --image-tag "org: shared-services`
-   2. Clean the environment associated with the specified source image, platform, modules, and boot locations, type: `./build-image --clean -i /var/tmp/BIGIP-15.0.0-0.0.39.iso -c config.yml -p qcow2 -m ltm -b 1--image-tag "Name: my-custom-vm-v12.1.1" --image-tag "org: shared-services`.
+   2. Reuse the environment associated with the specified source image, platform, modules, and boot locations, type: `./build-image --reuse -i /var/tmp/BIGIP-15.0.0-0.0.39.iso -c config.yml -p qcow2 -m ltm -b 1--image-tag "Name: my-custom-vm-v12.1.1" --image-tag "org: shared-services`.
 
 6.	OPTIONAL: You can assign image tags to published images; however, rules for image tag definitions change depending upon the target, cloud provider ([AWS][21], [Azure][19], and [GCE ][20]). 
-    Currently, the Image Generator tool does not validate for each cloud providers image tag:key and image tag:value pairing. Therefore, if you do NOT 
+    Currently, the Image Generator tool does not validate for each cloud provider's image tag:key and image tag:value pairing. Therefore, if you do NOT 
     properly define your image tag:key/value pair for the target cloud platform, then your image is created, but your image will not have the tags that 
     you defined. To define image tags, consult one of the following examples:
     
@@ -375,3 +374,4 @@ completed and submitted the F5 Contributor License Agreement.
 [20]: https://cloud.google.com/compute/docs/labeling-resources
 [21]: https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/Using_Tags.html#tag-restrictions
 [22]: https://code.vmware.com/web/tool/4.3.0/ovf
+

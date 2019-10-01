@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 # Copyright (C) 2019 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
@@ -265,7 +265,7 @@ function install_iso_on_disk {
     if [[ -n "$hotfix_iso" ]]; then
         skip_post_install=0
         update_initrd_image "HOTFIX" "$hotfix_iso" "$boot_initrd_base" \
-                "$skip_post_install"
+                "$skip_post_install" "$disk_json"
 
         qemu_logfile="$TEMP_DIR/qemu.hotfix.log"
         exec_qemu_system "$disk" "$hotfix_iso" "$qemu_pidfile" "$boot_vmlinuz" \
@@ -326,7 +326,16 @@ function install_iso_on_disk {
 # Call python script that copies files/dir to a predefined location.
 # This location will be available during post-install to copy these files to the image.
 function add_injected_files {
-    if "$(realpath "$(dirname "${BASH_SOURCE[0]}")")"/../../bin/read_injected_files.py "$(realpath .)"; then
+    local top_call_dir="$1"
+    if [[ $# != 1 ]]; then
+        log_error "Usage: ${FUNCNAME[0]} <top call dir>"
+        return 1
+    elif [[ ! -d "$top_call_dir" ]]; then
+        log_error "$top_call_dir is missing or not a directory."
+        return 1
+    fi
+
+    if "$(realpath "$(dirname "${BASH_SOURCE[0]}")")"/../../bin/read_injected_files.py "$top_call_dir" "$(realpath .)"; then
         log_info "read_injected_files.py passed"
         return 0
     else
@@ -416,6 +425,8 @@ function update_initrd_image {
     # Clean-up the stale base initrd file from the previous run.
     [[ -f $boot_initrd_base ]] && rm -f "$boot_initrd_base"
 
+    local top_call_dir
+    top_call_dir=$(pwd)
     local stage_initrd="$TEMP_DIR/stage.initrd"
     mkdir "$stage_initrd"
 
@@ -438,7 +449,7 @@ function update_initrd_image {
         # Is this an RTM + Hotfix bundle ? If so, delay adding post-install to the
         # initrd for now, in order to skip its execution during RTM ISO install.
         if [[ $skip_post_install == 0 ]]; then
-            if ! add_injected_files; then
+            if ! add_injected_files "$top_call_dir"; then
                 return 1
             fi
             log_info "Include post-install in initrd:"
@@ -456,7 +467,7 @@ function update_initrd_image {
         fi
     elif [ "$install_mode" == "HOTFIX" ]; then
         mkdir -p "$etc_dir"
-        if ! add_injected_files; then
+        if ! add_injected_files "$top_call_dir"; then
             return 1
         fi
         log_info "Include post-install in initrd:"

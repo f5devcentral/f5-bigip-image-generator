@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 # Copyright (C) 2019 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
@@ -14,6 +14,7 @@
 # the License.
 
 
+set -e
 PROJECT_DIR="$(realpath "$(dirname "${BASH_SOURCE[0]}")/../..")"
 # shellcheck source=src/lib/bash/util/config.sh
 source "$PROJECT_DIR/src/lib/bash/util/config.sh"
@@ -102,7 +103,8 @@ function prepare_raw_disk {
             --arg modules "$modules" \
             --arg boot_locations "$boot_locations" \
             --arg output "$(basename "$disk")" \
-            --arg output_md5 "$(md5sum "$disk" | awk '{print $1;}')" \
+            --arg output_partial_md5 "$(calculate_partial_md5 "$disk")" \
+            --arg output_size "$(get_file_size "$disk")" \
             --arg bigip_iso "$iso" \
             --arg input_json "$raw_disk_json" \
             --arg hotfix_iso "$hotfix_iso" \
@@ -118,7 +120,8 @@ function prepare_raw_disk {
             input_json: $input_json,
             hotfix_iso: $hotfix_iso,
             output: $output,
-            output_md5: $output_md5,
+            output_partial_md5: $output_partial_md5,
+            output_size: $output_size,
             status: $status }' \
             > "$output_json"
     then

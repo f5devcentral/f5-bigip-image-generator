@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 # Copyright (C) 2018-2019 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
@@ -35,7 +35,11 @@ function init_log_file {
 
     # Setup canned path/name
     canned_path="$(realpath "$(dirname "${BASH_SOURCE[0]}")")/../../../logs"
-    canned_name="image-$platform-$modules-${boot_locations}slot"
+    if [[ "$platform" == "iso" ]]; then
+        canned_name="image-$platform"
+    else
+        canned_name="image-$platform-$modules-${boot_locations}slot"
+    fi
 
     if [ -z "$log_file" ]; then
        # If log file is not provided, use canned directory and filename
@@ -375,11 +379,16 @@ function prepare_artifacts_directory {
     iso=$(basename "$iso" .iso)
 
     # Create the artifacts directory.
-    local artifacts_directory="${script_dir}/../../../artifacts/${iso}/${platform}/${modules}_${boot_locations}slot"
-    local clean
-    clean="$(get_config_value "CLEAN")"
+    local artifacts_directory
+    if [[ "$platform" == "iso" ]]; then
+        artifacts_directory="${script_dir}/../../../artifacts/${iso}/${platform}"
+    else
+        artifacts_directory="${script_dir}/../../../artifacts/${iso}/${platform}/${modules}_${boot_locations}slot"
+    fi
+    local reuse
+    reuse="$(get_config_value "REUSE")"
     local output
-    if [[ "$clean" ]] && [[ -d "$artifacts_directory" ]]; then
+    if [[ ! "$reuse" ]] && [[ -d "$artifacts_directory" ]]; then
         if ! output="$(rm -rf "$artifacts_directory")"; then
             log_error "Unable to delete the old artifacts directory [${artifacts_directory}]: $output"
             return 1
@@ -521,6 +530,29 @@ function get_release_version_number {
         rel_version="${rel_version}${temp}"
     done
     echo "${rel_version}"
+}
+
+
+# find out path for iso with updated rpms and print it
+function form_updated_iso_path {
+    local platform="$1"
+    local iso="$2"
+    local cloud_image_name="$3"
+    local artifacts_directory="$4"
+
+    if [[ $# -ne 4 ]]; then
+        error_and_exit "Usage: ${FUNCNAME[0]} <platform> <iso> <cloud_image_name> <artifacts_directory>"
+    elif ! is_supported_platform "$platform"; then
+        error_and_exit "Unsupported platform '$platform'"
+    fi
+
+    local updated_iso_path
+    if [[ "$platform" == "iso" ]] && [[ -n "$cloud_image_name" ]]; then
+        updated_iso_path="$artifacts_directory/$cloud_image_name"
+    else
+        updated_iso_path="$artifacts_directory/updated-$(basename "$iso")"
+    fi
+    echo "$updated_iso_path"
 }
 
 
@@ -682,11 +714,12 @@ function verify_iso {
         return 1
     fi
 
+    local missing_signature_or_key
     # If no public key is present then we'll skip verification.
     if [[ -z "$pub_key" ]] || [[ ! -f "$pub_key" ]]; then
-        log_warning "Missing F5 public key!  Skipping signature verification for ISO [${iso}].  Please provide \
-ISO_SIG_PUBKEY as a path to the F5 public key to enable signature verification."
-        return 0
+        log_warning "Missing F5 public key!  Please provide \
+ISO_SIG_PUBKEY as a path to the F5 public key to enable signature verification!"
+        missing_signature_or_key="true"
     fi
 
     # If the user didn't provide a signature file then we'll check for the default one next to the ISO.
@@ -696,8 +729,13 @@ ISO_SIG_PUBKEY as a path to the F5 public key to enable signature verification."
 
     # If the signature file is inaccessible then we can't perform verification.
     if [[ ! -f "$iso_sig" ]]; then
-        log_warning "ISO signature file [${iso_sig}] is inaccessible!  Skipping signature verification for ISO \
-[${iso}]."
+        log_warning "Missing ISO signature file [${iso_sig}]!"
+        missing_signature_or_key="true"
+    fi
+
+    # iso signature or F5 public key is missing
+    if [[ -n "$missing_signature_or_key" ]]; then
+        log_warning "Skipping signature verification for ISO [${iso}]."
         return 0
     fi
 
@@ -710,4 +748,91 @@ ISO_SIG_PUBKEY as a path to the F5 public key to enable signature verification."
     fi
 
     log_info "Successfully verified ISO [${iso}] with signature file [${iso_sig}] using public key [${pub_key}]"
+}
+
+# Copy image and its md5 to the publishing location
+# md5 file must be alongside the image and have matching path: <iso_path>.md5
+# publishing location must exist
+function publish_image {
+    image_path=$1
+    publish_dir=$2
+    image_description=$3
+
+    if [[ $# -ne 2 ]] && [[ $# -ne 3 ]]; then
+        error_and_exit "${FUNCNAME[0]} received $# parameters instead of 2 or 3: $*"
+    fi
+
+    if [[ ! -d "$publish_dir" ]]; then
+        error_and_exit "Publishing directory $publish_dir does not exist"
+    fi
+
+    log_info "Copying $image_description [${image_path}] and its MD5 to [${publish_dir}]"
+    if ! execute_cmd cp -f "$image_path" "$publish_dir"; then
+        error_and_exit "Failed to copy $image_description [${image_path}] to [${publish_dir}]!"
+    elif ! cp -f "$image_path".md5 "$publish_dir"; then
+        error_and_exit "Failed to copy $image_description MD5 [${image_path}] to [${publish_dir}]!"
+    fi
+}
+
+# Perform logic for handling an upgrade to a new image generator version. This will check the
+# generator-info.json file in the artifacts directory (if it exists). If the version specified in
+# this file doesn't match the current image generator version then the REUSE variable will be
+# overriden and set to false. This is done since changes in logic between versions could cause
+# errors if existing artifacts were reused.
+function handle_upgrade {
+
+    # Parse arguments
+    num_args=1
+    if [[ $# -ne $num_args ]]; then
+        error_and_exit "${FUNCNAME[0]} received $# arguments, but was expecting $num_args"
+    fi
+    artifacts_dir=$1
+    local info_file json_read json_write last_version current_version reuse
+
+    # Look up current generator version
+    current_version="$(get_config_value "VERSION_NUMBER")"
+
+    # Check for presense of generator-info file
+    info_file="${artifacts_dir}/generator-info.json"
+    if [[ -f "$info_file" ]]; then
+
+        # The info file exists, so we'll check the last generator version that was used for this build
+        json_read="$(<"$info_file")"
+        if ! last_version="$(jq -r '.VERSION // empty' <<< "$json_read" 2>&1)"; then
+            error_and_exit "jq error while retrieving VERSION from json data: $json_read"
+        elif [[ "$last_version" != "$current_version" ]]; then
+
+            # The image generator version has changed since the last image generator run of this build, so we'll
+            # override the reuse variable and update the file with the current version
+            log_info "Generator version has been updated from $last_version to $current_version since the last run"
+            reuse="$(get_config_value "REUSE")"
+            if [[ -n "$reuse" ]]; then
+                log_info "Ignoring 'REUSE' setting for this build since the generator version has changed"
+                set_config_value "REUSE" ""
+            fi
+            log_debug "Updating generator info file with generator version $current_version"
+            if ! json_write="$(jq --arg v "$current_version" '.VERSION = $v' <<< "$json_read" 2>&1)"; then
+                error_and_exit "jq error while adding VERSION to json data: $json_write"
+            fi
+            echo "$json_write" > "$info_file"
+        else
+
+            # The last version matches the current version, so we don't have to do anything
+            log_debug "Generator info version matches current version $current_version"
+        fi
+    else
+
+        # The info file doesn't exist, so we don't know if it's safe to reuse it. We'll override the reuse setting and
+        # create a new generator-info file which contains the current version.
+        reuse="$(get_config_value "REUSE")"
+        if [[ -n "$reuse" ]]; then
+            log_info "Ignoring 'REUSE' setting for this build since the generator version may have changed"
+            set_config_value "REUSE" ""
+        fi
+        log_debug "Creating generator info file with generator version $current_version"
+        if ! json_write="$(jq -n --arg v "$current_version" '{"VERSION": $v}' 2>&1)"; then
+            error_and_exit "jq error while adding VERSION to json data: $json_write"
+        fi
+        echo "$json_write" > "$info_file"
+    fi
 }

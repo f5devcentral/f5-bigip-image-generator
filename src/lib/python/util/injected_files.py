@@ -14,7 +14,7 @@
 # the License.
 
 
-from os.path import basename, isdir, isfile
+from os.path import basename, isdir, isfile, abspath, realpath, expanduser
 from pathlib import Path
 from shutil import copy2, copytree
 
@@ -36,13 +36,14 @@ def extract_single_worded_key(dictionary, key):
                        .format(key, dictionary))
 
 
-def read_injected_files(overall_dest_dir):
+def read_injected_files(top_call_dir, overall_dest_dir):
     """
     Copy file that need to be injected to temporary location,
     which will be accessible during post-install.
-    One mandatory argument: a path to initrd directory that will be available during post_install
+    Two mandatory arguments:
+        a path from where build-image was called
+        a path to initrd directory that will be available during post_install
     """
-    artifacts_dir = get_config_value("ARTIFACTS_DIR")
 
     # location used by post-install, should be created only if there are files to inject
     injected_files = 'etc/injected_files' # location used by post-install
@@ -52,13 +53,8 @@ def read_injected_files(overall_dest_dir):
     # include user-specified files
     files_to_inject = get_list_from_config_yaml('UPDATE_IMAGE_FILES')
 
-    # include information about installed software on the build machine
-    build_info_file_name = "build_info.json"
-    build_info_source = artifacts_dir + "/" + build_info_file_name
-    build_info_destination = "/" + build_info_file_name
-    files_to_inject.append({'source': build_info_source, 'destination': build_info_destination})
-    build_info = BuildInfo()
-    build_info.to_file(build_info_source)
+    # add build_info.json
+    prep_build_info_for_injection(files_to_inject)
 
     # each injected file directory to be stored in a separate directory "file<number>"
     count = 0
@@ -66,6 +62,10 @@ def read_injected_files(overall_dest_dir):
     for file in files_to_inject:
         LOGGER.trace("file: %s", file)
         src = extract_single_worded_key(file, 'source')
+        if src[0] != '/' and src[0] != '~':
+            # make it an absolute path
+            src = top_call_dir + '/' + src
+        src = abspath(realpath(expanduser(src)))
         dest = extract_single_worded_key(file, 'destination')
         LOGGER.info('inject %s to temporary location %s', src, dest)
 
@@ -95,3 +95,14 @@ def read_injected_files(overall_dest_dir):
 
     LOGGER.debug('leaving %s', basename(__file__))
     return 0
+
+
+def prep_build_info_for_injection(files_to_inject):
+    """ prepare information about installed software on the build machine """
+    artifacts_dir = get_config_value("ARTIFACTS_DIR")
+    build_info_file_name = "build_info.json"
+    build_info_source = artifacts_dir + "/" + build_info_file_name
+    build_info_destination = "/" + build_info_file_name
+    files_to_inject.append({'source': build_info_source, 'destination': build_info_destination})
+    build_info = BuildInfo()
+    build_info.to_file(build_info_source)
