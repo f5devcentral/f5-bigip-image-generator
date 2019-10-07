@@ -41,7 +41,7 @@ The following table lists system requirements for using the Image Generator to c
 | Component                 | Version                                                         | Recommended System Requirements|                                                      
 |---------------------------| :---------------------------------------------------------------| :------------------------------|
 | F5 BIG-IP Image Generator | 1.0                                                             | - **Memory**: 1GB memory <br> - **Disk space**: depends on number of images you want to create.<br> See following BIG-IP VE system requirements.|                                                             
-| [F5 BIG-IP VE][1]         | BIG-IP 13.1.0.2+ Support<br>BIG-IP 14.X<br>BIG-IP 15.X          | A minimum of 20GB per image    |    
+| [F5 BIG-IP VE][1]         | BIG-IP 13.1.0.2+<br>BIG-IP 14.X<br>BIG-IP 15.X          | A minimum of 20GB per image    |    
 | Ubuntu (F5 Image Generator-validated)                    | 18.04 LTS operating system       | Tools: <br>- Git<br> - Python 3.x<br> - Cloud provider SDK tools <br> See [setup script][2].|
 | Open Virtualization Format Tool (ovftool) | 4.3.0 | If you deploy in VMware (ESX/i Server) or AWS cloud, you must install the [ovftool][22] for creating the virtual disk. |
 	 
