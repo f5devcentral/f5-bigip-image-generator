@@ -74,7 +74,7 @@ The Image Generator tool generates a virtual disk image from the BIG-IP product 
 
 ##### Tip
 ----------
-F5 recommends running the Image Generator tool in environments where virtualization is enabled (for example, **AWS i3.metal** instance). 
+F5 recommends running the Image Generator tool in environments where virtualization is enabled (for example, **AWS i3.metal** instance or [GCE's KVM licensing flag for instances][25]). 
 
 Execution times differ between cloud providers, usually taking 5-20 minutes depending on the image size. The BIG-IP Image Generator will display a **warning**, if you run the script in an **insufficient** environment **without virtualization** support.
 
@@ -179,6 +179,12 @@ command line >  configuration file >  environment variable. To access the Image 
     -  source: "/var/tmp/f5-appsvcs-3.4.0-2.noarch.rpm"
        destination: "/var/config/rest/downloads/f5-appsvcs.noarch.rpm"
    ```    
+
+##### IMPORTANT
+-----------------------
+You must store all changed files related to file-injection in a location where they can be included in the user configuration set (UCS) file or in the /shared file directory. Otherwise, you will lose these changes during an upgrade. For more information about UCS, see [Overview of UCS archives on AskF5][24].  
+
+--------------------------------
 
 5. OPTIONAL: The default behavior of the Image Generator does not attempt to use previously created local artifacts. To enable this feature, use the `--reuse` option. If you receive an error during file-upload to a cloud provider, then only the cloud portion of image generation will rerun for a subsequent image generation. Be aware that if you have already generated the virtual disk during previous runs, then using this option will prevent you from applying the '--update_image_files' option.
 
@@ -377,4 +383,5 @@ completed and submitted the F5 Contributor License Agreement.
 [21]: https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/Using_Tags.html#tag-restrictions
 [22]: https://code.vmware.com/web/tool/4.3.0/ovf
 [23]: https://www.f5.com/company/contact/regional-offices#product-support
-
+[24]: https://support.f5.com/csp/article/K4423
+[25]: https://cloud.google.com/compute/docs/instances/enable-nested-virtualization-vm-instances#enablenestedvirt
