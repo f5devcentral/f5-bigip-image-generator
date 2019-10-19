@@ -164,25 +164,21 @@ command line >  configuration file >  environment variable. To access the Image 
    * VHD (Microsoft Hyper-V)
    * VMware (ESX/i Server)
 
-4. OPTIONAL: The Image Generator tool can inject files into the virtual disk image to allow for image customization. You can do this using the command line; however, the syntax is simpler using the configuration file:
+4. OPTIONAL: The Image Generator tool can inject files (for example, keys, certs, and custom lx packages) into the virtual disk image to allow for image customization. You can do this using the command line; however, the syntax is simpler using the configuration file:
 
    ```
-   UPDATE_IMAGE_FILES:
-    -  source: "/var/tmp/authorized-keys"
-       destination: "/home/admin/.ssh/authorized-keys"
-    -  source: "/var/tmp/trusted-ca.pem"
-       destination: "/config/ssl/ssl.crt/trusted-ca.pem"
-    -  source: "/var/tmp/custom-file"
-       destination: "/config/custom-file"
-    -  source: "/var/tmp/f5-declarative-onboarding-1.3.0-4.noarch.rpm"
-       destination: "/config/cloud/aws/f5-declaritive-onboarding.rpm"
-    -  source: "/var/tmp/f5-appsvcs-3.4.0-2.noarch.rpm"
-       destination: "/var/config/rest/downloads/f5-appsvcs.noarch.rpm"
-   ```    
+   UPDATE_IMAGE_FILES:   
+    -  source: "/home/ubuntu/tmos_rpms/f5-declarative-onboarding-1.7.0-3.noarch.rpm"
+       destination: "/shared/rpms/icontrollx_installs/f5-declarative-onboarding-1.7.0-3.noarch.rpm"
+    -  source: "/home/ubuntu/tmos_rpms/f5-appsvcs-3.14.0-4.noarch.rpm"
+       destination: "/shared/rpms/icontrollx_installs/f5-appsvcs-3.14.0-4.noarch.rpm"
+    -  source: "/home/ubuntu/tmos_rpms/f5-telemetry-1.6.0-1.noarch.rpm"
+       destination: "/shared/rpms/icontrollx_installs/f5-telemetry-1.6.0-1.noarch.rpm"
+   ```
 
 ##### IMPORTANT
 -----------------------
-You must store all changed files related to file-injection in a location where they can be included in the user configuration set (UCS) file or in the /shared file directory. Otherwise, you will lose these changes during an upgrade. For more information about UCS, see [Overview of UCS archives on AskF5][24].  
+Place all changed files in typical locations where you store customizations. For example, place files in the `/config` directory where they can be included in the user configuration set (UCS) file or in the `/shared` directory, so each slot can access the customizations. Otherwise, you will lose these changes during an upgrade. For more information about UCS, see the  *file inclusion into UCS archives* topic on [AskF5][24].  
 
 --------------------------------
 
@@ -383,5 +379,5 @@ completed and submitted the F5 Contributor License Agreement.
 [21]: https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/Using_Tags.html#tag-restrictions
 [22]: https://code.vmware.com/web/tool/4.3.0/ovf
 [23]: https://www.f5.com/company/contact/regional-offices#product-support
-[24]: https://support.f5.com/csp/article/K4423
+[24]: https://support.f5.com/csp/article/K4422
 [25]: https://cloud.google.com/compute/docs/instances/enable-nested-virtualization-vm-instances#enablenestedvirt
