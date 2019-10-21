@@ -164,21 +164,25 @@ command line >  configuration file >  environment variable. To access the Image 
    * VHD (Microsoft Hyper-V)
    * VMware (ESX/i Server)
 
-4. OPTIONAL: The Image Generator tool can inject files (for example, keys, certs, and custom lx packages) into the virtual disk image to allow for image customization. You can do this using the command line; however, the syntax is simpler using the configuration file:
+4. OPTIONAL: The Image Generator tool can inject additional files (for example, keys, certs, and custom lx packages) into the virtual disk image to allow for image customization. You can do this using the command line; however, the syntax is simpler using the configuration file:
 
-   ```
-   UPDATE_IMAGE_FILES:   
-    -  source: "/home/ubuntu/tmos_rpms/f5-declarative-onboarding-1.7.0-3.noarch.rpm"
-       destination: "/shared/rpms/icontrollx_installs/f5-declarative-onboarding-1.7.0-3.noarch.rpm"
-    -  source: "/home/ubuntu/tmos_rpms/f5-appsvcs-3.14.0-4.noarch.rpm"
-       destination: "/shared/rpms/icontrollx_installs/f5-appsvcs-3.14.0-4.noarch.rpm"
-    -  source: "/home/ubuntu/tmos_rpms/f5-telemetry-1.6.0-1.noarch.rpm"
-       destination: "/shared/rpms/icontrollx_installs/f5-telemetry-1.6.0-1.noarch.rpm"
-   ```
+ ```
+    UPDATE_IMAGE_FILES:   
+     -  source: "/home/ubuntu/custom/authorized_keys"
+        destination: "/home/admin/.ssh/authorized_keys"
+     -  source: "/home/ubuntu/custom/trusted-ca.pem"
+        destination: "/config/ssl/ssl.crt/trusted-ca.pem"
+     -  source: "/home/ubuntu/custom/f5-declarative-onboarding-1.7.0-3.noarch.rpm"
+        destination: "/shared/rpms/icontrollx_installs/f5-declarative-onboarding-1.7.0-3.noarch.rpm"
+     -  source: "/home/ubuntu/custom/f5-appsvcs-3.14.0-4.noarch.rpm"
+        destination: "/shared/rpms/icontrollx_installs/f5-appsvcs-3.14.0-4.noarch.rpm"
+     -  source: "/home/ubuntu/custom/f5-telemetry-1.6.0-1.noarch.rpm"
+        destination: "/shared/rpms/icontrollx_installs/f5-telemetry-1.6.0-1.noarch.rpm"
+ ```
 
 ##### IMPORTANT
 -----------------------
-Place all changed files in typical locations where you store customizations. For example, place files in the `/config` directory where they can be included in the user configuration set (UCS) file or in the `/shared` directory, so each slot can access the customizations. Otherwise, you will lose these changes during an upgrade. For more information about UCS, see the  *file inclusion into UCS archives* topic on [AskF5][24].  
+Avoid overwriting existing system related files unless directed by F5 networks. Place these additional files in typical locations where you store customizations. For example, place files in the `/config` directory where they can be included in the user configuration set (UCS) file or in the `/shared` directory, so each slot can access the customizations. Otherwise, you will lose these changes during an upgrade. For more information about UCS, see the  *file inclusion into UCS archives* topic on [AskF5][24].  
 
 --------------------------------
 
