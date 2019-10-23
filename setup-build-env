@@ -306,16 +306,14 @@ if [[ $ADD_DEVTOOLS = true ]]; then
     sudo $PACKAGE_INSTALLER install -y bc
     sudo $PACKAGE_INSTALLER install -y dc
 
-    # parted and udev are used by convert qemu unit tests
+    # Install parted and udev for use by convert qemu unit tests
     sudo $PACKAGE_INSTALLER install -y parted
     sudo $PACKAGE_INSTALLER install -y udev
 
-    if [ -d "$OEM_DIR" ]; then
-        # genisoimage is used to create ISOs during build-image-utils unit tests
-        sudo $PACKAGE_INSTALLER install -y genisoimage
-    fi
+    # Install isoinfo if it is missing
+    sudo $PACKAGE_INSTALLER install -y genisoimage
 
-    # install modprobe
+    # Install modprobe
     sudo $PACKAGE_INSTALLER install -y kmod
 
     # Install update-copyright tool
