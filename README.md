@@ -331,6 +331,8 @@ To report defects and security vulnerabilties, or submit enhancements and genera
 1. In the top-right corner, expand :heavy_plus_sign: **More**, and then select **New Issues** from the list. 
 2. Enter a title, a description, and then click **Submit new issue**.
 
+### Known issues
+All known issues are now on the GitHub **Issues** tab for better tracking and visibility. Sort the [issues list][26] by expanding the **Label** column and selecting **Known issue**.
 
 ## Copyright
 
@@ -385,3 +387,4 @@ completed and submitted the F5 Contributor License Agreement.
 [23]: https://www.f5.com/company/contact/regional-offices#product-support
 [24]: https://support.f5.com/csp/article/K4422
 [25]: https://cloud.google.com/compute/docs/instances/enable-nested-virtualization-vm-instances#enablenestedvirt
+[26]: https://github.com/f5devcentral/f5-bigip-image-generator/issues?q=is%3Aopen+is%3Aissue+label%3A%22known+issue%22
