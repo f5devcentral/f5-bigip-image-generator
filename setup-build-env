@@ -225,6 +225,7 @@ esac
 #------------------------------#
 # python based azure-cli ARM tool
 pip3 install azure_storage_blob
+pip3 install azure
 #-----------------------------------------------------------------------------#
 
 
