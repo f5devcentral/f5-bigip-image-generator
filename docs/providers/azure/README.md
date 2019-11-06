@@ -11,7 +11,7 @@ You need the system requirements described [here](../../../README.md), as well a
 
 * Credentials/API keys
 * SSH keys uploaded
-* [Storage Container][1]
+* [Storage Container][1] and [storage connection strings][4]
 
 See this [Azure article][2] for more service account information.
 
@@ -42,6 +42,7 @@ F5 recommends passing the credentials via `ENV` or `CLI`, rather than putting th
 [1]: https://docs.microsoft.com/en-us/rest/api/storageservices/create-container
 [2]: https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal
 [3]: https://github.com/f5devcentral/f5-bigip-image-generator/blob/master/README.md#image-generator-prerequisites
+[4]: https://docs.microsoft.com/en-us/azure/storage/common/storage-configure-connection-string
 
 
 
