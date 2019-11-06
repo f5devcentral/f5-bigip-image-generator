@@ -388,3 +388,4 @@ completed and submitted the F5 Contributor License Agreement.
 [24]: https://support.f5.com/csp/article/K4422
 [25]: https://cloud.google.com/compute/docs/instances/enable-nested-virtualization-vm-instances#enablenestedvirt
 [26]: https://github.com/f5devcentral/f5-bigip-image-generator/issues?q=is%3Aopen+is%3Aissue+label%3A%22known+issue%22
+[27]: https://docs.microsoft.com/en-us/azure/storage/common/storage-configure-connection-string               
