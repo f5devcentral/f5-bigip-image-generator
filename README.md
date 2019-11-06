@@ -56,7 +56,7 @@ The following table lists supported public and private cloud platforms as well a
 | Cloud Provider            | Requirements                                                                                                        
 |---------------------------| :---------------------------------------------------------------|
 | AWS                       | Sufficient permissions to create or describe the following resources:<br> - credentials/API Keys<br> - [S3 Bucket Storage Container][12]<br> - Install the [ovftool][22] for creating the virtual disk.<br> - IAM Role with import permissions <br>(See this [AWS article][3] for more VM Import Service Role information.) |
-| Azure                     | Sufficient permissions to create or describe the following resources:<br> - Credentials/API Keys<br> - [Storage Container][11] <br>(See this [Azure article][10] for more information about creating a service principle.)|
+| Azure                     | Sufficient permissions to create or describe the following resources:<br> - Credentials/API Keys<br> - [Storage Container][11] and [storage connection strings][27]<br> (For more information, see this articles about [creating a service principle][10].)|
 | Google Cloud (GCE)        | Sufficient permissions to create or describe the following resources:<br> - Credentials/API Keys<br> - Application  credentials<br> - [Storage Container][13] <br>(See this [GCE article][9] for more service account information.)|
 
 The following supported platforms require no specific configuration:
