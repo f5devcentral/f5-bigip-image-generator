@@ -17,6 +17,7 @@
 from os.path import basename, isdir, isfile, abspath, realpath, expanduser
 from pathlib import Path
 from shutil import copy2, copytree
+import requests
 
 from util.build_info import BuildInfo
 from util.config import get_config_value, get_list_from_config_yaml
@@ -38,7 +39,7 @@ def extract_single_worded_key(dictionary, key):
 
 def read_injected_files(top_call_dir, overall_dest_dir):
     """
-    Copy file that need to be injected to temporary location,
+    Copy files that need to be injected to a temporary location,
     which will be accessible during post-install.
     Two mandatory arguments:
         a path from where build-image was called
@@ -48,7 +49,7 @@ def read_injected_files(top_call_dir, overall_dest_dir):
     # location used by post-install, should be created only if there are files to inject
     injected_files = 'etc/injected_files' # location used by post-install
     overall_dest_dir = overall_dest_dir + '/' + injected_files
-    LOGGER.info('temporary location for injected files: %s', overall_dest_dir)
+    LOGGER.info('Temporary location for injected files: \'%s\'', overall_dest_dir)
 
     # include user-specified files
     files_to_inject = get_list_from_config_yaml('UPDATE_IMAGE_FILES')
@@ -62,26 +63,28 @@ def read_injected_files(top_call_dir, overall_dest_dir):
     for file in files_to_inject:
         LOGGER.trace("file: %s", file)
         src = extract_single_worded_key(file, 'source')
+        dest = extract_single_worded_key(file, 'destination')
+        LOGGER.info('copy \'%s\' to a temporary location for \'%s\'', src, dest)
+
+        url = src # treat 'src' as a file path and 'url' as a url
         if src[0] != '/' and src[0] != '~':
             # make it an absolute path
             src = top_call_dir + '/' + src
         src = abspath(realpath(expanduser(src)))
-        dest = extract_single_worded_key(file, 'destination')
-        LOGGER.info('inject %s to temporary location %s', src, dest)
 
         file_holder = overall_dest_dir + '/file' + str(count) + '/'
         # copy source to "src"
         # source file name does not need to be preserved;
         # it will be copied to destination path on BIG-IP
         source_holder = file_holder + 'src'
+        Path(file_holder).mkdir(parents=True, exist_ok=True)
         if isfile(src):
-            Path(file_holder).mkdir(parents=True, exist_ok=True)
             copy2(src, source_holder)
         elif isdir(src):
             copytree(src, source_holder)
         else:
-            raise RuntimeError('\'{}\' is neither a file nor a directory, cannot inject it!'
-                               .format(src))
+            LOGGER.debug('Treating \'%s\' as a URL for the file injection', url)
+            download_file(url, source_holder)
 
         # store destination
         if dest[0] != '/':
@@ -106,3 +109,30 @@ def prep_build_info_for_injection(files_to_inject):
     files_to_inject.append({'source': build_info_source, 'destination': build_info_destination})
     build_info = BuildInfo()
     build_info.to_file(build_info_source)
+
+
+def download_file(url, dest_file):
+    """ Download from url to a local file.
+        Throws exceptions with wording specific to the file injection.
+        Assumes that the directory containing the destination file already exists. """
+    verify_tls = bool(get_config_value("UPDATE_IMAGE_FILES_IGNORE_URL_TLS") is None)
+    try:
+        remote_file = requests.get(url, verify=verify_tls, timeout=60)
+    except requests.exceptions.SSLError as exc:
+        LOGGER.exception(exc)
+        raise RuntimeError(
+            'Cannot access \'{}\' due to TLS problems! '.format(url) +
+            'Consider abandoning TLS verification by usage of ' +
+            '\'UPDATE_IMAGE_FILES_IGNORE_URL_TLS\' parameter.')
+    except requests.exceptions.RequestException as exc:
+        LOGGER.exception(exc)
+        raise RuntimeError(
+            '\'{}\' is neither a file nor a directory nor a valid url, cannot inject it!'
+            .format(url))
+    if remote_file.status_code != 200:
+        LOGGER.info('requests.get response status: %s', remote_file.status_code)
+        LOGGER.info('requests.get response headers: %s', remote_file.headers)
+        raise RuntimeError(
+            'URL \'{}\' did not return content, cannot inject it!'
+            .format(url))
+    open(dest_file, 'wb').write(remote_file.content)

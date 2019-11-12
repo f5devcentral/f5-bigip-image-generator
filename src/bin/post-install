@@ -234,7 +234,7 @@ function dbg_show_env {
 #####################################################################
 # Checks if the current virtual disk format is for supported Cloud.
 # Here is the current list of supported Clouds:
-# alibaba, aws, azure, vcloudair, gce, oracle
+# alibaba, aws, azure, gce
 #
 # PARAMETERS:
 #   cloud_tag - the name of the disk format/cloud
@@ -250,9 +250,7 @@ function is_supported_cloud {
     if [ "$cloud_tag" == "alibaba" ] || \
        [ "$cloud_tag" == "aws" ] || \
        [ "$cloud_tag" == "azure" ] || \
-       [ "$cloud_tag" == "vcloudair" ] || \
-       [ "$cloud_tag" == "gce" ] ||  \
-       [ "$cloud_tag" == "oracle" ]
+       [ "$cloud_tag" == "gce" ]
     then
         ret_supported_cloud=0
     else

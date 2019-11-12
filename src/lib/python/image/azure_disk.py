@@ -63,13 +63,8 @@ class AzureDisk(BaseDisk):
 
     def extract(self):
         """Extract the vhd disk out of tar.gz."""
-        try:
-            self.disk_to_upload = BaseDisk.decompress(self.input_disk_path,
-                                                      '.vhd',
-                                                      self.working_dir)
-            LOGGER.info("Azure disk_to_upload = '%s'", self.disk_to_upload)
-        except RuntimeError as runtime_error:
-            raise runtime_error
+        self.disk_to_upload = BaseDisk.decompress(self.input_disk_path, '.vhd', self.working_dir)
+        LOGGER.info("Azure disk_to_upload = '%s'", self.disk_to_upload)
 
     def _get_tags(self):
         tags = CloudImageTags(self.metadata)

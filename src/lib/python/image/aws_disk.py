@@ -54,14 +54,9 @@ class AWSDisk(BaseDisk):
 
     def extract(self):
         """Extract the vmdk disk out of zip."""
-        try:
-            LOGGER.debug("Extracting '.vmdk' disk file from [%s].", self.input_disk_path)
-            self.disk_to_upload = BaseDisk.decompress(self.input_disk_path,
-                                                      '.vmdk',
-                                                      self.working_dir)
-            LOGGER.info("AWS disk_to_upload = '%s'", self.disk_to_upload)
-        except RuntimeError as runtime_error:
-            raise runtime_error
+        LOGGER.debug("Extracting '.vmdk' disk file from [%s].", self.input_disk_path)
+        self.disk_to_upload = BaseDisk.decompress(self.input_disk_path, '.vmdk', self.working_dir)
+        LOGGER.info("AWS disk_to_upload = '%s'", self.disk_to_upload)
 
     def is_bucket_exist(self):
         """Checks if a bucket with self.bucket_name exists in S3."""

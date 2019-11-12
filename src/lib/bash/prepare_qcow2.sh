@@ -20,35 +20,6 @@ source "$(realpath "$(dirname "${BASH_SOURCE[0]}")")/common.sh"
 # shellcheck source=src/lib/bash/util/logger.sh
 source "$(realpath "$(dirname "${BASH_SOURCE[0]}")")/util/logger.sh"
 
-function print_qcow2_json {
-    local status="$1"
-    local output_json="$2"
-
-    if [[ $# != 2 ]] || [[ -z "$status" ]] || [[ -z "$output_json" ]]; then
-        log_error "Usage: ${FUNCNAME[0]} <status> <output_json>"
-        return 1
-    fi
-
-    if jq -M -n \
-            --arg description "QCOW2 disk status" \
-            --arg build_host "$HOSTNAME" \
-            --arg build_source "$(basename "${BASH_SOURCE[0]}")" \
-            --arg build_user "$USER" \
-            --arg status "$status" \
-            '{ description: $description,
-            build_host: $build_host,
-            build_source: $build_source,
-            build_user: $build_user,
-            status: $status }' \
-            > "$output_json"
-    then
-        log_info "Wrote qcow2 generation output to '$output_json'."
-    else
-        log_error "Failed to write '$output_json'."
-        return 1
-    fi
-}
-
 
 function prepare_qcow2 {
     local raw_disk="$1"
@@ -61,11 +32,11 @@ function prepare_qcow2 {
     if [[ $# != 4 ]] || [[ -z "$raw_disk" ]] || [[ -z "$bundle_name" ]] || \
             [[ -z "$artifacts_dir" ]] || [[ -z "$output_json" ]]; then
         log_error "Usage: ${FUNCNAME[0]} <raw_disk> <bundle_name> <artifacts_dir> <output_json>"
-        print_qcow2_json "$failure_token" "$output_json"
         return 1
     elif [[ ! -f "$artifacts_dir/$raw_disk" ]]; then
         log_error "Raw disk '$raw_disk' doesn't exist in '$artifacts_dir'."
-        print_qcow2_json "$failure_token" "$output_json"
+        print_json "$failure_token" "$output_json" "qcow2 generation failed: no input raw disk" \
+                   "$(basename "${BASH_SOURCE[0]}")"
         return 1
     fi
 
@@ -91,7 +62,8 @@ function prepare_qcow2 {
     if ! "$(realpath "$( dirname "${BASH_SOURCE[0]}" )")/../../bin/convert" \
             "qcow2" "$raw_disk" "$qcow2_disk_file" "compat=0.10" ; then
         log_error "Conversion of $raw_disk to 'qcow2' failed."
-        print_qcow2_json "$failure_token" "$output_json"
+        print_json "$failure_token" "$output_json" "qemu image conversion failed" \
+                   "$(basename "${BASH_SOURCE[0]}")"
         remove_dir "$temp_dir"
         return 1
     fi
@@ -99,53 +71,50 @@ function prepare_qcow2 {
     log_info "Compressing QCOW2 -- starting."
     local start_task
     start_task=$(timer)
-    local zip_file
-    zip_file="$qcow2_disk_file.zip"
 
     # remove the old zip file
-    if [[ -n "$zip_file" ]] && [[ -f "$zip_file" ]]; then
-        rm -rf "$zip_file"
+    if [[ -n "$bundle_name" ]] && [[ -f "$bundle_name" ]]; then
+        rm -rf "$bundle_name"
     fi
 
-    # add the disk file to the zip file
-    execute_cmd rm -f "$zip_file"
-    if ! execute_cmd zip -1 -j "$zip_file" "$qcow2_disk_file" ; then
+    if ! execute_cmd zip -1 -j "$bundle_name" "$qcow2_disk_file" ; then
         log_error "Failed to compress '$qcow2_disk_file'."
-        print_qcow2_json "$failure_token" "$output_json"
+        print_json "$failure_token" "$output_json"  "QCOW2 generation failed: could not zip" \
+                   "$(basename "${BASH_SOURCE[0]}")"
         remove_dir "$temp_dir"
         return 1
     fi
 
     # Generate md5 sum for the zips.
-    if ! gen_md5 "$zip_file"; then
-        log_error "MD5 generation for '$zip_file' failed."
-        print_qcow2_json "$failure_token" "$output_json"
+    if ! gen_md5 "$bundle_name"; then
+        log_error "MD5 generation for '$bundle_name' failed."
+        print_json "$failure_token" "$output_json" "QCOW2 generation failed: cound not generate MD5" \
+                   "$(basename "${BASH_SOURCE[0]}")"
         remove_dir "$temp_dir"
         return 1
     fi
     log_info "Compressing QCOW2 -- elapsed time: $(timer "$start_task")"
 
-    log_debug "Contents of zip file '$zip_file':"
+    sig_ext="$(get_sig_file_extension "$(get_config_value "IMAGE_SIG_ENCRYPTION_TYPE")")"
+    sig_file="${bundle_name}${sig_ext}"
+
+    sign_file "$bundle_name" "$sig_file"
+    # shellcheck disable=SC2181
+    if [[ $? -ne 0 ]]; then
+        log_error "Error occured during signing the ${bundle_name}"
+        remove_dir "$temp_dir"
+        return 1
+    fi
+
+    # Check if signature file was generated, if not, then mark sig_file_path to
+    # be empty indicating it was not generated
+    if [[ ! -f "$sig_file" ]]; then
+        sig_file=""
+    fi
+
+    log_debug "Contents of zip file '$bundle_name':"
     log_debug "--------------------------------------"
-    log_cmd_output "$DEFAULT_LOG_LEVEL" unzip -l "$zip_file"
-
-
-    local publish_dir
-    publish_dir="$(realpath "$(dirname "$bundle_name")")"
-    mkdir -p "$publish_dir"
-    log_info "Copying virtual disk to $publish_dir"
-    if ! cp -f "$zip_file" "$publish_dir"; then
-        log_error "Failed to copy $zip_file to $publish_dir"
-        print_qcow2_json "$failure_token" "$output_json"
-        remove_dir "$temp_dir"
-        return 1
-    fi
-    if ! cp -f "${zip_file}.md5" "$publish_dir"; then
-        log_error "Failed to copy ${zip_file}.md5 to $publish_dir"
-        print_qcow2_json "$failure_token" "$output_json"
-        remove_dir "$temp_dir"
-        return 1
-    fi
+    log_cmd_output "$DEFAULT_LOG_LEVEL" unzip -l "$bundle_name"
 
     # cleanup and produce the stage output file
     remove_dir "$temp_dir"
@@ -157,6 +126,7 @@ function prepare_qcow2 {
             --arg build_user "$USER" \
             --arg input "$raw_disk" \
             --arg output "$(basename "$bundle_name")" \
+            --arg sig_file "$(basename "$sig_file")" \
             --arg output_partial_md5 "$(calculate_partial_md5 "$bundle_name")" \
             --arg output_size "$(get_file_size "$bundle_name")" \
             --arg status "$success_token" \
@@ -166,6 +136,7 @@ function prepare_qcow2 {
             build_user: $build_user,
             input: $input,
             output: $output,
+            sig_file: $sig_file,
             output_partial_md5: $output_partial_md5,
             output_size: $output_size,
             status: $status }' \

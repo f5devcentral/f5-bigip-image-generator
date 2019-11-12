@@ -17,6 +17,7 @@
 all:
     build-image:
         - build_host
+        - build_source
         - build_user
         - boot_locations
         - modules

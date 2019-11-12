@@ -14,7 +14,7 @@
 
 
 CLOUD:
-  accepted: "^aws$|^azure$|^gce$"
+  accepted: "^alibaba$|^aws$|^azure$|^gce$"
   description: >-
     The cloud name used for cloud-specific operations. Internally assigned based on the specified
     platform.  If PLATFORM is not a cloud, then this will remain unset.
@@ -103,10 +103,6 @@ ISO_SIG:
     Full path to an ISO signature file used to validate the ISO.
   flag: s
 
-ISO_SIG_PUBKEY:
-  description: >-
-    Path to the F5 public key. Setting this will enable signature verification for ISOs.
-
 IMAGE_REGISTRATION_URL:
   description: >-
     Instance Registration URL.  Register image details using platform, image id, and image name as keys.
@@ -126,6 +122,28 @@ IMAGE_REGISTRATION_RETRY_DELAY:
     Sleep duration (in seconds) between retries when registering an image.
   internal: true
 
+IMAGE_SIG_ENCRYPTION_TYPE:
+  default: "sha3-512"
+  description: >-
+    Encryption type to use when signing images.
+
+IMAGE_SIG_PRIVATE_KEY:
+  description: >-
+    Path to private key file used to sign images.
+
+IMAGE_SIG_PUBLIC_KEY:
+  description: >-
+    Path to public key file used to sign images.
+
+ISO_SIG_VERIFICATION_ENCRYPTION_TYPE:
+  default: "sha384"
+  description: >-
+    Encryption type to use when verifying ISO files.
+
+ISO_SIG_VERIFICATION_PUBLIC_KEY:
+  description: >-
+    Path to private key file used to verify ISO or Virtual Disk files.
+
 LOG_FILE:
   description: >-
     Log filename that overrides the default log filename created in the logs directory. You can use
@@ -140,21 +158,8 @@ LOG_LEVEL:
     Log level to use for the log file, indicating the lowest message severity level that can
     appear in the log file.
 
-OVA_SIGN_ENCRYPTION_TYPE:
-  default: "sha3-512"
-  description: >-
-    Encryption type to use when signing OVA files.
-
-OVA_SIGN_PRIVATE_KEY:
-  description: >-
-    Path to private key file used to sign OVA files.
-
-OVA_SIGN_PUBLIC_KEY:
-  description: >-
-    Path to public key file used to sign OVA files.
-
 PLATFORM:
-  accepted: "^aws$|^azure$|^gce$|^qcow2$|^vhd$|^vmware$|^iso$"
+  accepted: "^alibaba$|^aws$|^azure$|^gce$|^qcow2$|^vhd$|^vmware$|^iso$"
   description: >-
     The target plaform for generated images.
   flag: p
@@ -177,6 +182,11 @@ UPDATE_IMAGE_FILES:
     Files you want injected into the image. For each of the injections, required values
     include source (file or directory) and destination (absolute full path).
 
+UPDATE_IMAGE_FILES_IGNORE_URL_TLS:
+  description: >-
+    Ignore TSL certificate verification when downloading files to be injected into the image.
+  parameters: 0
+
 UPDATE_ISO_RPMS:
   description: >-
     Existing files you want updated in existing RPMs of the original ISO image.
@@ -192,7 +202,7 @@ VERSION:
   parameters: 0
 
 VERSION_NUMBER:
-  default: 1.1
+  default: 1.2
   description: >-
     This is the current version of BIG-IP Image-Generator.
   internal: true
