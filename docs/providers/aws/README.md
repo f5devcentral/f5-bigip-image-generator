@@ -4,6 +4,7 @@ In AWS, the image generator tool will do the following:
 
 1. Create a virtual disk image locally.
 2. Upload the virtual disk image to an [S3 Bucket storage][1] container.
+3. Create the virtual machine image.
 
 
 ### Prerequisites
@@ -24,8 +25,7 @@ Define the following parameters in a config file or set as an environment variab
 |:--------|:-------|:-----|:----------|
 |AWS_ACCESS_KEY_ID|Yes|[value]|Public key id string used for AWS account access.|
 |AWS_BUCKET|Yes|[value]|AWS S3 bucket used during image generation.|
-|AWS_IMAGE_MAX_RETRY|No|[[0-9]+]|The number of times to retry image related operations when running AWS commands.|
-|AWS_IMAGE_SHARE_ACCOUNT_IDS|No|[value]|List of AWS account IDs or the path to the .yml file containing the list of account IDs with which you want the generated AWS AMI shared.|
+|AWS_IMAGE_SHARE_ACCOUNT_IDS|No|[value]|List of AWS account IDs with which you want the generated image shared.|
 |AWS_REGION|Yes|[value]|Region to use for AWS image generation.|
 |AWS_SECRET_ACCESS_KEY|Yes|[value]|Public key string used for AWS account access.|
 
