@@ -31,7 +31,7 @@ Define the following parameters in a config file or set as an environment variab
 ##### NOTE
 ----------
 
-It is recommended to pass the credentials via ENV or CLI, rather than putting them in a configuration file.
+F5 recommends passing the credentials via ENV or CLI, rather than putting them in a configuration file.
 
 ---------------
 
