@@ -11,10 +11,7 @@ You need the system requirements described [here](../../../README.md), as well a
 
 * Credentials/API keys
 * SSH keys uploaded
-* [Storage Container][1] and [storage connection strings][4]
-
-See this [Azure article][2] for more service account information.
-
+* [Storage Container][1] and [storage connection strings][3]
 
 ###  User guide
 
@@ -22,7 +19,6 @@ Define the following parameters in a config file or set as an environment variab
 
 |Parameter|Required|Values|Description|
 |:--------|:-------|:-----|:----------|
-|AZURE_IMAGE_MAX_RETRY|No|[[0-9]+]|The number of times to retry image related operations when running Azure commands.|
 |AZURE_STORAGE_CONNECTION_STRING|Yes|[value]|Azure storage connection string used for account access.|
 |AZURE_STORAGE_CONTAINER_NAME|Yes|[value]|Name of Azure storage container to use for generated images.|
 
@@ -41,8 +37,6 @@ F5 recommends passing the credentials via `ENV` or `CLI`, rather than putting th
 ```
 [1]: https://docs.microsoft.com/en-us/rest/api/storageservices/create-container
 [2]: https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal
-[3]: https://github.com/f5devcentral/f5-bigip-image-generator/blob/master/README.md#image-generator-prerequisites
-[4]: https://docs.microsoft.com/en-us/azure/storage/common/storage-configure-connection-string
-
+[3]: https://docs.microsoft.com/en-us/azure/storage/common/storage-configure-connection-string
 
 
