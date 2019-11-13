@@ -16,11 +16,11 @@
 
 
 # shellcheck source=src/lib/bash/common.sh
-source "$(realpath "$(dirname "${BASH_SOURCE[0]}")")/../common.sh"
+source "$(realpath "$(dirname "${BASH_SOURCE[0]}")")/common.sh"
 # shellcheck source=src/lib/bash/util/config.sh
-source "$(realpath "$(dirname "${BASH_SOURCE[0]}")")/../util/config.sh"
+source "$(realpath "$(dirname "${BASH_SOURCE[0]}")")/util/config.sh"
 # shellcheck source=src/lib/bash/util/logger.sh
-source "$(realpath "$(dirname "${BASH_SOURCE[0]}")")/../util/logger.sh"
+source "$(realpath "$(dirname "${BASH_SOURCE[0]}")")/util/logger.sh"
 
 
 # Initialize required variables.  This should be called automatically by functions which need them.  If the variables
@@ -75,31 +75,40 @@ log_file]!"
         log_info "Skipping gce disk generation as the output virtual disk '$bundle_name'" \
                 "was generated successfully earlier."
         return 0
-    fi  
+    fi
 
     # Compress the raw disk file into a tar archive.  Display the available disk space before and after the operation.
-    local free_disk_space
-    free_disk_space="$(df -h . --output=avail | grep -Po '\d+.*$' 2>&1)"
-    log_debug "Free disk space before packaging GCE disk: [${free_disk_space}]"
     artifacts_dir="$(gce_ensure_trailing_slash "$artifacts_dir")"
     local packaged_disk_dir
     packaged_disk_dir="$(realpath "$(dirname "$bundle_name")")"
     mkdir -p "$packaged_disk_dir"
     log_debug "Compressing raw GCE disk [${artifacts_dir}${raw_disk_name}] into archive [${bundle_name}]"
-    local response
-    if response="$(tar -C "$artifacts_dir" -vczf "$bundle_name" "$raw_disk_name")"; then
-        log_debug "SUCCESS - $response"
-    else
+    if ! execute_cmd tar -C "$artifacts_dir" -vczf "$bundle_name" "$raw_disk_name" ; then
         log_error "$response"
+        print_json "failure" "$prepare_vdisk_json" "GCE disk generation failed: during qemu img conversion" \
+                   "$(basename "${BASH_SOURCE[0]}")"
         return 1
     fi
-    free_disk_space="$(df -h . --output=avail | grep -Po '\d+.*$' 2>&1)"
-    log_debug "Free disk space after packaging GCE disk: [${free_disk_space}]"
 
     # Save an md5sum alongside the packaged disk
-    local md5_path="${bundle_name}.md5"
     if ! gen_md5 "$bundle_name"; then
         return 1
+    fi
+
+    sig_ext="$(get_sig_file_extension "$(get_config_value "IMAGE_SIG_ENCRYPTION_TYPE")")"
+    sig_file="${bundle_name}${sig_ext}"
+
+    sign_file "$bundle_name" "$sig_file"
+    # shellcheck disable=SC2181
+    if [[ $? -ne 0 ]]; then
+        log_error "Error occured during signing the ${bundle_name}"
+        return 1
+    fi
+
+    # Check if signature file was generated, if not, then mark sig_file_path to
+    # be empty indicating it was not generated
+    if [[ ! -f "$sig_file" ]]; then
+        sig_file=""
     fi
 
     # Write required fields to JSON file which will be consumed by next step
@@ -112,7 +121,9 @@ log_file]!"
             --arg platform "gce" \
             --arg input "$raw_disk_name" \
             --arg output "$(basename "$bundle_name")" \
-            --arg output_md5 "$(awk '{print $1;}' < "$md5_path")" \
+            --arg sig_file "$(basename "$sig_file")" \
+            --arg output_partial_md5 "$(calculate_partial_md5 "$bundle_name")" \
+            --arg output_size "$(get_file_size "$bundle_name")" \
             --arg log_file "$log_file" \
             --arg status "success" \
             '{ description: $description,
@@ -122,7 +133,9 @@ log_file]!"
             platform: $platform,
             input: $input,
             output: $output,
-            output_md5: $output_md5,
+            sig_file: $sig_file,
+            output_partial_md5: $output_partial_md5,
+	    output_size: $output_size,
             log_file: $log_file,
             status: $status }' > "$prepare_vdisk_json")"
     if [[ -z "$response" ]]; then

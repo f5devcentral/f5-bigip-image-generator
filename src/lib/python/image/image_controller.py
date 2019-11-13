@@ -23,6 +23,8 @@ import time
 
 from datetime import timedelta
 
+from image.alibaba_image import AlibabaImage
+from image.alibaba_image_name import AlibabaImageName
 from image.aws_image import AWSImage
 from image.aws_image_name import AWSImageName
 from image.azure_image import AzureImage
@@ -65,16 +67,15 @@ class ImageController(): # pylint: disable=too-many-instance-attributes
         try:
             # Factory (could be a separate object)
             if cloud_type == 'alibaba':
-                LOGGER.warning("Unimplemented cloud '%s'.", cloud_type)
-                raise SystemExit(-1)
-            if cloud_type == 'aws':
+                self.cloud_image = AlibabaImage(self.working_dir, self.image_disk_path)
+            elif cloud_type == 'aws':
                 self.cloud_image = AWSImage(self.working_dir, self.image_disk_path)
             elif cloud_type == 'azure':
                 self.cloud_image = AzureImage(self.working_dir, self.image_disk_path)
             elif cloud_type == 'gce':
                 self.cloud_image = GoogleImage(self.working_dir, self.image_disk_path)
             else:
-                raise ValueError('Unexpected cloud type')
+                raise ValueError('Unexpected cloud type: {}'.format(cloud_type))
 
             self.cloud_image_name = self.image_name_factory(cloud_type)
         except BaseException as base_exception:
@@ -103,8 +104,7 @@ class ImageController(): # pylint: disable=too-many-instance-attributes
     def image_name_factory(cloud_type):
         """Factory pattern for ImageName"""
         if cloud_type == 'alibaba':
-            LOGGER.warning("Unimplemented cloud '%s'.", cloud_type)
-            raise SystemExit(-1)
+            return AlibabaImageName()
         if cloud_type == 'aws':
             return AWSImageName()
         if cloud_type == 'azure':
@@ -112,7 +112,7 @@ class ImageController(): # pylint: disable=too-many-instance-attributes
         if cloud_type == 'gce':
             return GoogleImageName()
 
-        raise ValueError('Unexpected cloud type')
+        raise ValueError('Unexpected cloud type: {}'.format(cloud_type))
 
     @staticmethod
     def check_valid_name(cloud_type, user_image_name):

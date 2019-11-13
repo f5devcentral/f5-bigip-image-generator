@@ -61,7 +61,7 @@ class GoogleDisk(BaseDisk):
         Just copy the path.
         """
         self.disk_to_upload = self.input_disk_path
-        super().extract()
+        LOGGER.info("Google disk_to_upload is '%s'.", self.disk_to_upload)
 
     def get_blob(self, disk_path):
         """

@@ -27,12 +27,6 @@ AZURE_IMAGE_NAME_LENGTH_MIN:
     Minimum required number of characters in an Azure image name (https://bit.ly/2m8dSIm).
   internal: true
 
-AZURE_IMAGE_MAX_RETRY:
-  accepted: "^[0-9]+$"
-  default: 3
-  description: >-
-    The number of times to retry image related operations when running Azure commands.
-
 AZURE_STORAGE_CONNECTION_STRING:
   description: >-
     Azure storage connection string used for account access.

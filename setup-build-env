@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 # Copyright (C) 2018-2019 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
@@ -12,6 +12,8 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations under
 # the License.
+
+set -e
 
 PROJECT_DIR="$(realpath "$(dirname "${BASH_SOURCE[0]}")")"
 # shellcheck source=src/lib/bash/common.sh
@@ -32,6 +34,26 @@ ADD_DEVTOOLS=false
 function print_help {
     echo "Optional arguments:"
     echo "  --add-dev-tools       Adds tools to verify code style and functionality"
+}
+
+#-----------------------------------------------------------------------------#
+# Create metadata file to track the version associated with this run
+#-----------------------------------------------------------------------------#
+function create_version_metadata {
+    # Get version from shared config vars file
+    shared_vars_file="$PROJECT_DIR/src/resource/vars/shared_vars.yml"
+    current_version=$(yq .VERSION_NUMBER.default "$shared_vars_file")
+
+    # Create version metadata
+    if ! json_write="$(jq -n --arg v "$current_version" '{"VERSION": $v}' 2>&1)"; then
+        error_and_exit "jq error while adding VERSION to json data: $json_write"
+    fi
+
+    # Write version to metadata file
+    local info_file
+    info_file="${PROJECT_DIR}/.$(basename "$0").json"
+    echo "$json_write" > "$info_file"
+    echo "Wrote version $current_version to $info_file"
 }
 
 # Process command line options
@@ -107,6 +129,9 @@ apt-get)
     # Some ubuntu distributions don't have rpm2cpio and cpio installed by default.
     sudo $PACKAGE_INSTALLER install -y --no-install-recommends rpm2cpio cpio
 
+    # genisoimage contains isoinfo command
+    sudo $PACKAGE_INSTALLER install -y genisoimage
+
     if [ -d "$OEM_DIR" ]; then
         # Ubuntu doesn't use RPMs for package management, but the rpm package is still required in order
         # to update rpm package contents.
@@ -177,8 +202,8 @@ pip3 install wheel
 #        bonus trivia:  Boto is not an acronym.  It's a species of pink river
 #        dolphin which lives in the Amazon rain forest.
 #------------------------------#
-pip3 install boto3
-pip3 install moto
+pip3 install boto3==1.10.10
+pip3 install moto==1.3.13
 #-----------------------------------------------------------------------------#
 
 
@@ -224,16 +249,18 @@ esac
 # Azure package setup
 #------------------------------#
 # python based azure-cli ARM tool
-pip3 install azure_storage_blob
+pip3 install azure-storage-blob==2.1.0
 #-----------------------------------------------------------------------------#
 
 
 #-----------------------------------------------------------------------------#
 # Alibaba package setup.
 #------------------------------#
+# oss2 of aliyun-oss-python-sdk is used to upload to the storage
+pip3 install oss2==2.8.0
 # aliyun python APIs used in alibaba_commands.py
-pip3 install aliyun-python-sdk-core
-pip3 install aliyun-python-sdk-ecs
+pip3 install aliyun-python-sdk-core==2.13.10
+pip3 install aliyun-python-sdk-ecs==4.17.6
 
 
 #-----------------------------------------------------------------------------#
@@ -247,21 +274,21 @@ pip3 install aliyun-python-sdk-ecs
 #  - https://pypi.org/project/google-auth/ (for authenticating to google using
 #  oauth2 credentials.  This is a replacement for the deprecated oauth2client
 #  module)
-pip3 install google-api-python-client google-cloud-storage google-auth
+pip3 install google-api-python-client==1.7.11 google-cloud-storage==1.22.0 google-auth==1.7.0
 
 
 #-----------------------------------------------------------------------------#
 # python-requests package setup.
 #------------------------------#
 # This is typically installed on minimal images.
-pip3 install requests
+pip3 install requests==2.22.0
 
 
 #-----------------------------------------------------------------------------#
 # retry package setup.
 #------------------------------#
 # Retry decorator for repeating service calls for recoverable errors
-pip3 install retry
+pip3 install retry==0.9.2
 
 
 #-----------------------------------------------------------------------------#
@@ -269,18 +296,18 @@ pip3 install retry
 #------------------------------#
 # yq is used to parse YAML files inside BASH scripts
 # pyyaml is used to parse YAML files inside Python scripts
-pip3 install yq
-pip3 install pyyaml
+pip3 install yq==2.9.2
+pip3 install pyyaml==5.1.2
 
 #-----------------------------------------------------------------------------#
 # Misc Python tools
 #------------------------------#
 # distro detection module for platform-specific logic.  Used since platform.distro is deprecated.
-pip3 install distro
+pip3 install distro==1.4.0
 
 if [ -d "$OEM_DIR" ]; then
     # pycdlib is used for reading, modifying, and recreating ISO files.
-    pip3 install pycdlib
+    pip3 install pycdlib==1.8.0
 fi
 
 #-----------------------------------------------------------------------------#
@@ -294,10 +321,10 @@ if [[ $ADD_DEVTOOLS = true ]]; then
     sudo $PACKAGE_INSTALLER install -y shellcheck
 
     # Install pylint (used for linting python files)
-    pip3 install pylint
+    pip3 install pylint==2.4.3
 
     # Install anybadge (used for generating images to display on pipeline)
-    pip3 install anybadge
+    pip3 install anybadge==1.5.1
 
     # Install BATS framework (used for unit testing bash files)
     sudo $PACKAGE_INSTALLER install -y bats
@@ -310,17 +337,17 @@ if [[ $ADD_DEVTOOLS = true ]]; then
     sudo $PACKAGE_INSTALLER install -y parted
     sudo $PACKAGE_INSTALLER install -y udev
 
-    # Install isoinfo if it is missing
-    sudo $PACKAGE_INSTALLER install -y genisoimage
-
     # Install modprobe
     sudo $PACKAGE_INSTALLER install -y kmod
 
     # Install update-copyright tool
-    pip3 install update-copyright
+    pip3 install update-copyright==0.6.2
 fi
 
 set +x
+
+# Create metadata
+create_version_metadata
 
 # Display advisory banners
 if [[ $ADDED_USER_TO_KVM_GROUP = true ]]; then

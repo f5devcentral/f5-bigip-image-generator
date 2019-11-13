@@ -90,6 +90,23 @@ function prepare_vhd {
 
     # Generate md5
     gen_md5 "$bundle_name"
+
+    sig_ext="$(get_sig_file_extension "$(get_config_value "IMAGE_SIG_ENCRYPTION_TYPE")")"
+    sig_file="${bundle_name}${sig_ext}"
+
+    sign_file "$bundle_name" "$sig_file"
+    # shellcheck disable=SC2181
+    if [[ $? -ne 0 ]]; then
+        log_error "Error occured during signing the ${bundle_name}"
+        return 1
+    fi
+
+    # Check if signature file was generated, if not, then mark sig_file_path to
+    # be empty indicating it was not generated
+    if [[ ! -f "$sig_file" ]]; then
+        sig_file=""
+    fi
+
     print_disk_free_space
 
     log_debug "Content of $bundle_name:"
@@ -117,6 +134,7 @@ function prepare_vhd {
             --arg input "$raw_disk" \
             --arg virtual_disk_name "$(basename "$virtual_disk_name")" \
             --arg output "$(basename "$bundle_name")" \
+            --arg sig_file "$(basename "$sig_file")" \
             --arg output_partial_md5 "$(calculate_partial_md5 "$bundle_name")" \
             --arg output_size "$(get_file_size "$bundle_name")" \
             --arg log_file "$log_file" \
@@ -129,6 +147,7 @@ function prepare_vhd {
             input: $input,
             virtual_disk_name: $virtual_disk_name,
             output: $output,
+            sig_file: $sig_file,
             output_partial_md5: $output_partial_md5,
             output_size: $output_size,
             log_file: $log_file,

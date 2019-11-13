@@ -668,8 +668,8 @@ function produce_virtual_disk {
             ;;
         alibaba)
             # shellcheck disable=SC2094
-            bash "${script_dir}/../../bin/alibaba_package_disk" "$input_raw_disk" "$artifacts_dir" "$staged_disk" \
-                    "$prepare_vdisk_json" "$log_file"
+            bash "${script_dir}/../../bin/alibaba_package_disk" "$input_raw_disk" "$staged_disk" "$artifacts_dir" \
+                    "$prepare_vdisk_json"
             ;;
         gce)
             # shellcheck disable=SC2094
@@ -698,10 +698,15 @@ function produce_virtual_disk {
 
 # Perform ISO verifications including file checks, public key checks, signature file default fallback, signature file
 # checks, and signature verification.
+# returns
+# 0 - if the iso is not present, or the verification passed
+# 1 - if the verification failed, or iso is not accessible
+# 2 - if image verification skipped due to missing signature or key
 function verify_iso {
     local iso="$1"
     local iso_sig="$2"
     local pub_key="$3"
+    local encryption_type="$4"
 
     # If there's no ISO then we don't need to verify anything.
     if [[ -z "$iso" ]]; then
@@ -717,14 +722,24 @@ function verify_iso {
     local missing_signature_or_key
     # If no public key is present then we'll skip verification.
     if [[ -z "$pub_key" ]] || [[ ! -f "$pub_key" ]]; then
-        log_warning "Missing F5 public key!  Please provide \
-ISO_SIG_PUBKEY as a path to the F5 public key to enable signature verification!"
+        log_warning "Missing public key! Please provide \
+ISO_SIG_VERIFICATION_PUBLIC_KEY or IMAGE_SIG_PUBLIC_KEY as \
+a path to the public key to enable signature verification!"
         missing_signature_or_key="true"
     fi
 
     # If the user didn't provide a signature file then we'll check for the default one next to the ISO.
     if [[ -z "$iso_sig" ]]; then
-        iso_sig="${iso}$(get_config_value "DEFAULT_SIG_FILE_EXTENSION")"
+        log_warning "ISO signature file was not provided, trying to find the signature file \
+from hashing type"
+        sig_ext=$(get_sig_file_extension "$encryption_type")
+        iso_sig="${iso}${sig_ext}"
+    fi
+
+    # If the user didn't provide an encryption type, then we can't perform verification.
+    if [[ -z "$encryption_type" ]]; then
+        log_warning "Missing ISO signature verification encryption type [${encryption_type}]!"
+        missing_signature_or_key="true"
     fi
 
     # If the signature file is inaccessible then we can't perform verification.
@@ -733,33 +748,36 @@ ISO_SIG_PUBKEY as a path to the F5 public key to enable signature verification!"
         missing_signature_or_key="true"
     fi
 
-    # iso signature or F5 public key is missing
+    # iso signature or public key is missing
     if [[ -n "$missing_signature_or_key" ]]; then
         log_warning "Skipping signature verification for ISO [${iso}]."
-        return 0
+        return 2
     fi
 
     # Perform signature verification.
     local output
-    if ! output=$(openssl dgst -sha384 -verify "$pub_key" -signature "$iso_sig" "$iso" 2>&1) ; then
+    if ! output=$(openssl dgst -"${encryption_type}" -verify "$pub_key" -signature "$iso_sig" "$iso" 2>&1) ; then
         log_error "Signature verification for ISO [${iso}] with signature file [${iso_sig}] using public key \
-[${pub_key}] failed with output: $output"
+[${pub_key}] and encryption type [${encryption_type}] failed with output: $output"
         return 1
     fi
 
-    log_info "Successfully verified ISO [${iso}] with signature file [${iso_sig}] using public key [${pub_key}]"
+    log_info "Successfully verified ISO [${iso}] with signature file [${iso_sig}] using public key [${pub_key}] \
+and encryption_type [${encryption_type}]"
 }
 
 # Copy image and its md5 to the publishing location
 # md5 file must be alongside the image and have matching path: <iso_path>.md5
+# signature_file_path can be empty
 # publishing location must exist
 function publish_image {
-    image_path=$1
-    publish_dir=$2
-    image_description=$3
+    image_path="$1"
+    sig_file_path="$2"
+    publish_dir="$3"
+    image_description="$4"
 
-    if [[ $# -ne 2 ]] && [[ $# -ne 3 ]]; then
-        error_and_exit "${FUNCNAME[0]} received $# parameters instead of 2 or 3: $*"
+    if [[ $# -ne 3 ]] && [[ $# -ne 4 ]]; then
+        error_and_exit "${FUNCNAME[0]} received $# parameters instead of 3 or 4: $*"
     fi
 
     if [[ ! -d "$publish_dir" ]]; then
@@ -772,6 +790,64 @@ function publish_image {
     elif ! cp -f "$image_path".md5 "$publish_dir"; then
         error_and_exit "Failed to copy $image_description MD5 [${image_path}] to [${publish_dir}]!"
     fi
+
+    if [[ ! -z "$sig_file_path" ]]; then
+        log_info "Copying $sig_file_path to [${publish_dir}]"
+        if ! cp -f "$sig_file_path" "$publish_dir"; then
+            error_and_exit "Failed to copy $sig_file_path to [${publish_dir}]!"
+        fi
+    fi
+}
+
+# Check that the setup script has run.
+#
+# Note: This script runs before the logger has been initialized, so log level text is required.
+function check_setup {
+    local num_args=1
+    local check_setup_json_dir="$1"
+    if [[ $# -ne $num_args ]]; then
+        error_and_exit "${FUNCNAME[0]} received $# arguments, but was expecting $num_args"
+    fi
+    log_info "Check that the setup script has been run."
+
+    # There are a number of conditions that will be flagged, but the message to the user will
+    # be the same.
+    local setup_script="setup-build-env"
+    local error_msg="Error: Run ${setup_script} before running build-image."
+
+    # Check check setup json file directory exists
+    if [[ ! -d "$check_setup_json_dir" ]]; then
+        log_warning "Setup json directory $check_setup_json_dir doesn't exist"
+        log_warning "Warning: The ${setup_script} script must be run when creating a workspace."
+        error_and_exit "$error_msg"
+    fi
+
+    # Check check setup json file exists
+    local info_file="${check_setup_json_dir}/.${setup_script}.json"
+    if [[ ! -f "$info_file" ]]; then
+        log_warning "Setup json file $info_file doesn't exist"
+        log_warning "Warning: The ${setup_script} script must be run when creating a workspace."
+        error_and_exit "$error_msg"
+    fi
+
+    # Get the version associated with the setup script run
+    local json_read
+    json_read="$(<"$info_file")"
+    if ! setup_version="$(jq -r '.VERSION // empty' <<< "$json_read" 2>&1)"; then
+        error_and_exit "jq error while retrieving VERSION from json data: $json_read from $info_file"
+    fi
+
+    # Look up current generator version
+    local current_version
+    current_version="$(get_config_value "VERSION_NUMBER")"
+
+    if [[ "$setup_version" != "$current_version" ]]; then
+        log_warning "Warning: The ${setup_script} script must be run after updating a workspace."
+        log_warning "Warning: Setup version:$setup_version does not match current version:$current_version."
+        error_and_exit "$error_msg"
+    fi
+
+    log_info "The setup script has been run for version:$current_version."
 }
 
 # Perform logic for handling an upgrade to a new image generator version. This will check the

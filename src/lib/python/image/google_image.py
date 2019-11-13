@@ -54,7 +54,12 @@ class GoogleImage(BaseImage):
         self.gce_service = discovery.build('compute', 'v1', credentials=self.gce_credentials)
 
     def clean_up(self):
-        """clean-up"""
+        """Clean-up cloud objects created by this class and its members."""
+        LOGGER.info("Cleaning-up GoogleImage artifacts.")
+
+        if self.disk is not None:
+            self.disk.clean_up()
+        LOGGER.info("Completed GoogleImage clean-up.")
 
     def extract_disk(self):
         """Extract disk for upload"""

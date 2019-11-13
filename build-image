@@ -55,6 +55,19 @@ function main {
         error_and_exit "init_config has failed"
     fi
 
+    # Check that setup script has been run CHECK_SETUP_JSON_DIR is used so that this works
+    # in environments where BASH_SOURCE isn't as expected.
+    local check_setup_json_dir
+    # shellcheck disable=SC2153
+    if [[ -z "$CHECK_SETUP_JSON_DIR" ]]; then
+        check_setup_json_dir="$(realpath "$(dirname "${BASH_SOURCE[0]}")")"
+        log_info "Set check_setup_json_dir:$check_setup_json_dir"
+    else
+        check_setup_json_dir="$CHECK_SETUP_JSON_DIR"
+        log_info "Use CHECK_SETUP_JSON_DIR for check_setup_json_dir:$check_setup_json_dir"
+    fi
+    check_setup "$check_setup_json_dir"
+
     local cloud iso iso_sig ehf_iso ehf_iso_sig pub_key modules boot_locations platform artifacts_directory \
           config_file cloud_image_name
     cloud="$(get_config_value "CLOUD")"
@@ -62,17 +75,35 @@ function main {
     iso_sig="$(get_config_value "ISO_SIG")"
     ehf_iso="$(get_config_value "EHF_ISO")"
     ehf_iso_sig="$(get_config_value "EHF_ISO_SIG")"
-    pub_key="$(get_config_value "ISO_SIG_PUBKEY")"
+    pub_key1="$(get_config_value "ISO_SIG_VERIFICATION_PUBLIC_KEY")"
+    encr_type_1="$(get_config_value "ISO_SIG_VERIFICATION_ENCRYPTION_TYPE")"
+    pub_key2="$(get_config_value "IMAGE_SIG_PUBLIC_KEY")"
+    encr_type_2="$(get_config_value "IMAGE_SIG_ENCRYPTION_TYPE")"
     modules="$(get_config_value "MODULES")"
     boot_locations="$(get_config_value "BOOT_LOCATIONS")"
     platform="$(get_config_value "PLATFORM")"
     config_file="$(get_config_value "CONFIG_FILE")"
     cloud_image_name="$(get_config_value "CLOUD_IMAGE_NAME")"
-    if ! verify_iso "$iso" "$iso_sig" "$pub_key"; then
-        error_and_exit "verify_iso has failed"
-    elif ! verify_iso "$ehf_iso" "$ehf_iso_sig" "$pub_key"; then
-        error_and_exit "verify_iso has failed"
-    elif ! prepare_artifacts_directory "$iso" "$modules" "$boot_locations" "$platform"; then
+
+    if ! verify_iso "$iso" "$iso_sig" "$pub_key1" "$encr_type_1"; then
+        # iso verification was skipped or failed with pub_key1
+        rc=0
+        verify_iso "$iso" "$iso_sig" "$pub_key2" "$encr_type_2" || rc=$?
+        if [[ "$rc" -eq 1 ]]; then
+            error_and_exit "verify_iso has failed"
+        fi
+    fi
+
+    if ! verify_iso "$ehf_iso" "$ehf_iso_sig" "$pub_key1" "$encr_type_1"; then
+        # iso verification was skipped or failed with pub_key1
+        rc=0
+        verify_iso "$ehf_iso" "$ehf_iso_sig" "$pub_key2" "$encr_type_2" || rc=$?
+        if [[ "$rc" -eq 1 ]]; then
+            error_and_exit "verify_iso for has failed"
+        fi
+    fi
+
+    if ! prepare_artifacts_directory "$iso" "$modules" "$boot_locations" "$platform"; then
         error_and_exit "prepare_artifacts_directory has failed"
     fi
     artifacts_directory="$(get_config_value "ARTIFACTS_DIR")"
@@ -222,7 +253,23 @@ function main {
                 if ! gen_md5 "$updated_iso_path"; then
                     error_and_exit "Failed to generate ${updated_iso_path}.md5"
                 fi
-                publish_image "$updated_iso_path" "$output_dir" "updated iso"
+
+                local sig_ext
+                sig_ext=$(get_sig_file_extension "$(get_config_value "IMAGE_SIG_ENCRYPTION_TYPE")")
+                local sig_file
+                sig_file="${updated_iso_path}${sig_ext}"
+
+                sign_file "$updated_iso_path" "$sig_file"
+                # shellcheck disable=SC2181
+                if [[ $? -ne 0 ]]; then
+                    error_and_exit "signing of $updated_iso_path has failed, check '$log_file' " \
+                                   " for more details."
+                fi
+                if [[ ! -f "$sig_file" ]]; then
+                    sig_file=""
+                fi
+
+                publish_image "$updated_iso_path" "$sig_file" "$output_dir" "updated iso"
                 log_info "${BASH_SOURCE[0]} HAS FINISHED SUCCESSFULLY."
                 return 0
             else
@@ -311,8 +358,21 @@ function main {
          error_and_exit "produce_virtual_disk failed, check '$log_file' for more details."
     fi
 
+
+    local sig_file_path
+    sig_file_path=$(get_json_key_value "$prepare_vdisk_json" "sig_file")
+    # shellcheck disable=SC2181
+    if [[ $? -ne 0 ]]; then
+        error_and_exit "Error occured during finding sig_file_path from json"
+    fi
+
+    log_info "The sig file path: $sig_file_path"
+    if [[ ! -z "$sig_file_path" ]]; then
+        sig_file_path="${artifacts_directory}/staging/${sig_file_path}"
+    fi
+
     log_info "Copying staged virtual disk from [${staged_disk}] to [${output_disk}]"
-    publish_image "$staged_disk" "$output_dir" "staged virtual disk"
+    publish_image "$staged_disk" "$sig_file_path" "$output_dir" "staged virtual disk"
 
     # Logging finish marker.
     log_info "------======[ Finished disk generation for '$platform' '$modules'" \
@@ -320,7 +380,7 @@ function main {
 
     if [[ ! -z "$cloud" ]]; then
         case "$cloud" in
-        azure | aws | gce)
+        alibaba | azure | aws | gce)
             # If user didn't supply a cloud image name, create one.
             if [[ -z "$cloud_image_name" ]]; then
                 cloud_image_opt="--seed-image-name"

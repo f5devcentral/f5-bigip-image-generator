@@ -540,7 +540,7 @@ function create_raw_disk {
             --arg input "$ve_info_json" \
             --arg disk_name "$(basename "$raw_disk")" \
             --arg status "$status" \
-            --arg image_size "$BIGIP_HDD_GB" \
+            --arg image_size "${BIGIP_HDD_GB}GiB" \
             --arg fix_boot_mib "$TMI_VOLUME_FIX_BOOT_MIB" \
             --arg fix_swap_mib "$TMI_VOLUME_FIX_SWAP_MIB" \
             --arg fix_swapvol_mib "$TMI_VOLUME_FIX_SWAPVOL_MIB" \

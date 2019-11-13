@@ -38,12 +38,6 @@ AWS_CREATE_IMAGE_RETRY_DELAY:
     Sleep duration (in seconds) between retries when checking for image status.
   internal: true
 
-AWS_IMAGE_MAX_RETRY:
-  accepted: "^[0-9]+$"
-  default: 3
-  description: >-
-    The number of times to retry image related operations when running AWS commands.
-
 AWS_IMAGE_NAME_LENGTH_MAX:
   default: 64
   description: >-
@@ -84,8 +78,6 @@ AWS_SECRET_ACCESS_KEY:
   required: true
 
 AWS_IMAGE_SHARE_ACCOUNT_IDS:
+  accepted: "^[[0-9]+(,? ?[0-9]+)+]$"
   description: >-
-    List of AWS account IDs or the path to the .yml file containing the list of account IDs with which you want the generated
-    AWS AMI shared.
-
-
+    List of AWS account IDs with which you want the generated image shared.

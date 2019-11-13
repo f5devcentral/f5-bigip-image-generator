@@ -102,10 +102,10 @@ function recreate_ova {
     #    file.  This provides an additional layer of security in case the manifest file itself has
     #    been tampered with.
     local private_key public_key sig_file pub_file
-    private_key="$(get_config_value "OVA_SIGN_PRIVATE_KEY")"
-    public_key="$(get_config_value "OVA_SIGN_PUBLIC_KEY")"
+    private_key="$(get_config_value "IMAGE_SIG_PRIVATE_KEY")"
+    public_key="$(get_config_value "IMAGE_SIG_PUBLIC_KEY")"
     if [[ ! -z "$private_key" ]] && [[ ! -z "$public_key" ]]; then
-        encryption_type="$(get_config_value "OVA_SIGN_ENCRYPTION_TYPE")"
+        encryption_type="$(get_config_value "IMAGE_SIG_ENCRYPTION_TYPE")"
         log_info "Signing manifest ${manifest_file} using encryption type ${encryption_type} with private key ${private_key}"
         sig_file="${general_bundle_name}.sig"
         if openssl dgst -"$encryption_type" -sign "$private_key" "$manifest_file" > "$sig_file"; then
@@ -119,7 +119,7 @@ function recreate_ova {
         fi
     else
         log_warning "No signing keys were provided.  Skipping OVA signing process!"
-        log_warning "Please provide OVA_SIGN_PRIVATE_KEY and OVA_SIGN_PUBLIC_KEY if you wish to sign OVA files!"
+        log_warning "Please provide IMAGE_SIG_PRIVATE_KEY and IMAGE_SIG_PUBLIC_KEY if you wish to sign OVA files!"
     fi
 
     # Create new OVA file based on updated contents
@@ -772,6 +772,22 @@ function prepare_ova {
     fi
     recreate_ova "$general_bundle_name" "$bundle_file_name" "$repack_dir" "$out_dir"
 
+    sig_ext="$(get_sig_file_extension "$(get_config_value "IMAGE_SIG_ENCRYPTION_TYPE")")"
+    sig_file="${bundle_name}${sig_ext}"
+
+    sign_file "$bundle_name" "$sig_file"
+    # shellcheck disable=SC2181
+    if [[ $? -ne 0 ]]; then
+        log_error "Error occured during signing the ${bundle_name}"
+        return 1
+    fi
+
+    # Check if signature file was generated, if not, then mark sig_file_path to
+    # be empty indicating it was not generated
+    if [[ ! -f "$sig_file" ]]; then
+        sig_file=""
+    fi
+
     local status="success"
     # Generate the output_json.
     if jq -M -n \
@@ -782,6 +798,7 @@ function prepare_ova {
             --arg platform "$platform" \
             --arg input "$raw_disk" \
             --arg output "$(basename "$bundle_name")" \
+            --arg sig_file "$(basename "$sig_file")" \
             --arg output_partial_md5 "$(calculate_partial_md5 "$bundle_name")" \
             --arg output_size "$(get_file_size "$bundle_name")" \
             --arg log_file "$log_file" \
@@ -793,6 +810,7 @@ function prepare_ova {
             platform: $platform,
             input: $input,
             output: $output,
+            sig_file: $sig_file,
             output_partial_md5: $output_partial_md5,
             output_size: $output_size,
             log_file: $log_file,

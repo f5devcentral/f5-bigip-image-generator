@@ -60,7 +60,6 @@ class BaseDisk:
     def extract(self):
         """Extract disk for upload.
         Real work to be done by the derived class implementations"""
-        LOGGER.info("BaseDisk.disk_to_upload is '%s'.", self.disk_to_upload)
 
     def upload(self):
         """Upload disk to the cloud storage.

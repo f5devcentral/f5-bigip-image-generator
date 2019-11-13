@@ -30,24 +30,61 @@ ALIBABA_BUCKET:
     Alibaba OSS bucket used for image storage.
   required: true
 
-ALIBABA_IMAGE_MAX_RETRY:
+ALIBABA_IMAGE_IMPORT_MONITOR_RETRY_COUNT:
   accepted: "^[0-9]+$"
-  default: 3
+  default: 60
   description: >-
-    The number of times to retry image related operations when running Alibaba commands.
-
-ALIBABA_QCOW2_OPTIONS:
-  default: "compat=0.10"
-  description: >-
-    Disk options to pass to qemu when creating a qcow2 file from a raw disk for Alibaba.
+    Maximum number of retries to check if image import finished.
   internal: true
+
+ALIBABA_IMAGE_IMPORT_MONITOR_RETRY_DELAY:
+  accepted: "^[0-9]+$"
+  default: 60
+  description: >-
+    Sleep duration (in seconds) between retries to check if image import finished.
+  internal: true
+
+ALIBABA_IMAGE_NAME_LENGTH_MAX:
+  accepted: "^[0-9]+$"
+  default: 128
+  description: >-
+    Maximum length of image name in alicloud.
+  internal: true
+
+ALIBABA_IMAGE_NAME_LENGTH_MIN:
+  accepted: "^[0-9]+$"
+  default: 2
+  description: >-
+    Minimum length of image name in alicloud.
+  internal: true
+
+ALIBABA_IMAGE_SHARE_ACCOUNT_IDS:
+  accepted: "^[[0-9]+(,? ?[0-9]+)+]$"
+  description: >-
+    List of Alibaba account IDs with which you want the generated image shared.
 
 ALIBABA_REGION:
   description: >-
     Alibaba ECS region used for image generation.
   required: true
 
-ALIBABA_SHARE_ACCOUNT_IDS:
+ALIBABA_THREAD_COUNT:
+  accepted: "^[1-9][0-9]*$"
+  default: 10
   description: >-
-    Comma-separated list of account IDs with which you want the generated image shared.
-  required: true
+    Number of concurrent OSS upload threads.
+  internal: true
+
+ALIBABA_UPLOAD_FILE_RETRY_COUNT:
+  accepted: "^[0-9]+$"
+  default: 9
+  description: >-
+    Maximum number of retries for Alibaba file upload.
+  internal: true
+
+ALIBABA_UPLOAD_FILE_RETRY_DELAY:
+  accepted: "^[0-9]+$"
+  default: 60
+  description: >-
+    Sleep duration (in seconds) between retries for Alibaba file upload.
+  internal: true

@@ -18,6 +18,6 @@ set -e
 # Execute this file directly with bash to package a provided GCE raw disk file into an archive at the designated
 # location without needing to source the gce_commands library in the calling script.  See gce_commands.gce_disk_package
 # for parameter details and related library calls.
-# shellcheck source=src/lib/bash/gce/gce_commands.sh
-source "$(realpath "$(dirname "${BASH_SOURCE[0]}")")/../lib/bash/gce/gce_commands.sh"
+# shellcheck source=src/lib/bash/prepare_gce_virtual_disk.sh
+source "$(realpath "$(dirname "${BASH_SOURCE[0]}")")/../lib/bash/prepare_gce_virtual_disk.sh"
 gce_disk_package "${@:1}"

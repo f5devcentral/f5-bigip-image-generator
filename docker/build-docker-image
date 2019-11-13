@@ -1,0 +1,40 @@
+#!/bin/bash
+# Copyright (C) 2019 F5 Networks, Inc
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not
+# use this file except in compliance with the License. You may obtain a copy of
+# the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations under
+# the License.
+
+cd ..
+
+if [ ! -x  "$(command -v docker)" ]; then
+  printf -- "You don\'t seem to have Docker installed.\n";
+  printf -- 'Get it: https://www.docker.com/community-edition\n';
+  printf -- 'Or run docker in your terminal for suggestions for installing\n';
+  printf -- 'Exiting with code 127...\n';
+  exit 127;
+fi;
+set -e
+
+DOCKERFILE="Dockerfile"
+TAG="ubuntu:ve_image_generator"
+BASE_REPO="ubuntu:18.04"
+ADD_DEVTOOLS_OPTION=""
+USERNAME="$(whoami)"
+
+docker build  \
+      -f "docker/$DOCKERFILE" \
+      --tag "$TAG" \
+      --build-arg BASE_REPO="$BASE_REPO" \
+      --build-arg ADD_DEVTOOLS_OPTION="$ADD_DEVTOOLS_OPTION" \
+      --build-arg USERNAME="$USERNAME" \
+      --no-cache \
+      .
