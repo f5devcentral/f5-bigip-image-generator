@@ -436,8 +436,8 @@ completed and submitted the F5 Contributor License Agreement.
 [12]: https://docs.aws.amazon.com/quickstarts/latest/s3backup/step-1-create-bucket.html
 [13]: https://cloud.google.com/storage/docs/creating-buckets
 [14]: https://clouddocs.f5.com/cloud/public/v1/vmware/vmware_setup.html
-[15]: https://github.com/jgruber/tmos-cloudinit/tree/master/tmos_configdrive_builder
-[16]: https://github.com/jgruber/tmos-cloudinit#userdata-usage-3
+[15]: https://github.com/f5devcentral/tmos-cloudinit/tree/master/tmos_configdrive_builder
+[16]: https://github.com/f5devcentral/tmos-cloudinit
 [17]: https://clouddocs.f5.com/cloud/public/v1/hyperv_index.html
 [18]: https://clouddocs.f5.com/cloud/public/v1/kvm_index.html
 [19]: https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blob-container-properties-metadata
