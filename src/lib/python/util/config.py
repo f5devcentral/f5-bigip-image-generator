@@ -83,7 +83,11 @@ def set_config_value(key, value):
     # Look up the value for the desired key by using the config system prefix.
     prefix = os.getenv('ENVIRONMENT_VARIABLE_PREFIX') or ''
     env_key = prefix + key
-    os.environ[env_key] = value
+    if value is None:
+        if env_key in os.environ:
+            del os.environ[env_key]
+    else:
+        os.environ[env_key] = value
 
 
 def get_dict_from_config_json(key):
