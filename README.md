@@ -44,7 +44,7 @@ The following table lists system requirements for using the Image Generator to c
 | Component                 | Version                                                         | Recommended System Requirements|                                                      
 |---------------------------| :---------------------------------------------------------------| :------------------------------|
 | F5 BIG-IP Image Generator | 1.0                                                             | - **Memory**: 1GB memory <br> - **Disk space**: depends on number of images you want to create.<br> See following BIG-IP VE system requirements.|                                                             
-| [F5 BIG-IP VE][1]         | BIG-IP 13.1.0.2+ <br>BIG-IP 14.X<br>BIG-IP 15.X          | A minimum of 20GB per image    |    
+| [F5 BIG-IP VE][1]         | - BIG-IP 13.1.0.2+ (except Alibaba) <br>- BIG-IP 14.X<br> - BIG-IP 14.1.0.3+ (for Alibaba ONLY)<br> - BIG-IP 15.X          | A minimum of 20GB per image    |    
 | Ubuntu (F5 Image Generator-validated)                    | 18.04 LTS operating system       | Tools: <br>- Git<br> - Python 3.x<br> - Cloud provider SDK tools <br> See [setup script][2].|
 | Open Virtualization Format Tool (ovftool) | 4.3.0 | If you deploy in VMware (ESX/i Server) or AWS cloud, you must install the [ovftool][22] for creating the virtual disk. |
 	 
@@ -54,7 +54,7 @@ The following table lists supported public and private cloud platforms as well a
 
 | Cloud Provider            | Requirements                                                                                                        
 |---------------------------| :---------------------------------------------------------------|
-|Alibaba                    |  Sufficient permissions to create or describe the following resources:<br> - Credentials/API Keys<br> - SSH Keys uploaded<br> - Application credentials<br> - [OSS, Bucket storage container][29] <br>(See this [Alibaba article][30] for more Resource Access Manager (RAM) information.)|
+|Alibaba                    |  BIG-IP 14.1.0.3+ and sufficient permissions to create or describe the following resources:<br> - Credentials/API Keys<br> - SSH Keys uploaded<br> - Application credentials<br> - [OSS, Bucket storage container][29] <br>(See this [Alibaba article][30] for more Resource Access Manager (RAM) information.)|
 | AWS                       | Sufficient permissions to create or describe the following resources:<br> - credentials/API Keys<br> - [S3 Bucket Storage Container][12]<br> - Install the [ovftool][22] for creating the virtual disk.<br> - IAM Role with import permissions <br>(See this [AWS article][3] for more VM Import Service Role information.) |
 | Azure                     | Sufficient permissions to create or describe the following resources:<br> - Credentials/API Keys<br> - [Storage Container][11] and [storage connection strings][28]<br> (For more information, see this articles about [creating a service principle][10].)|
 | Google Cloud (GCE)        | Sufficient permissions to create or describe the following resources:<br> - Credentials/API Keys<br> - Application  credentials<br> - [Storage Container][13] <br>(See this [GCE article][9] for more service account information.)|
@@ -212,7 +212,8 @@ command line >  configuration file >  environment variable. To access the Image 
 
    * [Alibaba][26]
    * [AWS][6]
-   * [Azure][7]
+   * [Azure][7] - When creating BIG-IP images in Azure, you must also [create an application][31]. Consult the [Azure ReadMe][7] file for more information.
+   
    * [GCE ][8]  
     
    The following platforms do not currently require platform-specific configuration:
@@ -396,7 +397,7 @@ All known issues are now on the GitHub **Issues** tab for better tracking and vi
 
 ### Copyright
 
-Copyright (C) 2018-2019 F5 Networks, Inc.
+Copyright (C) 2019-2020 F5 Networks, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not
 use this file except in compliance with the License. You may obtain a copy of
@@ -451,4 +452,5 @@ completed and submitted the F5 Contributor License Agreement.
 [27]: https://github.com/f5devcentral/f5-bigip-image-generator/issues?q=is%3Aopen+is%3Aissue+label%3A%22known+issue%22
 [28]: https://docs.microsoft.com/en-us/azure/storage/common/storage-configure-connection-string
 [29]: https://www.alibabacloud.com/help/doc-detail/31885.htm
-[30]: https://www.alibabacloud.com/help/doc-detail/92270.htm?spm=a2c63.p38356.b99.123.319c412aF3kxA0              
+[30]: https://www.alibabacloud.com/help/doc-detail/92270.htm?spm=a2c63.p38356.b99.123.319c412aF3kxA0
+[31]: https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal            
