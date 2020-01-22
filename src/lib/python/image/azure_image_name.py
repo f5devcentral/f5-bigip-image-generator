@@ -23,19 +23,18 @@ class AzureImageName(ImageName):
     """Azure image name"""
     def __init__(self):
 
-        # Valid Length = 1 to 1024 characters(Tested in Azure Portal and is allowed)
+        # Valid Length = 1 to 80 characters(Tested in Azure Portal and is allowed)
         # alphanumeric characters - 0-9a-zA-Z
-        # Safe special URL Characters: $-_.+!*'(),,
-        # Tested special URL characters in Azure Portal and usage of *! etc.sometimes
-        # causes problems. So, we are not going to allow all safe URL Characters.
+        # The name must begin with a letter or number, end with a letter, number or
+        # underscore, and may contain only letters, numbers, underscores, periods, or hyphens.
 
         min_chars = int(get_config_value('AZURE_IMAGE_NAME_LENGTH_MIN'))
         max_chars = int(get_config_value('AZURE_IMAGE_NAME_LENGTH_MAX'))
+
         rules = ImageNameRules(min_chars, max_chars,
-                               match_regex=r'^[a-zA-Z0-9$\-_+!().\']{1,1024}$')
-
+                               match_regex= \
+                                   r'^[a-zA-Z0-9]([a-zA-Z0-9\-\.\_]{0,78}[a-zA-Z0-9\_])?$')
         # Use default replacement char ('-') and padding (10 chars)
-        transform = ImageNameTransform(disallowed_regex=r'[^a-zA-Z0-9$\-_+!()_.\']',
+        transform = ImageNameTransform(disallowed_regex=r'[^a-zA-Z0-9\-\.\_]',
                                        to_lower=False)
-
         super().__init__(rules, transform)

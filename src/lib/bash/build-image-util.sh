@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2018-2019 F5 Networks, Inc
+# Copyright (C) 2018-2020 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -530,6 +530,33 @@ function get_release_version_number {
         rel_version="${rel_version}${temp}"
     done
     echo "${rel_version}"
+}
+
+
+# validate that iso version is supported by the tool for the specified platform
+function validate_iso_version {
+    local platform="$1"
+
+    if [[ $# -ne 1 ]]; then
+        error_and_exit "Usage: ${FUNCNAME[0]} <platform>"
+    elif ! is_supported_platform "$platform"; then
+        error_and_exit "Unsupported platform '$platform'"
+    fi
+
+    local floor_release
+    case "$platform" in
+        alibaba) # alibaba is supported starting v14.1.0.3
+            floor_release=14010003
+            ;;
+        *) # all other platforms have been supported at least starting v13.1.0.2
+            floor_release=13010002
+            ;;
+    esac
+
+    if [[ $BIGIP_VERSION_NUMBER -lt $floor_release ]]; then
+        error_and_exit "Platform '$platform' is supported starting release $floor_release," \
+            "but iso version is $BIGIP_VERSION_NUMBER."
+    fi
 }
 
 

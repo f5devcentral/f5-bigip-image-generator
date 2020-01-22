@@ -32,10 +32,12 @@ class AzureDisk(BaseDisk):
     """
     Manage Azure disk
     """
+    # pylint: disable=too-many-instance-attributes
     def __init__(self, input_disk_path, working_dir):
         """Initialize azure disk object."""
         # First initialize the super class.
         super().__init__(input_disk_path, working_dir)
+        self.uploaded_disk_url = None
 
         self.connection_string = get_config_value('AZURE_STORAGE_CONNECTION_STRING')
         self.container_name = get_config_value('AZURE_STORAGE_CONTAINER_NAME')
@@ -59,7 +61,7 @@ class AzureDisk(BaseDisk):
         # the disk-name are auto-generated during disk extraction), append disk extension
         # to the uploaded disk name.
         self.uploaded_disk_name = disk_name + '.vhd'
-        LOGGER.info("The uploaded disk name is'%s'", self.uploaded_disk_name)
+        LOGGER.info("The uploaded disk name is '%s'.", self.uploaded_disk_name)
 
     def extract(self):
         """Extract the vhd disk out of tar.gz."""
@@ -114,11 +116,12 @@ class AzureDisk(BaseDisk):
                 LOGGER.error("Exception during uploading %s", self.disk_to_upload)
                 return False
 
-            vhd_url = self.svc.make_blob_url(self.container_name, self.uploaded_disk_name)
+            self.uploaded_disk_url = self.svc.make_blob_url(self.container_name,
+                                                            self.uploaded_disk_name)
 
-            self.metadata.set(self.__class__.__name__, 'vhd_url', vhd_url)
+            self.metadata.set(self.__class__.__name__, 'vhd_url', self.uploaded_disk_url)
             self.metadata.set(self.__class__.__name__, 'image_id', self.uploaded_disk_name)
-            LOGGER.info('Uploaded vhd is: %s', vhd_url)
+            LOGGER.info('Uploaded disk url is: %s', self.uploaded_disk_url)
             return True
 
         retrier = Retrier(_upload_impl)

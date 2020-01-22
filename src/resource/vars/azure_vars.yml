@@ -12,32 +12,16 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-
-AZURE_IMAGE_NAME_LENGTH_MAX:
-  accepted: "^[0-9]+$"
-  default: 1024
+AZURE_APPLICATION_ID:
   description: >-
-    source -https://bit.ly/2Q8UHOl
-  internal: true
-
-AZURE_IMAGE_NAME_LENGTH_MIN:
-  accepted: "^[0-9]+$"
-  default: 1
-  description: >-
-    Minimum required number of characters in an Azure image name (https://bit.ly/2m8dSIm).
-  internal: true
-
-AZURE_STORAGE_CONNECTION_STRING:
-  description: >-
-    Azure storage connection string used for account access.
-  direct_export: true
+    Application (client role) ID to access Azure tenant.
   protected: true
   required: true
 
-AZURE_STORAGE_CONTAINER_NAME:
+AZURE_APPLICATION_SECRET:
   description: >-
-    Name of Azure storage container to use for generated images.
-  direct_export: true
+    Application (client role) secret to access Azure tenant.
+  protected: true
   required: true
 
 AZURE_BLOB_UPLOAD_COMPLETED_RETRY_COUNT:
@@ -67,3 +51,66 @@ AZURE_BLOB_UPLOAD_TIMEOUT:
   description: >-
     Duration (in seconds) by which the system can complete the blob upload.
   internal: true
+
+AZURE_DELETE_IMAGE_RETRY_COUNT:
+  accepted: "^[0-9]+$"
+  default: 120
+  description: >-
+    Maximum number of retries for the image to become deleted after issuing delete command.
+  internal: true
+
+AZURE_DELETE_IMAGE_RETRY_DELAY:
+  accepted: "^[0-9]+$"
+  default: 5
+  description: >-
+    Sleep duration (in seconds) between retries when checking for the status of the deleted image.
+  internal: true
+
+AZURE_IMAGE_NAME_LENGTH_MAX:
+  accepted: "^[0-9]+$"
+  default: 80 
+  description: >-
+    Maximum allowed Azure Image Name length.
+  internal: true
+
+AZURE_IMAGE_NAME_LENGTH_MIN:
+  accepted: "^[0-9]+$"
+  default: 1
+  description: >-
+    Minimum required number of characters in an Azure Image name.
+  internal: true
+
+AZURE_REGION:
+  description: >-
+    Region to use for Azure image generation.
+  required: true
+
+AZURE_RESOURCE_GROUP:
+  description: >-
+    Azure resource group containing the images.
+  required: true
+
+AZURE_STORAGE_CONNECTION_STRING:
+  description: >-
+    Azure storage connection string used for account access.
+  direct_export: true
+  protected: true
+  required: true
+
+AZURE_STORAGE_CONTAINER_NAME:
+  description: >-
+    Name of Azure storage container to use for generated images.
+  direct_export: true
+  required: true
+
+AZURE_SUBSCRIPTION_ID:
+  description: >-
+    ID of subscription to Azure account.
+  protected: true
+  required: true
+
+AZURE_TENANT_ID:
+  description: >-
+    ID of Azure Active Directory (Azure AD) tenant.
+  protected: true
+  required: true

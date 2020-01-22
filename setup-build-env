@@ -250,6 +250,8 @@ esac
 #------------------------------#
 # python based azure-cli ARM tool
 pip3 install azure-storage-blob==2.1.0
+# Azure SDK for Python
+pip3 install azure-mgmt-compute==4.4.0
 #-----------------------------------------------------------------------------#
 
 
