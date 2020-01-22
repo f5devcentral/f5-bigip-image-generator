@@ -31,7 +31,7 @@ Define the following parameters in a config file or set as an environment variab
 ##### NOTE
 ----------
 
-F5 recommends passing the credentials via ENV or CLI, rather than putting them in a configuration file.
+It is recommended to pass the credentials via ENV or CLI, rather than putting them in a configuration file.
 
 ---------------
 
@@ -41,6 +41,30 @@ F5 recommends passing the credentials via ENV or CLI, rather than putting them i
 ./build-image -i /var/tmp/BIGIP-15.0.0-0.0.39.iso -c config.yml -p gce -m ltm -b 1
 
 ```
+
+### Copyright
+
+Copyright (C) 2019-2020 F5 Networks, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use this file except in compliance with the License. You may obtain a copy of
+the License at  
+
+[http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0)  
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations under
+the License.
+
+
+### Contributor License Agreement
+
+Individuals or business entities who contribute to this project must have
+completed and submitted the F5 Contributor License Agreement.
+
+
 
 [1]: https://cloud.google.com/storage/docs/creating-buckets
 [9]: https://cloud.google.com/iam/docs/creating-managing-service-accounts
