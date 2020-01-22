@@ -2,7 +2,7 @@
 
 In Albaba, the image generator tool will do the following:
 
-1. Create a virtual disk image locally.
+1. Create a virtual disk image of BIG-IP 14.1.0.3+ locally.
 2. Upload the virtual disk image to an Alibaba OSS bucket.
 3. Create the virtual machine image.
 
@@ -46,6 +46,33 @@ It is recommended to pass the credentials via ENV or CLI, rather than putting th
 ./build-image -i /var/tmp/BIGIP-15.0.0-0.0.39.iso -c config.yml -p alibaba -m ltm -b 1
 
 ```
+
+### Copyright
+
+Copyright (C) 2019-2020 F5 Networks, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use this file except in compliance with the License. You may obtain a copy of
+the License at  
+
+[http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0)  
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations under
+the License.
+
+
+### Contributor License Agreement
+
+Individuals or business entities who contribute to this project must have
+completed and submitted the F5 Contributor License Agreement.
+
+
+
+
+
 
 [1]: https://www.alibabacloud.com/help/doc-detail/31885.htm
 [2]: https://www.alibabacloud.com/help/doc-detail/25464.htm
