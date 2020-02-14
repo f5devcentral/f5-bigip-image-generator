@@ -124,6 +124,12 @@ This section provides steps for installing the generator tool, and then using th
 ### Docker container setup
 To avoid installing programs to your environment and enable running simultaneous image-builds on the same computer, you can set up a Docker container and build BIG-IP images using that container.
 
+##### TIP
+   ---------------------------------------------------
+   Before building a Docker image, F5 recommends placing all your asset files within that Docker file directory, rather than referencing a local file.
+   
+   ---------------------------------------------------
+
 1. To build the Docker image, change directories to the ``docker`` directory and type, ``./build-docker-image``.
 2. To pass in variables to the container, add a ``config.yml`` file to that ``docker`` directory, which you want mounted when running the container. Avoid keeping credentials in this config.yml file. Instead, consider passing in credentials as environment variables, similar to other docker containers, with the ``-e`` flag.
 3. After your container is built, run that container to build an image by running the ``build-image`` script as you would normally at the end of your docker run command (passing parameters is the same, as if not using a container). For example:
@@ -293,6 +299,18 @@ You can locate files in the following directories:
 ## Troubleshooting guide
 
 This section provides troubleshooting information for setting up the environment and running the Image Generator tool, as well as common issues with supported cloud providers.
+
+**Docker error message**:
+```
+Temporary location for injected files: '/workdir/artifacts/BIGIP-15.1.0-0.0.31/aws/ltm_1slot/tmp.CgrVUToDbf/stage.initrd/etc/injected_files'
+Collecting information about installed software on the build machine
+copy 'authorized_keys' to a temporary location for '/home/admin/.ssh/authorized_keys'
+Invalid URL 'authorized_keys': No schema supplied.
+```
+
+**Remedy**:
+
+You see this message when your asset files reside in a local directory, or a relative directory from where you are running the Docker command. Relocate your asset files to a Docker file directory or mount a different volume and include those files in the volume BEFORE building your image.
 
 **Setup error message**:
 
