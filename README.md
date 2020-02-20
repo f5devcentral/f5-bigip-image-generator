@@ -210,7 +210,7 @@ command line >  configuration file >  environment variable. To access the Image 
     |MODULES|-m|Yes|[all \| ltm]|BIG-IP components supported by the specified image.|
     |PLATFORM|-p|Yes|[alibaba \| aws \| azure \| gce \| qcow2 \| vhd \| vmware]|The target platform for generated images.|
     |REUSE| |No| |Keep local files created by previous runs of the same <PLATFORM, MODULES, BOOT_LOCATIONS> combination.|    
-    |UPDATE_IMAGE_FILES| |No|[value]|Files you want injected into the image. For each of the injections, required values include source (file or directory) and destination (absolute full path).|
+    |UPDATE_IMAGE_FILES| |No|[value]|Files you want injected into the image. For each of the injections, required values include source (file, directory, or URL) and destination (absolute full path).|
     |UPDATE_IMAGE_FILES_IGNORE_URL_TLS| |No| |Ignore TSL certificate verification when downloading files to be injected into the image.|
     |VERSION|-v|No| |Print version information, and then exit the program.|
 
