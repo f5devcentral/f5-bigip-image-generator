@@ -1,4 +1,4 @@
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2020 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -158,6 +158,13 @@ LOG_LEVEL:
     Log level to use for the log file, indicating the lowest message severity level that can
     appear in the log file.
 
+MIN_FREE_DISK_STORAGE_MB:
+  accepted: "^[0-9]+$"
+  default: 20000
+  description: >-
+    Minimum storage needed to create an image
+  internal: true
+
 PLATFORM:
   accepted: "^alibaba$|^aws$|^azure$|^gce$|^qcow2$|^vhd$|^vmware$|^iso$"
   description: >-
@@ -167,7 +174,7 @@ PLATFORM:
 
 REUSE:
   description: >-
-    Keep local files created by previous runs of the same <PLATFORM, MODULES, BOOT_LOCATIONS> combination.
+    Keep/Reuse local files created by previous runs of the same <PLATFORM, MODULES, BOOT_LOCATIONS> combination.
   parameters: 0
 
 SUBPROCESS_POLL_MILLIS:
@@ -180,7 +187,7 @@ SUBPROCESS_POLL_MILLIS:
 UPDATE_IMAGE_FILES:
   description: >-
     Files you want injected into the image. For each of the injections, required values
-    include source (file or directory) and destination (absolute full path).
+    include source (file, directory, or URL) and destination (absolute full path).
 
 UPDATE_IMAGE_FILES_IGNORE_URL_TLS:
   description: >-
@@ -195,6 +202,10 @@ UPDATE_ISO_RPMS:
     and destination (absolute full path).
   hidden: true
 
+UPDATE_LV_SIZES:
+  description: >-
+    Increase the sizes (MiB) of the following logical volumes (LV): appdata, config, log, shared, and var. This is a dictionary mapping the LV name to the new LV size. Define the size using an integer representing the number of MiBs (for example, "appdata":32000).
+
 VERSION:
   description: >-
     Print version information, and then exit the program.
@@ -202,7 +213,7 @@ VERSION:
   parameters: 0
 
 VERSION_NUMBER:
-  default: 1.3
+  default: 1.4
   description: >-
-    This is the current version of BIG-IP Image-Generator.
+    This is the current version of BIG-IP Image Generator.
   internal: true

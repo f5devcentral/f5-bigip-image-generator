@@ -1,5 +1,5 @@
 """Module to read info about injected files"""
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2020 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -79,11 +79,13 @@ def read_injected_files(top_call_dir, overall_dest_dir):
         source_holder = file_holder + 'src'
         Path(file_holder).mkdir(parents=True, exist_ok=True)
         if isfile(src):
+            LOGGER.info('Treating \'%s\' as a file for file injection', src)
             copy2(src, source_holder)
         elif isdir(src):
+            LOGGER.info('Treating \'%s\' as a directory for file injection', src)
             copytree(src, source_holder)
         else:
-            LOGGER.debug('Treating \'%s\' as a URL for the file injection', url)
+            LOGGER.info('Treating \'%s\' as a URL for the file injection', url)
             download_file(url, source_holder)
 
         # store destination

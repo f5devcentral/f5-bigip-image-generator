@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2020 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -141,6 +141,10 @@ function generate_vm_install_script {
 
     # Associative array for vm.install.sh field and corresponding disk_json entries.
     declare -A tmi_volume_attributes=( \
+        ["TMI_VOLUME_FIX_CONFIG_MIB"]=".attributes.fix_config_mib"
+        ["TMI_VOLUME_FIX_ROOT_MIB"]=".attributes.fix_root_mib"
+        ["TMI_VOLUME_FIX_USR_MIB"]=".attributes.fix_usr_mib"
+        ["TMI_VOLUME_FIX_VAR_MIB"]=".attributes.fix_var_mib"
         ["TMI_VOLUME_FIX_BOOT_MIB"]=".attributes.fix_boot_mib"
         ["TMI_VOLUME_FIX_SWAP_MIB"]=".attributes.fix_swap_mib"
         ["TMI_VOLUME_FIX_SWAPVOL_MIB"]=".attributes.fix_swapvol_mib"

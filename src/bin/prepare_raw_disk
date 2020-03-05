@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2020 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -26,16 +26,18 @@ source "$PROJECT_DIR/src/lib/bash/util/logger.sh"
 #####################################################################
 function prepare_raw_disk {
     local input_json="$1"
-    local platform="$2"
-    local modules="$3"
-    local boot_locations="$4"
-    local disk="$5"
-    local output_json="$6"
-    local iso="$7"
-    local hotfix_iso="$8"
+    local lv_sizes_patch_json="$2"
+    local platform="$3"
+    local modules="$4"
+    local boot_locations="$5"
+    local disk="$6"
+    local output_json="$7"
+    local iso="$8"
+    local hotfix_iso="$9"
 
-    if [[ $# != 8 ]]; then
-        log_error "Usage: ${FUNCNAME[0]} <input_json> <platform> <modules> <boot_locations>" \
+    if [[ $# != 9 ]]; then
+        log_error "Usage: ${FUNCNAME[0]} <input_json> <lv_sizes_patch_json>" \
+                "<platform> <modules> <boot_locations>" \
                 "<output_disk> <output_json> <iso> optional [ <ehf_iso> ]"
         return 1
     elif ! is_supported_platform "$platform"; then
@@ -80,7 +82,7 @@ function prepare_raw_disk {
     #   => Populates the create_raw_disk.json file with the disk sizes
     #   => Creates an empty raw disk with the total disk size.
     if ! "$PROJECT_DIR/src/bin/create_raw_disk" "$input_json" "$boot_locations" \
-            "$modules" "$platform" "$disk" "$raw_disk_json" ; then
+            "$modules" "$platform" "$disk" "$raw_disk_json" "$lv_sizes_patch_json"; then
         log_error "create_raw_disk() failed unexpectedly."
         return 1
     fi
@@ -107,6 +109,7 @@ function prepare_raw_disk {
             --arg output_size "$(get_file_size "$disk")" \
             --arg bigip_iso "$iso" \
             --arg input_json "$raw_disk_json" \
+            --arg lv_sizes_patch_json "$lv_sizes_patch_json" \
             --arg hotfix_iso "$hotfix_iso" \
             --arg status "$status" \
             '{ description: $description,
@@ -118,6 +121,7 @@ function prepare_raw_disk {
             boot_locations: $boot_locations,
             bigip_iso: $bigip_iso,
             input_json: $input_json,
+            lv_sizes_patch_json: $lv_sizes_patch_json,
             hotfix_iso: $hotfix_iso,
             output: $output,
             output_partial_md5: $output_partial_md5,

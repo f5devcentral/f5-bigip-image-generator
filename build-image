@@ -25,11 +25,20 @@ source "$(realpath "$(dirname "${BASH_SOURCE[0]}")")/src/lib/bash/build-image-ut
 source "$(realpath "$(dirname "${BASH_SOURCE[0]}")")/src/lib/bash/util/logger.sh"
 
 function trap_cleanup() {
-    log_trace "Cleaning up before EXIT"
+    # Take the snapshot of the workspace before cleaning.
+    take_snapshot
+
+    local artifacts_dir reuse cleaning_msg
     artifacts_dir="$(get_config_value "ARTIFACTS_DIR")"
-    log_trace "The artifacts directory is $artifacts_dir"
-    # remove any temporary directory inside the artifacts directory
-    rm -rf "$artifacts_dir"/tmp.*
+    reuse="$(get_config_value "REUSE")"
+    cleaning_msg="Cleaning up before EXIT."
+    if [[ ! "$reuse" ]]; then
+        log_debug "$cleaning_msg 'reuse' parameter was not set, removing the whole directory $artifacts_dir"
+        rm -rf "$artifacts_dir"
+    else
+        log_debug "$cleaning_msg Removing $artifacts_dir/tmp.*"
+        rm -rf "$artifacts_dir"/tmp.*
+    fi
 }
 
 trap trap_cleanup EXIT
@@ -93,6 +102,9 @@ function main {
             error_and_exit "verify_iso has failed"
         fi
     fi
+
+    #Verify there is enough disk space for the platform
+    verify_disk_space
 
     if ! verify_iso "$ehf_iso" "$ehf_iso_sig" "$pub_key1" "$encr_type_1"; then
         # iso verification was skipped or failed with pub_key1
@@ -312,6 +324,15 @@ function main {
     # Output json for this step.
     local prepare_disk_json="$artifacts_directory/prepare_raw_disk.json"
 
+    # Check if the configuration overrides LV sizes.
+    local lv_sizes_patch_json="lv_sizes_patch.json"
+    if "$(realpath "$(dirname "${BASH_SOURCE[0]}")")"/src/bin/increase_lv_sizes.py \
+       "$artifacts_directory/$lv_sizes_patch_json"; then
+        log_debug "Check if the user wants to increase LV sizes."
+    else
+        error_and_exit "Failed to check if the user wants to increase LV sizes."
+    fi
+
     # Input json for this step is the ve.info.json file.
     # This step:
     #   => Creates an empty raw disk based on the calculated sizes for partitions and the disk.
@@ -321,7 +342,9 @@ function main {
     #   => Boots BIG-IP once for SELinux labeling.
     #   => Returns prepare_disk.json for the next step.
     #
-    "${script_dir}/src/bin/prepare_raw_disk" "$artifacts_directory/$ve_info_json" "$platform" "$modules" "$boot_locations" \
+    "${script_dir}/src/bin/prepare_raw_disk" "$artifacts_directory/$ve_info_json" \
+                                             "$artifacts_directory/$lv_sizes_patch_json" \
+                                             "$platform" "$modules" "$boot_locations" \
                                              "$raw_disk" "$prepare_disk_json" "$iso" "$ehf_iso"
 
     # shellcheck disable=SC2181

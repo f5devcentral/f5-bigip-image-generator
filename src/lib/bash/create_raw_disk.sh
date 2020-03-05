@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2020 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -38,9 +38,9 @@ function test_disk_size_correctness {
     local module="$1"
     local boot_loc=$2
     local disk_size=$3
-
-    if [[ $# != 3 ]]; then
-        log_error "Usage: ${FUNCNAME[0]} <module> <boot_location> <disk_size>"
+    local lv_sizes_patch_json=$4
+    if [[ $# != 4 ]]; then
+        log_error "Usage: ${FUNCNAME[0]} <module> <boot_location> <disk_size> <lv_sizes_patch_json>"
         return 1
     fi
 
@@ -62,12 +62,16 @@ function test_disk_size_correctness {
         if [[ $disk_size -ge $min ]] &&
             [[ $disk_size -le $max ]]; then
             return 0
-        else
+        elif [[ ! -f "$lv_sizes_patch_json" ]]; then
             log_error "Disk size <$disk_size>GB is not within the <$min - $max>GB" \
                     "range for $module-$boot_loc combination."
+            return 1
+        else
+            # LV sizes were overridden in the configuration,
+            # the regular disk sizes limitations do not apply.
+            return 0
         fi
     fi
-    return 1
 }
 #####################################################################
 
@@ -310,6 +314,62 @@ function verify_tmos_ve_info {
 
 
 #####################################################################
+#   User can increase LV sizes of some of LVs.
+#   These sizes will be stored in $lv_sizes_patch_json file.
+#   Returns 1 only in case of the error
+#   Absence of $lv_sizes_patch_json is not an error.
+#
+function increase_lv_sizes() {
+    local lv_sizes_patch_json="$1"
+    if [[ $# != 1 ]]; then
+        log_error "Wrong number of arguments. Usage: ${FUNCNAME[0]} <lv_sizes_patch_json>"
+        return 1
+    fi
+
+    if [[ -f "$lv_sizes_patch_json" ]]; then
+        log_info "Using $lv_sizes_patch_json to increase LV sizes."
+        # Only the following LVs can change their size:
+        declare -A lv_name_to_variable=( \
+            ["appdata"]="TMI_VOLUME_FIX_APPDATA_MIB"
+            ["config"]="TMI_VOLUME_FIX_CONFIG_MIB"
+            ["log"]="TMI_VOLUME_FIX_LOG_MIB"
+            ["shared"]="TMI_VOLUME_FIX_SHARE_MIB"
+            ["var"]="TMI_VOLUME_FIX_VAR_MIB"
+        )
+
+        for lv in $(jq -r '. | keys | .[]' "$lv_sizes_patch_json"); do
+            local custom_size
+            custom_size=$(jq -r ."$lv" "$lv_sizes_patch_json")
+
+            local found_lv="false"
+            local entry
+            for entry in "${!lv_name_to_variable[@]}"; do
+                if [[ "$entry" == "$lv" ]]; then
+                    found_lv="true"
+                    if [[ ${lv_name_to_variable[$entry]} -lt $custom_size ]]; then
+                        log_info "Increasing LV size for '$lv' from ${!lv_name_to_variable[$entry]} to $custom_size."
+                        eval "export ${lv_name_to_variable[$entry]}=$custom_size"
+                        break
+                    else
+                        log_error "Could not increase LV size for '$lv'. The new value $custom_size has to be greater than the old value ${!lv_name_to_variable[$entry]}."
+                        return 1
+                    fi
+                fi
+            done
+
+            if [[ "$found_lv" != "true" ]]; then
+                log_error "Unexpected LV '$lv' asked to change its size."
+                return 1
+            fi
+        done
+    else
+        log_debug "File '$lv_sizes_patch_json' does not exist, no need to increase LV sizes."
+    fi
+}
+#####################################################################
+
+
+#####################################################################
 # Calculate the bare bone disk size for BIG-IP VE.
 #
 function calculate_bigip_hdd_sizes() {
@@ -318,10 +378,11 @@ function calculate_bigip_hdd_sizes() {
     local n=$2
     local ve_sizing_type=$3
     local ve_disk_format=$4
+    local lv_sizes_patch_json=$5
 
-    if [[ $# -ne 4 ]]; then
+    if [[ $# -ne 5 ]]; then
         log_error "Usage: ${FUNCNAME[0]} <ve.info.json path> <Number of Slots>" \
-                "<Sizing Type> <Disk Format>"
+                "<Sizing Type> <Disk Format> <LV sizes patch file>"
         return 1
     fi
 
@@ -361,8 +422,8 @@ function calculate_bigip_hdd_sizes() {
     #     500 MB. It's used for log files shared between 2 install slots.
     #
     # According to fsinfo.xml, we need below disk space for tiny plan:
-    #   - "/config" directory (volume_config_mib)  - it's used for LTM config files.
-    #   - "/var" directory (volume_var_mib) - it's used for log files.
+    #   - "/config" directory (TMI_VOLUME_FIX_CONFIG_MIB)  - it's used for LTM config files.
+    #   - "/var" directory (TMI_VOLUME_FIX_VAR_MIB) - it's used for log files.
     #   - "/shared" directory (TMI_VOLUME_FIX_SHARE_MIB) must accomodate these:
     #       - (n-1) full ISO images + (n-1) hotfix ISO images +
     #         1 full core file + n compressed core files + temp files
@@ -386,16 +447,12 @@ function calculate_bigip_hdd_sizes() {
     TMI_VOLUME_FIX_APPDATA_MIB=${tmos_ve_info[default_volume_size_MiB_appdata]}
     TMI_VOLUME_FIX_LOG_MIB=${tmos_ve_info[default_volume_size_MiB_log]}
 
-    local volume_root_mib
-    local volume_usr_mib
-    local volume_var_mib
-    local volume_config_mib
     # Log space is accounted separately:
     if [[ "$ve_sizing_type" == "ltm" ]]; then
-        volume_root_mib=${tmos_ve_info[micro_volume_size_MiB_root]}
-        volume_usr_mib=${tmos_ve_info[micro_volume_size_MiB_usr]}
-        volume_config_mib=${tmos_ve_info[micro_volume_size_MiB_config]}
-        volume_var_mib=${tmos_ve_info[micro_volume_size_MiB_var]}
+        TMI_VOLUME_FIX_ROOT_MIB=${tmos_ve_info[micro_volume_size_MiB_root]}
+        TMI_VOLUME_FIX_USR_MIB=${tmos_ve_info[micro_volume_size_MiB_usr]}
+        TMI_VOLUME_FIX_CONFIG_MIB=${tmos_ve_info[micro_volume_size_MiB_config]}
+        TMI_VOLUME_FIX_VAR_MIB=${tmos_ve_info[micro_volume_size_MiB_var]}
         if [[ $n == 1 ]]; then
             # For ltm 1 boot location:
             TMI_VOLUME_FIX_LOG_MIB=${tmos_ve_info[micro_volume_size_MiB_log]}
@@ -408,10 +465,10 @@ function calculate_bigip_hdd_sizes() {
             TMI_VOLUME_FIX_APPDATA_MIB=${tmos_ve_info[micro_volume_size_MiB_appdata]}
         fi
     else
-        volume_root_mib=${tmos_ve_info[default_volume_size_MiB_root]}
-        volume_usr_mib=${tmos_ve_info[default_volume_size_MiB_usr]}
-        volume_config_mib=${tmos_ve_info[default_volume_size_MiB_config]}
-        volume_var_mib=${tmos_ve_info[default_volume_size_MiB_var]}
+        TMI_VOLUME_FIX_ROOT_MIB=${tmos_ve_info[default_volume_size_MiB_root]}
+        TMI_VOLUME_FIX_USR_MIB=${tmos_ve_info[default_volume_size_MiB_usr]}
+        TMI_VOLUME_FIX_CONFIG_MIB=${tmos_ve_info[default_volume_size_MiB_config]}
+        TMI_VOLUME_FIX_VAR_MIB=${tmos_ve_info[default_volume_size_MiB_var]}
         if [[ $n == 1 ]]; then
             # all_1slot_volume_size_MiB element was introduced from 14.1.0 onwards.
             if [[ -n "$BIGIP_VERSION_NUMBER" ]] && [[ "$BIGIP_VERSION_NUMBER" -ge 14010000 ]]; then
@@ -419,16 +476,15 @@ function calculate_bigip_hdd_sizes() {
             fi
         fi
     fi
-    local tmos_mib=$(( volume_root_mib + volume_usr_mib + volume_config_mib + volume_var_mib ))
+
     # Space for modules that are common across all slots (i.e. not accounted per slot)
     local maint_mib=${tmos_ve_info[mos_size_MiB]}
     # waagent - special-case - it's needed only on Azure deployments as
     # we need extra volume per each installation slot.
+    local waagent_volume_mib=0
     if [[ "$ve_disk_format" == "azure" ]]; then
         local waagent_volume_mib=${tmos_ve_info[default_volume_size_MiB_waagent]}
-        local tmos_mib_old=$tmos_mib
-        tmos_mib=$(( tmos_mib + waagent_volume_mib ))
-        log_info "Increase tmos_mib from $tmos_mib_old to $tmos_mib" \
+        log_info "tmos_mib will be increased " \
                 "due to waagent_volume_mib=$waagent_volume_mib for Azure."
     fi
 
@@ -438,6 +494,15 @@ function calculate_bigip_hdd_sizes() {
         TMI_VOLUME_FIX_SHARE_MIB=${tmos_ve_info[micro_volume_size_MiB_shared]}
     fi
 
+    # All static (predefined) LV sizes are known at this point
+    # and we can check if they were overridden by the configuration.
+    if ! increase_lv_sizes "$lv_sizes_patch_json"; then
+        return 1
+    fi
+
+    local tmos_mib=$(( TMI_VOLUME_FIX_CONFIG_MIB + TMI_VOLUME_FIX_ROOT_MIB \
+        + TMI_VOLUME_FIX_USR_MIB + TMI_VOLUME_FIX_VAR_MIB \
+        + waagent_volume_mib))
     # Thus, the bare minimum of HDD space:
     BIGIP_HDD_GB=$(( TMI_VOLUME_FIX_BOOT_MIB + TMI_VOLUME_FIX_SWAP_MIB \
         + TMI_VOLUME_FIX_SWAPVOL_MIB + maint_mib + n*tmos_mib \
@@ -482,11 +547,13 @@ function create_raw_disk {
     local platform=$4
     local raw_disk=$5
     local output_json=$6
+    local lv_sizes_patch_json=$7
     local result
 
-    if [[ $# != 6 ]]; then
+    if [[ $# != 7 ]]; then
         log_error "Usage: ${FUNCNAME[0]} <ve_info_json> <boot_locations>" \
-                "<volume_configuration> <platform> <raw_disk> <output_json>"
+                "<volume_configuration> <platform> <raw_disk> <output_json>" \
+                "<lv_sizes_patch_json>"
         return 1
     elif [[ ! -f "$ve_info_json" ]]; then
         log_error "'$ve_info_json' doesn't exist."
@@ -503,13 +570,14 @@ function create_raw_disk {
     fi
 
     calculate_bigip_hdd_sizes "$ve_info_json" "$boot_locations" "$module_type" \
-            "$platform"
+            "$platform" "$lv_sizes_patch_json"
     result=$?
     is_supported_cloud "$platform" && is_cloud=1 || is_cloud=0
 
     if [[ $result == 0 ]]; then
         # Is the disk size in expected range?
-        test_disk_size_correctness "$module_type" "$boot_locations" "$BIGIP_HDD_GB"
+        test_disk_size_correctness "$module_type" "$boot_locations" "$BIGIP_HDD_GB" \
+                "$lv_sizes_patch_json"
         result=$?
         if [[ $result == 0 ]]; then
             "$( dirname "${BASH_SOURCE[0]}" )"/../../bin/create_disk "raw" \
@@ -541,6 +609,10 @@ function create_raw_disk {
             --arg disk_name "$(basename "$raw_disk")" \
             --arg status "$status" \
             --arg image_size "${BIGIP_HDD_GB}GiB" \
+            --arg fix_config_mib "$TMI_VOLUME_FIX_CONFIG_MIB" \
+            --arg fix_root_mib "$TMI_VOLUME_FIX_ROOT_MIB" \
+            --arg fix_usr_mib "$TMI_VOLUME_FIX_USR_MIB" \
+            --arg fix_var_mib "$TMI_VOLUME_FIX_VAR_MIB" \
             --arg fix_boot_mib "$TMI_VOLUME_FIX_BOOT_MIB" \
             --arg fix_swap_mib "$TMI_VOLUME_FIX_SWAP_MIB" \
             --arg fix_swapvol_mib "$TMI_VOLUME_FIX_SWAPVOL_MIB" \
@@ -560,6 +632,10 @@ function create_raw_disk {
             status: $status,
             image_size: $image_size,
             attributes: {
+                fix_config_mib: $fix_config_mib,
+                fix_root_mib: $fix_root_mib,
+                fix_usr_mib: $fix_usr_mib,
+                fix_var_mib: $fix_var_mib,
                 fix_boot_mib: $fix_boot_mib,
                 fix_swap_mib: $fix_swap_mib,
                 fix_swapvol_mib: $fix_swapvol_mib,

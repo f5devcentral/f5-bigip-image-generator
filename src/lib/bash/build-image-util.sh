@@ -359,7 +359,34 @@ function copy_metadata_filter_config_files {
 }
 
 
-# Creates the artifacts directory under artifacts/. The generated path typically
+# Create the artifacts directory.
+#   block_deletion - block deletion of the old artifacts directory
+function create_artifacts_directory {
+    if [[ $# -ne 1 ]]; then
+        log_error "Usage: ${FUNCNAME[0]} <block_deletion>"
+        return 1
+    fi
+
+    local block_deletion="$1"
+
+    local artifacts_dir
+    artifacts_dir="$(get_config_value "ARTIFACTS_DIR")"
+
+    local output
+    if [[ ! "$block_deletion" ]] && [[ -d "$artifacts_dir" ]]; then
+        if ! output="$(rm -rf "$artifacts_dir")"; then
+            log_error "Unable to delete the old artifacts directory [${artifacts_dir}]: $output"
+            return 1
+        fi
+    fi
+    if ! output="$(mkdir -p "$artifacts_dir")"; then
+        log_error "Unable to make artifacts directory [${artifacts_dir}]: $output"
+        return 1
+    fi
+}
+
+
+# Prepares and creates the artifacts directory under artifacts/. The generated path typically
 # looks like:
 #   artifacts/BIGIP-15.0.0/aws/ltm_1slot/
 #   artifacts/BIGIP-14.0.0/gce/all_2slot/
@@ -385,22 +412,14 @@ function prepare_artifacts_directory {
     else
         artifacts_directory="${script_dir}/../../../artifacts/${iso}/${platform}/${modules}_${boot_locations}slot"
     fi
-    local reuse
-    reuse="$(get_config_value "REUSE")"
-    local output
-    if [[ ! "$reuse" ]] && [[ -d "$artifacts_directory" ]]; then
-        if ! output="$(rm -rf "$artifacts_directory")"; then
-            log_error "Unable to delete the old artifacts directory [${artifacts_directory}]: $output"
-            return 1
-        fi
-    fi
-    if ! output="$(mkdir -p "$artifacts_directory")"; then
-        log_error "Unable to make artifacts directory [${artifacts_directory}]: $output"
-        return 1
-    fi
 
     # Save the generated value.
     set_config_value "ARTIFACTS_DIR" "$artifacts_directory"
+
+    # create the directory
+    local reuse
+    reuse="$(get_config_value "REUSE")"
+    create_artifacts_directory "$reuse"
 }
 
 
@@ -723,6 +742,20 @@ function produce_virtual_disk {
 }
 
 
+# Verifies that there is enough disk space to complete the run
+function verify_disk_space {
+    local min_free_disk_storage_MB
+    min_free_disk_storage_MB="$(get_config_value "MIN_FREE_DISK_STORAGE_MB")" 
+    local space_remaining
+    space_remaining=$(df --block-size=M ./ | awk '{ print $4 }' | sed -n '2 p')
+    space_remaining="${space_remaining::-1}"
+
+    if (( space_remaining < min_free_disk_storage_MB )); then
+        error_and_exit "At least $min_free_disk_storage_MB MB storage needed. Only $space_remaining MB found"
+    fi
+}
+
+
 # Perform ISO verifications including file checks, public key checks, signature file default fallback, signature file
 # checks, and signature verification.
 # returns
@@ -877,6 +910,33 @@ function check_setup {
     log_info "The setup script has been run for version:$current_version."
 }
 
+# Create/overwrite generator-info.json file.
+function create_generator_info_json {
+    # Form path of generator-info file.
+    local artifacts_dir
+    artifacts_dir="$(get_config_value "ARTIFACTS_DIR")"
+    local info_file="${artifacts_dir}/generator-info.json"
+
+    # Delete the old file.
+    if [[ -f "$info_file" ]]; then
+        if ! output="$(rm -f "$info_file")"; then
+            error_and_exit "Unable to delete '${info_file}': $output"
+        fi
+    fi
+
+    # Look up current generator version.
+    local current_version
+    current_version="$(get_config_value "VERSION_NUMBER")"
+
+    # Create the new file.
+    local json_write
+    log_info "Creating generator info file with generator version $current_version"
+    if ! json_write="$(jq -n --arg v "$current_version" '{"VERSION": $v}' 2>&1)"; then
+        error_and_exit "jq error while adding VERSION to json data: $json_write"
+    fi
+    echo "$json_write" > "$info_file"
+}
+
 # Perform logic for handling an upgrade to a new image generator version. This will check the
 # generator-info.json file in the artifacts directory (if it exists). If the version specified in
 # this file doesn't match the current image generator version then the REUSE variable will be
@@ -903,39 +963,85 @@ function handle_upgrade {
         json_read="$(<"$info_file")"
         if ! last_version="$(jq -r '.VERSION // empty' <<< "$json_read" 2>&1)"; then
             error_and_exit "jq error while retrieving VERSION from json data: $json_read"
-        elif [[ "$last_version" != "$current_version" ]]; then
+        fi
 
+        if [[ "$last_version" == "$current_version" ]]; then
+            # The last version matches the current version, so we don't have to do anything
+            log_info "Generator info version matches current version $current_version"
+            return 0
+        else
             # The image generator version has changed since the last image generator run of this build, so we'll
             # override the reuse variable and update the file with the current version
             log_info "Generator version has been updated from $last_version to $current_version since the last run"
             reuse="$(get_config_value "REUSE")"
             if [[ -n "$reuse" ]]; then
-                log_info "Ignoring 'REUSE' setting for this build since the generator version has changed"
-                set_config_value "REUSE" ""
+                log_info "Ignoring 'REUSE' setting for this build since files generated by an older generator version may not be reused."
             fi
-            log_debug "Updating generator info file with generator version $current_version"
-            if ! json_write="$(jq --arg v "$current_version" '.VERSION = $v' <<< "$json_read" 2>&1)"; then
-                error_and_exit "jq error while adding VERSION to json data: $json_write"
-            fi
-            echo "$json_write" > "$info_file"
-        else
-
-            # The last version matches the current version, so we don't have to do anything
-            log_debug "Generator info version matches current version $current_version"
         fi
-    else
-
-        # The info file doesn't exist, so we don't know if it's safe to reuse it. We'll override the reuse setting and
-        # create a new generator-info file which contains the current version.
-        reuse="$(get_config_value "REUSE")"
-        if [[ -n "$reuse" ]]; then
-            log_info "Ignoring 'REUSE' setting for this build since the generator version may have changed"
-            set_config_value "REUSE" ""
-        fi
-        log_debug "Creating generator info file with generator version $current_version"
-        if ! json_write="$(jq -n --arg v "$current_version" '{"VERSION": $v}' 2>&1)"; then
-            error_and_exit "jq error while adding VERSION to json data: $json_write"
-        fi
-        echo "$json_write" > "$info_file"
     fi
+
+    # We are here because the artifacts directory either was just (re)created or
+    # was created with the old version of the tool or enexpectedly generator version file is missing.
+    # So it should be unconditially recreated.
+    create_artifacts_directory ""
+    # Recreate a new generator-info file.
+    create_generator_info_json
+}
+
+# Take a snapshot of the working space for the postmortem analysis.
+# The snapshot will include the log file and text files from the artifacts dir.
+# The snapshot will reside next to the log.
+function take_snapshot {
+    log_debug "Taking the snapshot of the workspace."
+
+    # Create the snapshot file next to the log file.
+    local log_file
+    log_file=$(get_config_value "LOG_FILE")
+    if [[ -z "$log_file" ]]; then
+        log_warning "Log file has not been set. Cannot collect snapshots."
+        return 1
+    fi
+    log_file=$(realpath --relative-base=. "$log_file")
+    local snapshot
+    snapshot="${log_file}.snapshot.zip"
+    if ! rm -f "$snapshot"; then
+        log_warning "Failed to delete $snapshot"
+        return 1
+    fi
+
+    # Add the log file to the snapshot file.
+    if ! zip -qr "$snapshot" "$log_file"; then
+        log_warning "Failed to add $log_file to $snapshot"
+        return 1
+    fi
+
+    # Add the list of the artifacts files to the snapshot file.
+    local artifacts_dir
+    artifacts_dir=$(get_config_value "ARTIFACTS_DIR")
+    artifacts_dir=$(realpath --relative-base=. "$artifacts_dir")
+    local file_list
+    file_list="$artifacts_dir/files.txt"
+    if ! du -a --time "$artifacts_dir" > "$file_list"; then
+        log_warning "Failed to execute du for $artifacts_dir"
+        return 1
+    fi
+
+    if ! zip -qr "$snapshot" "$file_list"; then
+        log_warning "Failed to add $file_list to $snapshot"
+        return 1
+    fi
+
+    # Add text artifact files to the snapshot file.
+    # shellcheck disable=SC2034
+    while IFS=$'\t' read -r file_size file_time file_name
+    do
+        if [[ "text" == $(file -b --mime-type "$file_name" | sed 's|/.*||') ]]; then
+            if ! zip -qr "$snapshot" "$file_name"; then
+                log_warning "Failed to add $file_name to $snapshot"
+                return 1
+            fi
+        fi
+    done < "$file_list"
+
+    log_debug "The snapshot of the workspace is ready and located at $snapshot"
 }

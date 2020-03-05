@@ -1,5 +1,5 @@
 """Common utilities for all other modules and classes"""
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2020 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -21,15 +21,16 @@ import subprocess
 import sys
 import threading
 import time
+import json
 
 from contextlib import contextmanager
 
-from util import config
+from util.config import get_config_value, get_config_accepted, get_dict_from_config_json
 from util.logger import LOGGER, create_file_handler
 
 def is_supported_cloud(cloud_type):
     """Checks if the given cloud is a supported cloud."""
-    supported_clouds = re.sub(r'[\^$]', '', config.get_config_accepted("CLOUD"))
+    supported_clouds = re.sub(r'[\^$]', '', get_config_accepted("CLOUD"))
     return cloud_type in supported_clouds.split('|')
 
 
@@ -94,9 +95,9 @@ def call_subprocess(command, input_data=None, timeout_millis=-1, check_return_co
                       "Unable to send to command [{}]!".format(" ".join(command))
             LOGGER.error(message)
             raise TypeError(message)
-    poll_millis = int(config.get_config_value("SUBPROCESS_POLL_MILLIS"))
+    poll_millis = int(get_config_value("SUBPROCESS_POLL_MILLIS"))
     progress_update_delay_millis = \
-        int(config.get_config_value("CONSOLE_PROGRESS_BAR_UPDATE_DELAY")) * 1000
+        int(get_config_value("CONSOLE_PROGRESS_BAR_UPDATE_DELAY")) * 1000
     start_time_millis = time.time() * 1000
     next_progress_update_millis = start_time_millis + progress_update_delay_millis
     # We create the output buffer as a list so that we can pass it by reference to the
@@ -181,6 +182,32 @@ def change_dir(new_dir):
 
 def create_log_handler():
     """create log handler for the global LOGGER based on LOG_FILE and LOG_LEVEL"""
-    log_file = config.get_config_value('LOG_FILE')
-    log_level = config.get_config_value('LOG_LEVEL').upper()
+    log_file = get_config_value('LOG_FILE')
+    log_level = get_config_value('LOG_LEVEL').upper()
     create_file_handler(LOGGER, log_file, log_level)
+
+
+def read_lv_sizes(lv_sizes_patch_json):
+    """ Read user defined values for LV sizes, validate them and store in a json file """
+    if not get_config_value('UPDATE_LV_SIZES'):
+        # LV sizes are not overridden
+        return
+
+    modifiable_size_lvs = {'appdata', 'config', 'log', 'shared', 'var'}
+    lv_sizes_dict = get_dict_from_config_json('UPDATE_LV_SIZES')
+    filtered_dict = {}
+    for lv_name in lv_sizes_dict:
+        lv_size = lv_sizes_dict[lv_name]
+        lv_name = lv_name.lower()
+        if not isinstance(lv_size, int):
+            raise RuntimeError('LV size for \'{}\' must be an integer, '.format(lv_name) +
+                               'denoting the size in MiBs (without quotation marks).')
+        if lv_name not in modifiable_size_lvs:
+            raise RuntimeError('\'{}\' is not a member '.format(lv_name) +
+                               'of modifiable size LVs: {}. '.format(modifiable_size_lvs) +
+                               '\'{}\' is not an LV or '.format(lv_name) +
+                               'its size cannot be changed!')
+        filtered_dict[lv_name] = lv_size
+
+    with open(lv_sizes_patch_json, 'w') as patch_file:
+        json.dump(filtered_dict, patch_file, indent=2)
