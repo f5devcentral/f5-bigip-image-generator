@@ -56,7 +56,7 @@ The following table lists supported public and private cloud platforms as well a
 |---------------------------| :---------------------------------------------------------------|
 |Alibaba                    |  BIG-IP 14.1.0.3+ and sufficient permissions to create or describe the following resources:<br> - Credentials/API Keys<br> - SSH Keys uploaded<br> - Application credentials<br> - [OSS, Bucket storage container][29] <br>(See this [Alibaba article][30] for more Resource Access Manager (RAM) information.)|
 | AWS                       | Sufficient permissions to create or describe the following resources:<br> - credentials/API Keys<br> - [S3 Bucket Storage Container][12]<br> - Install the [ovftool][22] for creating the virtual disk.<br> - IAM Role with import permissions <br>(See this [AWS article][3] for more VM Import Service Role information.) |
-| Azure                     | Sufficient permissions to create or describe the following resources:<br> - Credentials/API Keys<br> - [Storage Container][11] and [storage connection strings][28]<br> (For more information, see this articles about [creating a service principle][10].)|
+| Azure                     | Sufficient permissions to create or describe the following resources:<br> - Credentials/API Keys<br> - [Storage Container][11] and [storage connection strings][28]<br> (For more information, see this article about [creating a service principle][10].)|
 | Google Cloud (GCE)        | Sufficient permissions to create or describe the following resources:<br> - Credentials/API Keys<br> - Application  credentials<br> - [Storage Container][13] <br>(See this [GCE article][9] for more service account information.)|
 
 The following supported platforms require no specific configuration:
@@ -209,9 +209,10 @@ command line >  configuration file >  environment variable. To access the Image 
     |LOG_LEVEL| |No|[CRITICAL \| ERROR \| WARNING \| INFO \| DEBUG \| TRACE]|Log level to use for the log file, indicating the lowest message severity level that can appear in the log file.|
     |MODULES|-m|Yes|[all \| ltm]|BIG-IP components supported by the specified image.|
     |PLATFORM|-p|Yes|[alibaba \| aws \| azure \| gce \| qcow2 \| vhd \| vmware]|The target platform for generated images.|
-    |REUSE| |No| |Keep local files created by previous runs of the same <PLATFORM, MODULES, BOOT_LOCATIONS> combination.|    
+    |REUSE| |No| |Keep/Reuse local files created by previous runs of the same [PLATFORM, MODULES, BOOT_LOCATIONS] combination.|    
     |UPDATE_IMAGE_FILES| |No|[value]|Files you want injected into the image. For each of the injections, required values include source (file, directory, or URL) and destination (absolute full path).|
     |UPDATE_IMAGE_FILES_IGNORE_URL_TLS| |No| |Ignore TSL certificate verification when downloading files to be injected into the image.|
+    |UPDATE_LV_SIZES| |No|[value]|Increase the sizes (MiB) of the following logical volumes (LV): appdata, config, log, shared, and var. This is a dictionary mapping the LV name to the new LV size. Define the size using an integer representing the number of MiBs (for example, "appdata":32000).|
     |VERSION|-v|No| |Print version information, and then exit the program.|
 
 3. When specifying a cloud provider, supply the following provider-specific information:
@@ -251,12 +252,16 @@ command line >  configuration file >  environment variable. To access the Image 
 
    --------------------------------
 
-5. OPTIONAL: The default behavior of the Image Generator does not attempt to use previously created local artifacts. To enable this feature, use the `--reuse` option. If you receive an error during file-upload to a cloud provider, then only the cloud portion of image generation will rerun for a subsequent image generation. Be aware that if you have already generated the virtual disk during previous runs, then using this option will prevent you from applying the '--update_image_files' option.
+5. OPTIONAL: The default behavior of the Image Generator does NOT attempt to use previously created local artifacts, and with each subsequent generation, all files are cleaned/removed. To override the default behavior and enable reuse of local files, use the `--reuse` option. If you receive an error during file-upload to a cloud provider while using the `--reuse` option, then only the cloud portion of image generation will rerun for a subsequent image generation. Be aware that if you have already generated the virtual disk during previous runs, then using any disk-altering parameters will not be picked up on subsequent uses of the `-–reuse` variable.
 
    **Example:**
    
-   1. Build an image, type: `./build-image -i /var/tmp/BIGIP-15.0.0-0.0.39.iso -c config.yml -p qcow2 -m ltm -b 1--image-tag "Name: my-custom-vm-v12.1.1" --image-tag "org: shared-services`
-   2. Reuse the environment associated with the specified source image, platform, modules, and boot locations, type: `./build-image --reuse -i /var/tmp/BIGIP-15.0.0-0.0.39.iso -c config.yml -p qcow2 -m ltm -b 1--image-tag "Name: my-custom-vm-v12.1.1" --image-tag "org: shared-services`.
+   To benefit from the `--reuse` parameter, you must run the Image Generator at least twice using the `--reuse` parameter for the same [PLATFORM, MODULES, BOOT_LOCATIONS] combination. In the first run, `--reuse` parameter will guarantee that the intermediary files are preserved. In the second run (when necessary), the `--reuse` parameter enables consumption of the intermediary files.
+   
+   1. Build an image, type: `./build-image --reuse -i /var/tmp/BIGIP-15.0.0-0.0.39.iso -c config.yml -p qcow2 -m ltm -b 1 --image-tag "Name: my-custom-vm-v12.1.1" --image-tag "org: shared-services"`
+   2. To reuse the environment associated with the specified source image, platform, modules, and boot locations, type the exact same command used in Step 1: `./build-image --reuse -i /var/tmp/BIGIP-15.0.0-0.0.39.iso -c config.yml -p qcow2 -m ltm -b 1 --image-tag "Name: my-custom-vm-v12.1.1" --image-tag "org: shared-services"`.
+
+   For debugging purposes, this tool captures the contents of the PLATFORM, MODULES, BOOT_LOCATIONS artifacts directory in a `.snapshot.zip` file (excluding large binary files). Find this `.snapshot.zip` file in the same directory as the log file (for example, `logs/image-qcow2-ltm-1slot` for log file and `logs/image-qcow2-ltm-1slot.snapshot.zip` for the artifact files). 
 
 6.	OPTIONAL: You can assign image tags to published images; however, rules for image tag definitions change depending upon the target, cloud provider ([Alibaba][26], [AWS][21], [Azure][19], and [GCE ][20]). 
     Currently, the Image Generator tool does not validate for each cloud provider's image tag:key and image tag:value pairing. Therefore, if you do NOT 
@@ -275,11 +280,73 @@ command line >  configuration file >  environment variable. To access the Image 
     Command line:
 
     ```
-     --image-tags ‘{"name":"my-custom-ami-v15.0.0"},{"org":"shared-services"},{"project":"alpha"}’
+     –-image-tags ‘{"name":"my-custom-ami-v15.0.0"},{"org":"shared-services"},{"project":"alpha"}’
     ``` 
+7. OPTIONAL: If you experience disk size limitations, then increase logical volume sizes for your configurations by using the UPDATE_LV_SIZES variable for the following logical volumes (ONLY):
+
+   * appdata 
+   * config
+   * log
+   * shared
+   * var
+
+   For example, if you use declarative on-boarding for LTM only, then you may want to increase the  ``var`` LV size to 1.5GiB. Type:
+
+   Configuration file (recommended):
+
+   ```
+   UPDATE_LV_SIZES: >-
+     {
+       "var": 1500
+     }
+   ```
+   
+   Command line:
+   
+   ```
+   –-update-lv-sizes '{"var":1500}'
+   ```
+   
+   ##### IMPORTANT
+   -----------------------
+   You can increase the size of these five logical volumes ONLY and only at the first boot location. Also, be aware that increasing these logical volume sizes will increase the overall disk size.  
+   
+   -----------------------
 
 
+   For example, if running multiple modules, then in your configuration file add the following to update all LVs:
+   
+   Configuration file (recommended):
 
+   ```
+   UPDATE_LV_SIZES: >-
+     {
+       "appdata": 32000,
+       "config": 3500,
+       "log": 4500,
+       "shared": 22000,
+       "var": 5500
+     }
+   ```
+   
+   Command line:
+   
+   ```
+   -–update-lv-sizes '{"appdata":32000,"config":3500,"log":4500,"shared":22000,"var":5500}'
+   
+   ```
+         
+   Note that these size values are examples only. To calculate the increased LV sizes for your needs, first find your base, reference LV size. 
+   
+   a.	From either F5 Downloads or a public cloud Marketplace, launch the base BIG-IP VE image file for your environment.
+
+   b.	Type:
+
+   ```
+   lvs --units m
+   ```
+      
+      
 ### Monitor progress
 
 1. The Image Generator will provide high-level progress information on the console. For more details, see the log file associated with the job, located in the logs directory. Log files use the following naming convention: 
@@ -299,6 +366,20 @@ You can locate files in the following directories:
 ## Troubleshooting guide
 
 This section provides troubleshooting information for setting up the environment and running the Image Generator tool, as well as common issues with supported cloud providers.
+
+**Low disk space**:
+
+
+```
+At least 20000 MB storage is needed.  Only <space remaining> MB found.
+```
+
+**Remedy**:
+
+```
+Free up local disk space, so you have more than 20GB (20000 MB) free.
+
+```
 
 **Docker error message**:
 ```
@@ -471,4 +552,4 @@ completed and submitted the F5 Contributor License Agreement.
 [28]: https://docs.microsoft.com/en-us/azure/storage/common/storage-configure-connection-string
 [29]: https://www.alibabacloud.com/help/doc-detail/31885.htm
 [30]: https://www.alibabacloud.com/help/doc-detail/92270.htm?spm=a2c63.p38356.b99.123.319c412aF3kxA0
-[31]: https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal            
+[31]: https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal        
