@@ -193,16 +193,17 @@ command line >  configuration file >  environment variable. To access the Image 
     |BOOT_LOCATIONS|-b|Yes|[1 \| 2]|Number of boot locations used in the source ISO file.|
     |CLOUD_IMAGE_NAME| |No|[value]|The name of the generated cloud image.  The name is subject to cloud provider naming restrictions  and is not guaranteed to succeed.  If you provide no name, then one is generated automatically  based on the detected properties of the source ISO file.|
     |CONFIG_FILE|-c|No|[value]|Full path to a YAML configuration file containing a list of parameter key/value pairs used during image generation.|
-    |EHF_ISO|-e|No|[value]|Full path to an engineering hotfix ISO file for installation on top of the existing ISO file.|
-    |EHF_ISO_SIG|-x|No|[value]|Full path to an engineering hotfix ISO signature file used to validate the engineering hotfix ISO.|
+    |EHF_ISO|-e|No|[value]|Full path or URL to an engineering hotfix ISO file for installation on top of the existing ISO file.|
+    |EHF_ISO_SIG|-x|No|[value]|Full path or URL to an engineering hotfix ISO signature file used to validate the engineering hotfix ISO.|
     |HELP|-h|No| |Print help and usage information, and then exit the program.|
+    |IGNORE_DOWNLOAD_URL_TLS| |No| |Ignore TSL certificate verification when downloading files.|
     |IMAGE_DIR| |No|[value]|The directory where you want generated images to reside. Provide either an absolute path or a relative path. If this directory does not exist, the tool will create it.|
     |IMAGE_SIG_ENCRYPTION_TYPE| |No|[value]|Encryption type to use when signing images.|
     |IMAGE_SIG_PRIVATE_KEY| |No|[value]|Path to private key file used to sign images.|
     |IMAGE_SIG_PUBLIC_KEY| |No|[value]|Path to public key file used to verify images.|
     |IMAGE_TAGS| |No|[value]|List of key value pairs to set as tags/labels for the image.|
-    |ISO|-i|Yes|[value]|Full path to a BIG-IP ISO file used as a basis for image generation.|
-    |ISO_SIG|-s|No|[value]|Full path to an ISO signature file used to validate the ISO.|
+    |ISO|-i|Yes|[value]|Full path or URL to a BIG-IP ISO file used as a basis for image generation.|
+    |ISO_SIG|-s|No|[value]|Full path or URL to an ISO signature file used to validate the ISO.|
     |ISO_SIG_VERIFICATION_ENCRYPTION_TYPE| |No|[value]|Encryption type to use when signing/verifying ISO or Virtual disks|
     |ISO_SIG_VERIFICATION_PUBLIC_KEY| |No|[value]|Path to public key file used to verify an ISO.|
     |LOG_FILE| |No|[value]|Log filename that overrides the default log filename created in the logs directory. You can use a full path, directory, or filename. If full path, then the log file uses the full path. If directory, then the image generator creates a new log file in the specified directory. If filename, then the tool creates a log file in the logs directory using the specified filename.|
@@ -210,8 +211,7 @@ command line >  configuration file >  environment variable. To access the Image 
     |MODULES|-m|Yes|[all \| ltm]|BIG-IP components supported by the specified image.|
     |PLATFORM|-p|Yes|[alibaba \| aws \| azure \| gce \| qcow2 \| vhd \| vmware]|The target platform for generated images.|
     |REUSE| |No| |Keep/Reuse local files created by previous runs of the same [PLATFORM, MODULES, BOOT_LOCATIONS] combination.|    
-    |UPDATE_IMAGE_FILES| |No|[value]|Files you want injected into the image. For each of the injections, required values include source (file, directory, or URL) and destination (absolute full path).|
-    |UPDATE_IMAGE_FILES_IGNORE_URL_TLS| |No| |Ignore TSL certificate verification when downloading files to be injected into the image.|
+    |UPDATE_IMAGE_FILES| |No|[value]|Files you want injected into the image. For each of the injections, REQUIRED values include **source** (file, directory, or URL) and **destination** (absolute full path), and an OPTIONAL **mode** (a string of file [chmod][32] permissions flag consisting of 1-4 octal digits for read/write/execute).|
     |UPDATE_LV_SIZES| |No|[value]|Increase the sizes (MiB) of the following logical volumes (LV): appdata, config, log, shared, and var. This is a dictionary mapping the LV name to the new LV size. Define the size using an integer representing the number of MiBs (for example, "appdata":32000).|
     |VERSION|-v|No| |Print version information, and then exit the program.|
 
@@ -229,12 +229,13 @@ command line >  configuration file >  environment variable. To access the Image 
    * VHD (Microsoft Hyper-V)
    * VMware (ESX/i Server)
 
-4. OPTIONAL: The Image Generator tool can inject additional files (for example, keys, certs, and custom lx packages) into the virtual disk image to allow for image customization. You can do this using the command line; however, the syntax is simpler using the configuration file:
+4. OPTIONAL: The Image Generator tool can inject additional files (for example, keys, certs, and custom lx packages) and optionally designate file permissions into the virtual disk image to allow for image customization. You can do this using the command line; however, the syntax is simpler using the configuration file:
 
    ```
       UPDATE_IMAGE_FILES:   
       -  source: "/home/ubuntu/custom/authorized_keys"
          destination: "/home/admin/.ssh/authorized_keys"
+         mode: "600"
       -  source: "/home/ubuntu/custom/trusted-ca.pem"
          destination: "/config/ssl/ssl.crt/trusted-ca.pem"
       -  source: "https://github.com/F5Networks/f5-declarative-onboarding/releases/download/v1.8.0/f5-declarative-onboarding-1.8.0-2.noarch.rpm"
@@ -552,4 +553,5 @@ completed and submitted the F5 Contributor License Agreement.
 [28]: https://docs.microsoft.com/en-us/azure/storage/common/storage-configure-connection-string
 [29]: https://www.alibabacloud.com/help/doc-detail/31885.htm
 [30]: https://www.alibabacloud.com/help/doc-detail/92270.htm?spm=a2c63.p38356.b99.123.319c412aF3kxA0
-[31]: https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal        
+[31]: https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal
+[32]: http://www.filepermissions.com/articles/understanding-octal-file-permissions      
