@@ -123,6 +123,170 @@ function get_modules_production_name {
 }
 
 
+# Check if the input iso path is a local file or a URL 
+# If the file exists, return 0 to indicate it does not have to be downloaded
+# If the URL is valid ( http status code 200 or 320 ) return 0
+# else return 1
+function is_iso_path_valid_url {
+    local iso_url="$1"
+
+    if [[ $# -lt 1 ]]; then
+        error_and_exit "Usage: ${FUNCNAME[0]} <iso_path>"
+    elif [[ -z "$1" ]]; then
+        error_and_exit "Expected non-empty <iso_path>'$*'"
+    fi
+
+    local http_code
+    local ignore_tls
+    ignore_tls="$(get_config_value "IGNORE_DOWNLOAD_URL_TLS")"
+    local cert_check
+    cert_check=""
+    if [[ ! -z "$ignore_tls" ]]; then
+        cert_check="--insecure"
+    fi
+
+    http_code="$(curl "$cert_check" -o /dev/null -I -w "%{http_code}" "$iso_url")"
+    if [[ "$http_code" -eq "200" ]] || [[ "$http_code" -eq "302" ]]; then
+        return 0
+    fi
+    return 1
+}
+
+
+# Checks if the iso file is locally available or is it a URL
+# If the iso is a file and locally available, then just returns
+# the provided iso argument value
+# If the iso is a URL then downloads the iso file and assigns
+# a proper BIGIP iso name and returns the new iso file path.
+function check_iso_src {
+    local iso="$1" 
+    local ehf_flag="$2"
+    local store_dir="$3"
+    local out_file="$4"
+
+    if [[ $# -lt 4 ]]; then
+        error_and_exit "Usage: ${FUNCNAME[0]} <iso> <ehf_file> <store_dir> <out_msg_file>"
+    elif [[ -z "$1" ]] || [[ -z "$3" ]]  || [[ -z "$4" ]]; then
+        error_and_exit "Expected non-empty <iso_out> <store_dir> <out_msg_file>. Received '$*'"
+    fi
+
+    if [[ -f "$iso" ]]; then
+       echo "$iso" > "$out_file"
+       return 0
+    fi
+
+    local version_file
+    if [[ -z "$ehf_flag" ]]; then
+        version_file="VERSION"
+    else
+        version_file="VERSION.LTM"
+    fi
+
+    # Check if the input iso path is a URL
+    if is_iso_path_valid_url "$iso"; then
+        log_info "$iso is a valid URL"
+        # Create a temporary directory to download the iso to
+                
+        tmp_iso="downloaded.iso"
+        tmp_iso_path="$store_dir/$tmp_iso"
+
+        # Check if the iso path is actually an url
+        if ! download_file_from_url "$iso" "$tmp_iso_path"; then
+            echo "Error: BIGIP iso download failed" > "$out_file"
+            return 1
+        fi
+
+        if [[ ! -f "$tmp_iso_path" ]]; then
+            echo "Error: Could not find the iso - BIGIP iso download failed" > "$out_file"
+            return 1
+        fi
+
+        log_info "Downloaded $tmp_iso_path"
+
+        # extract VERSION file from the ISO and populate global vars
+        if ! extract_bigip_product_info_from_iso "$tmp_iso_path" "$ehf_flag" "$version_file" "$store_dir"; then
+            echo "Error: extract_bigip_product_info_from_iso has failed." > "$out_file"
+            return 1
+        fi
+
+        local iso_name
+        iso_name="$(compose_internal_disk_name "$PRODUCT_NAME" \
+                "$PRODUCT_VERSION" "$PRODUCT_BUILD" "$PROJECT_NAME")"
+        iso_name="$store_dir/$iso_name".iso
+
+        if ! mv -fv "$tmp_iso_path" "$iso_name"; then
+            echo "Error: Unable to move iso from $tmp_iso_path to $iso_name" > "$out_file"
+            return 1
+        fi
+        echo "$iso_name" > "$out_file"
+        return 0
+    else
+        echo "Error: Ths input iso does not exist" > "$out_file"
+        return 1
+    fi
+    return 0
+}
+
+
+function check_iso_sig_src {
+    local iso_sig="$1" 
+    local out_file="$2"
+    local save_to_loc="$3"
+
+    if [[ $# -lt 3 ]]; then
+        error_and_exit "Usage: ${FUNCNAME[0]} <iso_sig> <out_file>" \
+                "<save_to_loc>]"
+    elif [[ -z "$2" ]] || [[ -z "$3" ]]; then
+        error_and_exit "Expected non-empty <iso_sig> <out_file> <save_to_loc>. Received '$*'"
+    fi
+
+    if [[ -f "$iso_sig" ]]; then
+       echo "$iso_sig" > "$out_file"
+       return 0
+    fi
+
+    # Check if the input iso path is a URL
+    if is_iso_path_valid_url "$iso_sig"; then
+        log_info "$iso_sig URL is available"
+        # Check if the iso path is actually an url
+        if ! download_file_from_url "$iso_sig" "$save_to_loc"; then
+            echo "Error: BIGIP iso sig file download failed" > "$out_file"
+            return 1
+        fi
+
+        if [[ ! -f "$save_to_loc" ]]; then
+            echo "Error: BIGIP sig file download failed" > "$out_file"
+            return 1
+        fi
+        echo "$save_to_loc" > "$out_file"
+    fi
+    return 0
+}
+
+
+# Download the iso into the provided path
+function download_file_from_url {
+    local iso_url="$1"
+    local out_iso_path="$2"
+
+    local ignore_tls
+    ignore_tls="$(get_config_value "IGNORE_DOWNLOAD_URL_TLS")"
+    local cert_check
+    cert_check=""
+    if [[ ! -z "$ignore_tls" ]]; then
+        cert_check="--no-check-certificate"
+    fi
+
+    if ! wget "$cert_check" --progress=dot:giga -O "$out_iso_path" "$iso_url"; then
+        log_error "Error: Unable to get iso from $iso_url"
+        return 1
+    fi
+
+    log_info "Downloaded $out_iso_path from URL:$iso_url"
+    return 0
+}
+
+
 # compose and printout internal disk name name
 # it does not have any platform or sizing type information appended
 function compose_internal_disk_name {
@@ -152,6 +316,13 @@ function compose_internal_disk_name {
 }
 
 
+# Form a substring to be used in names of EHF images
+function form_ehf_marker {
+    if [[ -n "$1" ]]; then
+        echo "Hotfix-"
+    fi
+}
+
 # compose and printout cloud image name
 # currently company and license model are hardwired
 function compose_cloud_image_name {
@@ -161,19 +332,24 @@ function compose_cloud_image_name {
     local modules="$4"
     local boot_locations="$5"
     local project_name="$6"
+    local ehf_iso="$7"
 
     # The first five args are required
-    if [[ $# -lt 5 ]]; then
+    if [[ $# -ne 7 ]]; then
         error_and_exit "Usage: ${FUNCNAME[0]} <product> <version> <build>" \
-                "<modules> <boot_locations> optional [<project-name>]"
+                "<modules> <boot_locations> <project-name> <ehf_iso>"
     elif [[ -z "$1" ]] || [[ -z "$2" ]] || [[ -z "$3" ]] || \
          [[ -z "$4" ]] || [[ -z "$5" ]]; then
         error_and_exit "Expected non-empty <product> <version>" \
                 "<build> <modules> <boot_locations> received '$*'"
     fi
 
+    # -- EHF marker
+    local ehf_marker
+    ehf_marker="$(form_ehf_marker "$ehf_iso")"
+
     # Start assembling the image name --
-    local output="F5-$product"
+    local output="F5-$ehf_marker$product"
 
     # -- Project is optional
     if [[ -n "$project_name" ]]; then
@@ -280,6 +456,7 @@ function parse_version_file {
         error_and_exit "Received a wrong number ($#) of parameters: $*"
     fi
 
+    unset PRODUCT_NAME
     if ! PRODUCT_NAME=$(extract_value Product "$version_file") ; then
         error_and_exit "Failed to extract PRODUCT_NAME from '$version_file'."
     fi
@@ -287,12 +464,21 @@ function parse_version_file {
     log_info "PRODUCT_NAME: $PRODUCT_NAME"
     export PRODUCT_NAME
 
+    unset PRODUCT_BASE_BUILD
+    if ! PRODUCT_BASE_BUILD=$(extract_value BaseBuild "$version_file") ; then
+        error_and_exit "Failed to extract PRODUCT_BASE_BUILD from '$version_file'."
+    fi
+    log_info "PRODUCT_BASE_BUILD: $PRODUCT_BASE_BUILD"
+    export PRODUCT_BASE_BUILD
+
+    unset PRODUCT_BUILD
     if ! PRODUCT_BUILD=$(extract_value Build "$version_file") ; then
         error_and_exit "Failed to extract PRODUCT_BUILD from '$version_file'."
     fi
     log_info "PRODUCT_BUILD: $PRODUCT_BUILD"
     export PRODUCT_BUILD
 
+    unset PRODUCT_VERSION
     if ! PRODUCT_VERSION=$(extract_value Version "$version_file") ; then
         error_and_exit "Failed to extract PRODUCT_VERSION from '$version_file'."
     fi
@@ -300,12 +486,14 @@ function parse_version_file {
     export PRODUCT_VERSION
 
     # PROJECT_NAME is optional
+    unset PROJECT_NAME
     if PROJECT_NAME=$(extract_value Project "$version_file") ; then
         log_info "PROJECT_NAME: $PROJECT_NAME"
         export PROJECT_NAME
     else
         unset PROJECT_NAME
     fi
+
 }
 
 
@@ -423,19 +611,27 @@ function prepare_artifacts_directory {
 }
 
 
-# extract VERSION file from iso and parse it (set some global variables)
-# create metadata filter files for VERSION file
+# extract VERSION file from the full iso or VERSION.LTM from the ehf iso
+# parse the file (set some global variables)
+# create metadata filter files for version file
 # return 0 if passed; otherwise exit with 1
-function extract_bigip_version_file_from_iso {
+function extract_bigip_product_info_from_iso {
     local iso="$1"
-    local artifacts_directory="$2"
+    local ehf_flag="$2"
     local version_file="$3"
-    if [[ $# -ne 3 ]]; then
+    local artifacts_directory="$4"
+    if [[ $# -ne 4 ]]; then
         error_and_exit "Received a wrong number ($#) of parameters: $*"
     fi
 
     local iso_path_prefix
-    iso_path_prefix="$(extract_bigip_prefix_from_iso "$iso")"
+    if [[ -z "$ehf_flag" ]]; then
+        # full iso
+        iso_path_prefix="$(extract_bigip_prefix_from_iso "$iso")"
+    else
+        # ehf iso
+        iso_path_prefix="" # the version file is at the top in the ehf iso
+    fi
 
     # extract version file
     rm -f "$artifacts_directory/$version_file"
@@ -445,9 +641,67 @@ function extract_bigip_version_file_from_iso {
     fi
 
     parse_version_file "$artifacts_directory/$version_file"
+}
 
-    create_version_file_metadata "$artifacts_directory" "$artifacts_directory/$version_file"
+
+# extract VERSION file from iso and parse it (set some global variables)
+# create metadata filter files for VERSION file
+# return 0 if passed; otherwise exit with 1
+function extract_bigip_version_file_from_iso {
+    local iso="$1"
+    local ehf_flag="$2"
+    local create_metadata_flag="$3"
+    local artifacts_directory="$4"
+    if [[ $# -ne 4 ]]; then
+        error_and_exit "Received a wrong number ($#) of parameters: $*"
+    fi
+
+    local version_file
+    if [[ -z "$ehf_flag" ]]; then
+        version_file="VERSION"
+    else
+        version_file="VERSION.LTM"
+    fi
+
+    extract_bigip_product_info_from_iso "$iso" "$ehf_flag" "$version_file" "$artifacts_directory"
+
+    if [[ -n "$create_metadata_flag" ]]; then
+        create_version_file_metadata "$artifacts_directory" "$artifacts_directory/$version_file"
+    fi
     rm -f "$artifacts_directory/$version_file"
+}
+
+
+# Extract version file from the full iso (and ehf iso).
+# Check compatibility of the full iso and ehf iso, if applicable.
+# Create metadata filter files for the version file.
+function check_version_file {
+    local full_iso="$1"
+    local ehf_iso="$2"
+    local artifacts_directory="$3"
+    if [[ $# -ne 3 ]]; then
+        error_and_exit "Received a wrong number ($#) of parameters: $*"
+    fi
+
+    if [[ -z "$ehf_iso" ]]; then
+        extract_bigip_version_file_from_iso "$full_iso" "" "create metadata flag" "$artifacts_directory"
+    else
+        extract_bigip_version_file_from_iso "$full_iso" "" "" "$artifacts_directory"
+        local full_iso_product_name="$PRODUCT_NAME"
+        local full_iso_product_build="$PRODUCT_BUILD"
+        local full_iso_product_version="$PRODUCT_VERSION"
+
+        extract_bigip_version_file_from_iso "$ehf_iso" "ehf flag" "create metadata flag" "$artifacts_directory"
+        if [[ "$full_iso_product_name" != "$PRODUCT_NAME" ]]; then
+            error_and_exit "Product names of full and EHF ISOs do not match: $full_iso_product_name vs $PRODUCT_NAME"
+        fi
+        if [[ "$full_iso_product_version" != "$PRODUCT_VERSION" ]]; then
+            error_and_exit "Product versions of full and EHF ISOs do not match: $full_iso_product_version vs $PRODUCT_VERSION"
+        fi
+        if [[ "$full_iso_product_build" != "$PRODUCT_BASE_BUILD" ]]; then
+            error_and_exit "Product build of full ISO and product base build of EHF ISO do not match: $full_iso_product_build vs $PRODUCT_BASE_BUILD"
+        fi
+    fi
 }
 
 
@@ -614,11 +868,12 @@ function create_disk_name {
     local modules="$6"
     local boot_loc="$7"
     local project_name="$8"
-    local img_tag="$9"
+    local ehf_iso="$9"
+    local img_tag="${10}"
 
     if [[ $# -lt 7 ]]; then
         error_and_exit "Usage: ${FUNCNAME[0]} <format> <product> <version> <build>" \
-                "<sizing_type> <platform> optional [<project-name>] [<name-tag>]"
+                "<platform> <modules> <boot_loc> <project-name> <ehf_iso> <img_tag>"
     elif ! is_supported_platform "$platform"; then
         error_and_exit "Unsupported platform '$platform'"
     elif ! is_supported_module "$modules"; then
@@ -647,11 +902,15 @@ function create_disk_name {
         output="$output-$img_tag"
     fi
 
+    # -- EHF marker
+    local ehf_marker
+    ehf_marker="$(form_ehf_marker "$ehf_iso")"
+
     local sizing_type
     sizing_type="$(get_modules_production_name "$modules" "$boot_loc")"
 
     # -- fixed suffix
-    output="$output-$version-$build.$sizing_type.$platform.$format"
+    output="$ehf_marker$output-$version-$build.$sizing_type.$platform.$format"
     echo "$output"
 }
 
@@ -1018,30 +1277,34 @@ function take_snapshot {
     # Add the list of the artifacts files to the snapshot file.
     local artifacts_dir
     artifacts_dir=$(get_config_value "ARTIFACTS_DIR")
-    artifacts_dir=$(realpath --relative-base=. "$artifacts_dir")
-    local file_list
-    file_list="$artifacts_dir/files.txt"
-    if ! du -a --time "$artifacts_dir" > "$file_list"; then
-        log_warning "Failed to execute du for $artifacts_dir"
-        return 1
+    if [[ ! -z "$artifacts_dir" ]]; then
+        artifacts_dir=$(realpath --relative-base=. "$artifacts_dir")
     fi
-
-    if ! zip -qr "$snapshot" "$file_list"; then
-        log_warning "Failed to add $file_list to $snapshot"
-        return 1
-    fi
-
-    # Add text artifact files to the snapshot file.
-    # shellcheck disable=SC2034
-    while IFS=$'\t' read -r file_size file_time file_name
-    do
-        if [[ "text" == $(file -b --mime-type "$file_name" | sed 's|/.*||') ]]; then
-            if ! zip -qr "$snapshot" "$file_name"; then
-                log_warning "Failed to add $file_name to $snapshot"
-                return 1
-            fi
+    if [[ -d "$artifacts_dir" ]]; then
+        local file_list
+        file_list="$artifacts_dir/files.txt"
+        if ! du -a --time "$artifacts_dir" > "$file_list"; then
+            log_warning "Failed to execute du for $artifacts_dir"
+            return 1
         fi
-    done < "$file_list"
+
+        if ! zip -qr "$snapshot" "$file_list"; then
+            log_warning "Failed to add $file_list to $snapshot"
+            return 1
+        fi
+
+        # Add text artifact files to the snapshot file.
+        # shellcheck disable=SC2034
+        while IFS=$'\t' read -r file_size file_time file_name
+        do
+            if [[ "text" == $(file -b --mime-type "$file_name" | sed 's|/.*||') ]]; then
+                if ! zip -qr "$snapshot" "$file_name"; then
+                    log_warning "Failed to add $file_name to $snapshot"
+                    return 1
+                fi
+            fi
+        done < "$file_list"
+    fi
 
     log_debug "The snapshot of the workspace is ready and located at $snapshot"
 }

@@ -32,6 +32,8 @@ function trap_cleanup() {
     artifacts_dir="$(get_config_value "ARTIFACTS_DIR")"
     reuse="$(get_config_value "REUSE")"
     cleaning_msg="Cleaning up before EXIT."
+    # cleaning up any tmp directory
+    rm -rf ./tmp.*
     if [[ ! "$reuse" ]]; then
         log_debug "$cleaning_msg 'reuse' parameter was not set, removing the whole directory $artifacts_dir"
         rm -rf "$artifacts_dir"
@@ -94,6 +96,93 @@ function main {
     config_file="$(get_config_value "CONFIG_FILE")"
     cloud_image_name="$(get_config_value "CLOUD_IMAGE_NAME")"
 
+    # Initialize logging
+    local log_file
+    log_file="$(get_config_value "LOG_FILE")"
+    log_file="$(init_log_file "$log_file")"
+    if ! touch "$log_file"; then
+        error_and_exit "Do not have permission to write to log file."
+    fi
+    set_config_value "LOG_FILE" "$log_file"
+
+    # Check if the old log file should be deleted
+    local reuse
+    reuse="$(get_config_value "REUSE")"
+    if [[ ! "$reuse" ]] && [[ -f "$log_file" ]]; then
+        local output
+        if ! output="$(rm "$log_file")"; then
+            error_and_exit "Unable to delete existing log file [${log_file}]: $output"
+        fi
+    fi
+
+    local log_level
+    log_level=$(get_config_value "LOG_LEVEL" | tr '[:lower:]' '[:upper:]')
+
+    create_logger "$log_file" "$log_level"
+
+    # shellcheck disable=SC2181 
+    if [[ "$?" -ne 0 ]]; then
+        error_and_exit "Logger creation failed"
+    fi
+
+    # create a temporary directory to hold ISO downloaded from URL
+    local line
+    local tmp_dir
+    tmp_dir=$(mktemp -d -p .)
+    if [ ! -e "$tmp_dir" ]; then
+        error_and_exit "Error: Could not create a temporary directory to store the downloaded iso"
+    fi
+
+    local out_msg_file
+    out_msg_file="$(mktemp -p "$tmp_dir" tmp.XXXXXX)"
+    if [ ! -e "$out_msg_file" ]; then
+        error_and_exit "Error: Could not create a temporary file to get data"
+    fi
+
+    # if the iso is a URL download and store it in tmp_dir
+    check_iso_src "$iso" "" "$tmp_dir" "$out_msg_file"
+    line=$(head -n 1 "$out_msg_file")
+    if [[ $line == Error* ]]; then
+        error_and_exit "$line"
+    fi
+    iso="$line"
+
+    local sig_file_ext
+    sig_file_ext="$(get_config_value "DEFAULT_SIG_FILE_EXTENSION")"
+    local sig_file_loc
+    sig_file_loc="$iso""$sig_file_ext"
+
+    if [[ ! -z "$iso_sig" ]]; then
+        check_iso_sig_src "$iso_sig" "$out_msg_file" "$sig_file_loc"
+        line=$(head -n 1 "$out_msg_file")
+        if [[ $line == Error* ]]; then
+            error_and_exit "$line"
+        fi
+        iso_sig="$line"
+    fi
+
+    # Check if ehf_iso is present, either locally or via a URL
+    if [[ ! -z "$ehf_iso" ]]; then
+        check_iso_src "$ehf_iso" "ehf flag" "$tmp_dir" "$out_msg_file"
+        line=$(head -n 1 "$out_msg_file")
+        if [[ $line == Error* ]]; then
+            error_and_exit "$line"
+        fi
+        ehf_iso="$line"
+
+        # Check if a signature file corresponding to ehf_iso is present.
+        local ehf_sig_file_loc
+        ehf_sig_file_loc="$ehf_iso""$sig_file_ext"
+        if [[ ! -z "$ehf_iso_sig" ]]; then
+            check_iso_sig_src "$ehf_iso_sig" "$out_msg_file" "$ehf_sig_file_loc"
+            line=$(head -n 1 "$out_msg_file")
+            if [[ $line == Error* ]]; then
+                error_and_exit "$line"
+            fi
+            ehf_iso_sig="$line"
+        fi
+    fi
+
     if ! verify_iso "$iso" "$iso_sig" "$pub_key1" "$encr_type_1"; then
         # iso verification was skipped or failed with pub_key1
         rc=0
@@ -124,35 +213,7 @@ function main {
     local script_dir
     script_dir="$(realpath "$(dirname "${BASH_SOURCE[0]}")")"
 
-    # Initialize logging
-    local log_file
-    log_file="$(get_config_value "LOG_FILE")"
-    log_file="$(init_log_file "$log_file")"
-    if ! touch "$log_file"; then
-        error_and_exit "Do not have permission to write to log file."
-    fi
-    set_config_value "LOG_FILE" "$log_file"
-
-    # Check if the old log file should be deleted
-    local reuse
-    reuse="$(get_config_value "REUSE")"
-    if [[ ! "$reuse" ]] && [[ -f "$log_file" ]]; then
-        local output
-        if ! output="$(rm "$log_file")"; then
-            error_and_exit "Unable to delete existing log file [${log_file}]: $output"
-        fi
-    fi
-
-    local log_level
-    log_level=$(get_config_value "LOG_LEVEL" | tr '[:lower:]' '[:upper:]')
-
-    create_logger "$log_file" "$log_level"
-
-    # shellcheck disable=SC2181 
-    if [[ "$?" -ne 0 ]]; then
-        error_and_exit "Logger creation failed"
-    fi
-
+    
     # Initialize image directory
     init_image_dir "$(realpath "$script_dir")"
     local output_dir
@@ -164,11 +225,9 @@ function main {
         error_and_exit "copy_metadata_filter_config_files has failed, check '$log_file' for more details."
     fi
 
-    # extract VERSION file from the ISO and populate global vars
-    local version_file
-    version_file="VERSION"
-    if ! extract_bigip_version_file_from_iso "$iso" "$artifacts_directory" "$version_file"; then
-        error_and_exit "extract_bigip_version_file_from_iso has failed."
+    # extract the version file from the ISOs and populate global vars
+    if ! check_version_file "$iso" "$ehf_iso" "$artifacts_directory"; then
+        error_and_exit "check_version_file has failed."
     fi
 
     # Convert the BIG-IP version number into an 8 digit numeric version.
@@ -313,7 +372,7 @@ function main {
     # Step1: Prepare the raw disk.
     local raw_disk
     raw_disk=$(create_disk_name "raw" "$PRODUCT_NAME" "$PRODUCT_VERSION" \
-            "$PRODUCT_BUILD" "$platform" "$modules" "$boot_locations" "$PROJECT_NAME")
+            "$PRODUCT_BUILD" "$platform" "$modules" "$boot_locations" "$PROJECT_NAME" "$ehf_iso")
     # shellcheck disable=SC2181
     if [[ $? -ne 0 ]]; then
         error_and_exit "create_disk_name has failed, check '$log_file' for more details."
@@ -362,7 +421,7 @@ function main {
 
     local output_disk
     output_disk=$(create_disk_name "$extension" "$PRODUCT_NAME" "$PRODUCT_VERSION" \
-            "$PRODUCT_BUILD" "$platform" "$modules" "$boot_locations" "$PROJECT_NAME")
+            "$PRODUCT_BUILD" "$platform" "$modules" "$boot_locations" "$PROJECT_NAME" "$ehf_iso")
     # shellcheck disable=SC2181
     if [[ $? -ne 0 ]]; then
         error_and_exit "create_disk_name has failed, check '$log_file' for more details."
@@ -410,7 +469,8 @@ function main {
             if [[ -z "$cloud_image_name" ]]; then
                 cloud_image_opt="--seed-image-name"
                 cloud_image_name="$(compose_cloud_image_name "$PRODUCT_NAME" "$PRODUCT_VERSION" \
-                                    "$PRODUCT_BUILD" "$modules" "$boot_locations" "$PROJECT_NAME")"
+                                    "$PRODUCT_BUILD" "$modules" "$boot_locations" "$PROJECT_NAME" \
+                                    "$ehf_iso")"
             fi
 
             "${script_dir}"/src/bin/prepare_image.py --artifacts-dir "$artifacts_directory" \

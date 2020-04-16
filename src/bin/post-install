@@ -1,5 +1,5 @@
 #!/bin/bash -e
-# Copyright (C) 2018-2019 F5 Networks, Inc
+# Copyright (C) 2018-2020 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -107,6 +107,7 @@ function err_exit {
         err_text="Missing error text"
     fi
 
+    log_echo "$err_text" # also send to stdout
     $PRINT_ERROR "ERROR - $err_text"
     exit 1
 }
@@ -439,9 +440,6 @@ function final_cloud_prepare {
 #####################################################################
 # copy user injected files from a predefined location: /etc/injected_files
 function copy_injected_files {
-    local any_errors
-    any_errors=0
-
     if [[ ! -e "$(realpath .)"/etc/injected_files ]]; then
         log_echo "No user files to inject"
         return 0
@@ -453,60 +451,84 @@ function copy_injected_files {
         local destination_container="$container/dest"
         # check that the destination container exists
         if [[ ! -f "$destination_container" ]]; then
-            log_echo "destination container of the injected path $destination_container does not exist"
-            any_errors=1
-            continue
+            err_exit "destination container of the injected path $destination_container does not exist"
         fi
 
         # check that the destination is a single word
         if [[ $(wc -w "$destination_container" | awk '{print $1;}') != '1' ]]; then
             log_echo "destination of the injected path must be a single word, but received:"
             cat "$destination_container"
-            any_errors=1
-            continue
+            err_exit "destination of the injected path must be a single word"
         fi
         local destination
         destination=$(<"$destination_container")
 
         # destination must be an absolute path
         if [[ "${destination:0:1}" != '/' ]]; then
-            log_echo "destination of the injected path $destination must be an absolute path"
-            any_errors=1
-            continue
+            err_exit "destination of the injected path $destination must be an absolute path"
+        fi
+
+        # check if the mode container exists (it is a single line single word file "mode")
+        # and extract the mode
+        local mode_container="$container/mode"
+        local mode=""
+        if [[ -f "$mode_container" ]]; then
+            mode=$(<"$mode_container")
+            log_echo "destination $destination has the mode container and will have mode $mode"
         fi
 
         # each container must have either file or directory "src"
         # to inject a file: copy a file "src"
         # to inject a directory: copy everything contained in "src"
         local dest_dir
-        local cp_out
+        local cp_out=""
+        local mkdir_out=""
         if [[ -d "$container/src" ]]; then
             dest_dir="$INST_ROOT/$destination"
-            mkdir -p "$dest_dir"
-            log_echo "copy injected dir: cp -prf $container/src/* $dest_dir"
-            if ! cp_out=$(cp -prf "$container/src/"* "$dest_dir" 2>&1); then
-                log_echo "copy failed, possible reason: $cp_out"
-                any_errors=1
+            if [[ -n "$mode" ]]; then
+                mode="-m=$mode"
+                log_echo "create dir: mkdir -p $mode $dest_dir"
+                if ! mkdir_out=$(mkdir -p "$mode" "$dest_dir" 2>&1); then
+                    err_exit "mkdir failed, possible reason: $mkdir_out"
+                fi
+            else
+                log_echo "create dir: mkdir -p $dest_dir"
+                if ! mkdir_out=$(mkdir -p "$dest_dir" 2>&1); then
+                    err_exit "mkdir failed, possible reason: $mkdir_out"
+                fi
+            fi
+            if find "$container/src" -mindepth 1 -print -quit 2>/dev/null | grep -q .; then
+                # the directory is not empty
+                log_echo "copy injected dir: cp -prf $container/src/* $dest_dir"
+                if ! cp_out=$(cp -prf "$container/src/"* "$dest_dir" 2>&1); then
+                    err_exit "copy failed, possible reason: $cp_out"
+                fi
             fi
         elif [[ -f "$container/src" ]]; then
             dest_dir="$INST_ROOT/${destination%/*}" # dirname is not available
             local dest_file
             dest_file=$(basename "$destination")
-            mkdir -p "$dest_dir"
+            log_echo "create dir: mkdir -p $dest_dir"
+            if ! mkdir_out=$(mkdir -p "$dest_dir" 2>&1); then
+                err_exit "mkdir failed, possible reason: $mkdir_out"
+            fi
             log_echo "copy injected file: cp -pf $container/src $dest_dir/$dest_file"
             if ! cp_out=$(cp -pf "$container/src" "$dest_dir/$dest_file" 2>&1); then
-                log_echo "copy failed, possible reason: $cp_out"
-                any_errors=1
+                err_exit "copy failed, possible reason: $cp_out"
+            fi
+            if [[ -n "$mode" ]]; then
+                log_echo "change mode of injected file: chmod $mode $dest_dir/$dest_file"
+                local chmod_out=""
+                if ! chmod_out=$(chmod "$mode" "$dest_dir/$dest_file" 2>&1); then
+                    err_exit "chmod failed, possible reason: $chmod_out"
+                fi
             fi
         else
-            log_echo "$container/src neither a file nor a directory, or does not exist, cannot inject it"
-            any_errors=1
-            continue
+            err_exit "$container/src neither a file nor a directory, or does not exist, cannot inject it"
         fi
     done
 
     dbg_echo "${FUNCNAME[0]} - end"
-    return $any_errors
 }
 #####################################################################
 

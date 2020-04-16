@@ -17,6 +17,7 @@
 from os.path import basename, isdir, isfile, abspath, realpath, expanduser
 from pathlib import Path
 from shutil import copy2, copytree
+import re
 import requests
 
 from util.build_info import BuildInfo
@@ -28,9 +29,12 @@ def extract_single_worded_key(dictionary, key):
     """ verify that key is in dictionary and its value is a single word """
     if key in dictionary:
         value = dictionary[key]
+        if not isinstance(value, str):
+            raise RuntimeError('\'{}\' of injected file must be a string, but got {}'
+                               .format(key, value))
         if len(value.split()) == 1:
             return value
-        raise RuntimeError('\'{}\' of injected file must be a single word, but got {}: \'{}\''
+        raise RuntimeError('\'{}\' of injected file must be a single word, but got {} words: \'{}\''
                            .format(key, len(value.split()), value))
 
     raise RuntimeError('\'{}\' is not specified for injected file \'{}\' !'
@@ -61,10 +65,14 @@ def read_injected_files(top_call_dir, overall_dest_dir):
     count = 0
     LOGGER.trace("files_to_inject: %s", files_to_inject)
     for file in files_to_inject:
-        LOGGER.trace("file: %s", file)
+        LOGGER.debug('Injecting file: \'%s\'.', file)
         src = extract_single_worded_key(file, 'source')
         dest = extract_single_worded_key(file, 'destination')
-        LOGGER.info('copy \'%s\' to a temporary location for \'%s\'', src, dest)
+        if 'mode' in file:
+            mode = extract_single_worded_key(file, 'mode')
+        else:
+            mode = None
+        LOGGER.info('Copy \'%s\' to a temporary location for \'%s\'.', src, dest)
 
         url = src # treat 'src' as a file path and 'url' as a url
         if src[0] != '/' and src[0] != '~':
@@ -95,6 +103,16 @@ def read_injected_files(top_call_dir, overall_dest_dir):
         with open(file_holder + 'dest', 'w') as dest_holder:
             print("{}".format(dest), file=dest_holder)
 
+        # Store mode. Should be a string consisting of one to four octal digits.
+        if mode:
+            LOGGER.debug('Creating mode holder for mode \'%s\'.', mode)
+            mode_pattern = re.compile('^[0-7][0-7]?[0-7]?[0-7]?$')
+            if not mode_pattern.match(mode):
+                raise RuntimeError('Invalid mode \'' + mode + '\', must be a string ' +
+                                   'consisting of one to four octal digits.')
+            with open(file_holder + 'mode', 'w') as mode_holder:
+                print("{}".format(mode), file=mode_holder)
+
         count += 1
         # end of for loop
 
@@ -117,7 +135,7 @@ def download_file(url, dest_file):
     """ Download from url to a local file.
         Throws exceptions with wording specific to the file injection.
         Assumes that the directory containing the destination file already exists. """
-    verify_tls = bool(get_config_value("UPDATE_IMAGE_FILES_IGNORE_URL_TLS") is None)
+    verify_tls = bool(get_config_value("IGNORE_DOWNLOAD_URL_TLS") is None)
     try:
         remote_file = requests.get(url, verify=verify_tls, timeout=60)
     except requests.exceptions.SSLError as exc:
@@ -125,7 +143,7 @@ def download_file(url, dest_file):
         raise RuntimeError(
             'Cannot access \'{}\' due to TLS problems! '.format(url) +
             'Consider abandoning TLS verification by usage of ' +
-            '\'UPDATE_IMAGE_FILES_IGNORE_URL_TLS\' parameter.')
+            '\'IGNORE_DOWNLOAD_URL_TLS\' parameter.')
     except requests.exceptions.RequestException as exc:
         LOGGER.exception(exc)
         raise RuntimeError(
