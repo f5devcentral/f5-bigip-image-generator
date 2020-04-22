@@ -4,6 +4,7 @@ In Azure, the image generator tool will do the following:
 
 1. Create a virtual disk image locally.
 2. Upload the virtual disk image to a [storage container][1].
+3. Create the virtual machine image.
 
 ### Prerequisites
 
