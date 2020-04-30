@@ -44,7 +44,7 @@ The following table lists system requirements for using the Image Generator to c
 | Component                 | Version                                                         | Recommended System Requirements|                                                      
 |---------------------------| :---------------------------------------------------------------| :------------------------------|
 | F5 BIG-IP Image Generator | 1.0                                                             | - **Memory**: 1GB memory <br> - **Disk space**: depends on number of images you want to create.<br> See following BIG-IP VE system requirements.|                                                             
-| [F5 BIG-IP VE][1]         | - BIG-IP 13.1.0.2+ (except Alibaba) <br>- BIG-IP 14.X<br> - BIG-IP 14.1.0.3+ (for Alibaba ONLY)<br> - BIG-IP 15.X          | A minimum of 20GB per image    |    
+| [F5 BIG-IP VE][1]         | - BIG-IP 13.1.0.2+ (except Alibaba) <br>- BIG-IP 14.X<br> - BIG-IP 14.1.0.3+ (for Alibaba ONLY)<br> - BIG-IP 15.X          | A minimum of 20GB per image <br> The image generator uses sparse file systems, which results in local images that are smaller than deployed images.  For more information about images and deployed image sizes, see the [K14946][33] article.|    
 | Ubuntu (F5 Image Generator-validated)                    | 18.04 LTS operating system       | Tools: <br>- Git<br> - Python 3.x<br> - Cloud provider SDK tools <br> See [setup script][2].|
 | Open Virtualization Format Tool (ovftool) | 4.3.0 | If you deploy in VMware (ESX/i Server) or AWS cloud, you must install the [ovftool][22] for creating the virtual disk. |
 	 
@@ -181,7 +181,22 @@ To avoid installing programs to your environment and enable running simultaneous
 
 This section provides steps for creating a [config.yml][5] file that defines frequently used settings and shared variables that the BIG-IP Image Generator will use for creating custom images, running the Image Generator tool, and then customizing log details for monitoring progress. 
 
-### Create config file
+##### TIP
+
+---------------------------------------------------
+
+Before creating your configuration file for generating your image, consult the [K14946][33] article about image disk sizes for BIG-IP VE versions and template types. For example:
+
+* LTM_1SLOT for BIG-IP VE 15.X deployed image disk size is 10 GB
+* LTM for BIG-IP VE 14.X disk deployed image disk size is 37 GB
+* ALL_1SLOT for BIG-IP VE 13.X deployed image disk size is 60 GB 
+
+To define the LTM and ALL templates, use the MODULES parameter in the following table, and to define the 1SLOT or 2SLOT use the BOOT_LOCATIONS parameter in the following table. 
+
+----------------------------------------------------
+
+
+#### Create config file
 
 1. Create a [config.yml][5] for frequently used settings and shared variables. The BIG-IP Image Generator will only use the variable definitions applicable to the specified provider and ignores other variables.
 
@@ -220,7 +235,6 @@ command line >  configuration file >  environment variable. To access the Image 
    * [Alibaba][26]
    * [AWS][6]
    * [Azure][7] - When creating BIG-IP images in Azure, you must also [create an application][31]. Consult the [Azure ReadMe][7] file for more information.
-   
    * [GCE ][8]  
     
    The following platforms do not currently require platform-specific configuration:
@@ -554,4 +568,5 @@ completed and submitted the F5 Contributor License Agreement.
 [29]: https://www.alibabacloud.com/help/doc-detail/31885.htm
 [30]: https://www.alibabacloud.com/help/doc-detail/92270.htm?spm=a2c63.p38356.b99.123.319c412aF3kxA0
 [31]: https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal
-[32]: http://www.filepermissions.com/articles/understanding-octal-file-permissions      
+[32]: http://www.filepermissions.com/articles/understanding-octal-file-permissions
+[33]: https://support.f5.com/csp/article/K14946 
