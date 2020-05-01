@@ -37,6 +37,8 @@ It is recommended to pass the credentials via ENV or CLI, rather than putting th
 
 #### Example
 
+The following example generates an  LTM_1SLOT image for a BIG-IP VE 15.X. For deployed image sizes for various BIG-IP VE versions, see the [K14946][4] article.
+
 ```
 ./build-image -i /var/tmp/BIGIP-15.0.0-0.0.39.iso -c config.yml -p gce -m ltm -b 1
 
@@ -69,5 +71,6 @@ completed and submitted the F5 Contributor License Agreement.
 [1]: https://cloud.google.com/storage/docs/creating-buckets
 [9]: https://cloud.google.com/iam/docs/creating-managing-service-accounts
 [3]: https://github.com/f5devcentral/f5-bigip-image-generator/blob/master/README.md#image-generator-prerequisites
+[4]: https://support.f5.com/csp/article/K14946
 
 
