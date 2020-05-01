@@ -46,6 +46,8 @@ F5 recommends passing the credentials via `ENV` or `CLI`, rather than putting th
 
 #### Example
 
+The following example generates an  LTM_1SLOT image for a BIG-IP VE 15.X. For deployed image sizes for various BIG-IP VE versions, see the [K14946][5] article.
+
 ```
 ./build-image -i /var/tmp/BIGIP-15.0.0-0.0.39.iso -c config.yml -p azure -m ltm -b 1
 
@@ -80,5 +82,6 @@ completed and submitted the F5 Contributor License Agreement.
 [2]: https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal
 [3]: https://docs.microsoft.com/en-us/azure/storage/common/storage-configure-connection-string
 [4]: https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal
+[5]: https://support.f5.com/csp/article/K14946
 
 
