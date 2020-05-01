@@ -42,6 +42,9 @@ It is recommended to pass the credentials via ENV or CLI, rather than putting th
 
 #### Example
 
+The following example generates an  LTM_1SLOT image for a BIG-IP VE 15.X. For deployed image sizes for various BIG-IP VE versions, see the [K14946][5] article.
+
+
 ```
 ./build-image -i /var/tmp/BIGIP-15.0.0-0.0.39.iso -c config.yml -p alibaba -m ltm -b 1
 
@@ -78,6 +81,7 @@ completed and submitted the F5 Contributor License Agreement.
 [2]: https://www.alibabacloud.com/help/doc-detail/25464.htm
 [9]: https://www.alibabacloud.com/help/doc-detail/92270.htm?spm=a2c63.p38356.b99.123.319c412aF3kxA0
 [4]: https://www.alibabacloud.com/help/doc-detail/25542.htm
+[5]: https://support.f5.com/csp/article/K14946
 
 
 
