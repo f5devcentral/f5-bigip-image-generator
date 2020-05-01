@@ -36,6 +36,9 @@ F5 recommends passing the credentials via ENV or CLI, rather than putting them i
 ------------------
 
 #### Example:
+
+The following example generates an  LTM_1SLOT image for a BIG-IP VE 15.X. For deployed image sizes for various BIG-IP VE versions, see the [K14946][4] article.
+
 ```
 ./build-image -i /var/tmp/BIGIP-15.0.0-0.0.39.iso -c config.yml -p aws -m ltm -b 1
 
@@ -68,5 +71,6 @@ completed and submitted the F5 Contributor License Agreement.
 [2]: https://docs.aws.amazon.com/vm-import/latest/userguide/vmimport-image-import.html
 [3]: https://github.com/f5devcentral/f5-bigip-image-generator/blob/master/README.md#image-generator-prerequisites
 [22]: https://code.vmware.com/web/tool/4.3.0/ovf
+[4]: https://support.f5.com/csp/article/K14946
 
 
