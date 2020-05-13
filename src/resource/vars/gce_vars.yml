@@ -86,3 +86,8 @@ GCE_IMAGE_UPLOAD_CHUNK_SIZE:
   description: >-
     Chunk-size in bytes to use for image upload to GCS. Set this to the number
     of bytes that your network connection can deliver in 60s or less.
+
+GCE_IMAGE_FAMILY_NAME:
+  accepted: "^[a-z]([a-z0-9-]{0,62}[a-z0-9])?$"
+  description: >-
+    An image family name to apply in GCP. E.g. 'bigip-15-1-custom'

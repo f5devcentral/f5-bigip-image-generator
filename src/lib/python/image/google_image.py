@@ -153,6 +153,9 @@ class GoogleImage(BaseImage):
                     bucket_name, self.disk.uploaded_disk_name)
             }
         }
+        family_name = get_config_value('GCE_IMAGE_FAMILY_NAME')
+        if family_name:
+            image_body['family'] = family_name
 
         try:
             # pylint: disable=no-member
