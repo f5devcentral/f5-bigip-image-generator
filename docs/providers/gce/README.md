@@ -26,6 +26,7 @@ Define the following parameters in a config file or set as an environment variab
 |Parameter|Required|Values|Description|
 |:--------|:-------|:-----|:----------|
 |GCE_BUCKET|Yes|[value]|GCE disk storage bucket used during image generation.|
+|GCE_IMAGE_FAMILY_NAME|No|[value]|An optional [Family Name][10] to assign to the generated image.|
 |GOOGLE_APPLICATION_CREDENTIALS|Yes|[value]|Service account auth credentials as a JSON string or a file path ending in .json.  For help with generating these credentials, refer to bit.ly/2MYQpHN. .|
 
 ##### NOTE
@@ -72,5 +73,5 @@ completed and submitted the F5 Contributor License Agreement.
 [9]: https://cloud.google.com/iam/docs/creating-managing-service-accounts
 [3]: https://github.com/f5devcentral/f5-bigip-image-generator/blob/master/README.md#image-generator-prerequisites
 [4]: https://support.f5.com/csp/article/K14946
-
+[10]: https://cloud.google.com/compute/docs/images#image_families
 

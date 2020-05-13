@@ -73,3 +73,8 @@ GCE_IMAGE_DELETE_COMPLETED_RETRY_DELAY:
   description: >-
     Sleep duration (in seconds) between retries when checking for the image deletion to succeed.
   internal: true
+
+GCE_IMAGE_FAMILY_NAME:
+  accepted: "^[a-z]([a-z0-9-]{0,62}[a-z0-9])?$"
+  description: >-
+    An image family name to apply in GCP. E.g. 'bigip-15-1-custom'
