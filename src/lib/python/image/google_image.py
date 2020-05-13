@@ -14,7 +14,7 @@
 # the License.
 
 
-
+import google.auth
 from google.oauth2 import service_account
 from googleapiclient import discovery
 from googleapiclient.errors import HttpError
@@ -38,19 +38,35 @@ class GoogleImage(BaseImage):
         super().__init__(working_dir, input_disk_path)
         self.disk = GoogleDisk(input_disk_path)
 
-        # Retrieve credentials dictionary
-        creds_dict = get_dict_from_config_json("GOOGLE_APPLICATION_CREDENTIALS")
+        # Retrieve credentials and set project id; prefer to use the explict
+        # credentials from config yaml, but fallback to ADC
+        if get_config_value('GOOGLE_APPLICATION_CREDENTIALS'):
+            creds_dict = get_dict_from_config_json('GOOGLE_APPLICATION_CREDENTIALS')
+            credentials = service_account.Credentials.from_service_account_info(creds_dict)
+            project_id = ensure_value_from_dict(creds_dict, "project_id")
+        else:
+            LOGGER.info("Falling back to ADC for authentication")
+            credentials, project_id = google.auth.default()
+        
+        # Allow configuration to override the project id from auth
+        if get_config_value('GCE_PROJECT_ID'):
+            project_id = get_config_value('GCE_PROJECT_ID')
+            LOGGER.info("Setting project_id explicitly from configuration: %s", project_id)
 
-        # Obtain project ID from the credentials dictionary
-        self.gce_project_id = ensure_value_from_dict(creds_dict, "project_id")
+        # Image upload *must* have a project
+        if not project_id:
+            raise RuntimeError("Project ID is unknown")
+
+        # Set project ID
+        self.gce_project_id = project_id
         LOGGER.info("Using project_id: '%s'", self.gce_project_id)
 
         # Record project ID in metadata
         self.metadata = CloudImageMetadata()
         self.metadata.set(self.__class__.__name__, 'gce_project', self.gce_project_id)
 
-        # Create a service object from the credentials dictionary
-        self.gce_credentials = service_account.Credentials.from_service_account_info(creds_dict)
+        # Create a service object from the credentials
+        self.gce_credentials = credentials
         self.gce_service = discovery.build('compute', 'v1', credentials=self.gce_credentials)
 
     def clean_up(self):

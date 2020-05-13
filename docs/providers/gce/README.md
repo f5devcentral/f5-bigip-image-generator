@@ -26,12 +26,19 @@ Define the following parameters in a config file or set as an environment variab
 |Parameter|Required|Values|Description|
 |:--------|:-------|:-----|:----------|
 |GCE_BUCKET|Yes|[value]|GCE disk storage bucket used during image generation.|
-|GOOGLE_APPLICATION_CREDENTIALS|Yes|[value]|Service account auth credentials as a JSON string or a file path ending in .json.  For help with generating these credentials, refer to bit.ly/2MYQpHN. .|
+|GCE_IMAGE_UPLOAD_CHUNK_SIZE|No|[value]|Set the size of `chunks` used to upload images to GCS. If unset, the default chunk-size will be used. See [NOTES](#NOTES) below.|
+|GCE_PROJECT_ID|No|[value]|GCP Project ID to use for uploaded images. If not specified, the project id associated with the service account will be used.|
+|GOOGLE_APPLICATION_CREDENTIALS|No|[value]|Service account auth credentials as a JSON string or a file path ending in .json.  For help with generating these credentials, refer to bit.ly/2MYQpHN. If credentials are not explictly set, Application Default Credentials will be used for authentication.|
 
-##### NOTE
-----------
+##### NOTES
+-----------
 
 It is recommended to pass the credentials via ENV or CLI, rather than putting them in a configuration file.
+
+Google storage API uploads data to a bucket in chunks; if an entire chunk cannot
+be uploaded in ~60s, a timeout error will occur. Use the parameter
+GCE_IMAGE_UPLOAD_CHUNK_SIZE to set a chunk-size that you know can be uploaded
+within 60 seconds to work around timeout issues.
 
 ---------------
 
