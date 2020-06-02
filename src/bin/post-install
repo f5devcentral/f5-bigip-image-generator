@@ -290,7 +290,7 @@ function disable_fsck {
 
     # Disable time interval based and mount count based fsck
     local lvdisplay_list
-    lvdisplay_list=($( lvdisplay | grep 'LV Path' | grep -v 'maint\|swapvol' | awk '{ print $3 }' ))
+    mapfile -t lvdisplay_list <<< "$( lvdisplay | grep 'LV Path' | grep -v 'maint\|swapvol' | awk '{ print $3 }' )"
 
     for volume in "${lvdisplay_list[@]}"; do
         local tune2fs_output
@@ -546,13 +546,13 @@ function modify_selinux_relabeling_behavior {
     dbg_echo "${FUNCNAME[0]} - begin - TMI_VADC_HYPERVISOR = $TMI_VADC_HYPERVISOR"
 
     # Source files in the installer...
-    local src_file=( /etc/$RC_SYSINIT_MFG_FILE )
-    local dest_file=($RC_D_DIR/$RC_SYSINIT )
+    local src_file=( /etc/"$RC_SYSINIT_MFG_FILE" )
+    local dest_file=("$RC_D_DIR"/"$RC_SYSINIT" )
 
     is_supported_cloud "$TMI_VADC_HYPERVISOR"
     if [ $ret_supported_cloud -eq 0 ] ; then
-        src_file=("${src_file[@]}" /etc/$FINAL_CLOUD_PREPARE_SYSINIT)
-        dest_file=("${dest_file[@]}" $ETC_DIR/$FINAL_CLOUD_PREPARE_SYSINIT)
+        src_file=("${src_file[@]}" /etc/"$FINAL_CLOUD_PREPARE_SYSINIT")
+        dest_file=("${dest_file[@]}" "$ETC_DIR"/"$FINAL_CLOUD_PREPARE_SYSINIT")
     fi
 
     if [ ${#src_file[@]} -ne ${#dest_file[@]} ] ; then

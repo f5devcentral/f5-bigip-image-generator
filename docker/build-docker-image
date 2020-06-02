@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2020 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -13,28 +13,114 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-cd ..
-
-if [ ! -x  "$(command -v docker)" ]; then
-  printf -- "You don\'t seem to have Docker installed.\n";
-  printf -- 'Get it: https://www.docker.com/community-edition\n';
-  printf -- 'Or run docker in your terminal for suggestions for installing\n';
-  printf -- 'Exiting with code 127...\n';
-  exit 127;
-fi;
 set -e
 
-DOCKERFILE="Dockerfile"
-TAG="ubuntu:ve_image_generator"
-BASE_REPO="ubuntu:18.04"
-ADD_DEVTOOLS_OPTION=""
-USERNAME="$(whoami)"
+main() {
 
-docker build  \
-      -f "docker/$DOCKERFILE" \
-      --tag "$TAG" \
-      --build-arg BASE_REPO="$BASE_REPO" \
-      --build-arg ADD_DEVTOOLS_OPTION="$ADD_DEVTOOLS_OPTION" \
-      --build-arg USERNAME="$USERNAME" \
-      --no-cache \
-      .
+    if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+        print_help
+        exit 1
+    fi
+
+    check_commands
+    base_image "$@"
+
+    cd ..
+    VERSION=$(yq -r .VERSION_NUMBER.default src/resource/vars/shared_vars.yml)
+    REPO="f5devcentral"
+    PRODUCT="f5-bigip-image-generator"
+    TAG="$REPO/$PRODUCT:$VERSION"
+    ADD_DEVTOOLS_OPTION=""
+    USERNAME="$(whoami)"
+    KVM_GROUP_ID=$(getent group kvm | awk -F: '{printf "%d", $3}')
+
+    docker build  \
+	  -f "docker/$DOCKERFILE" \
+	  --tag "$TAG" \
+	  --build-arg BASE_REPO="$BASE_REPO" \
+	  --build-arg ADD_DEVTOOLS_OPTION="$ADD_DEVTOOLS_OPTION" \
+	  --build-arg USERNAME="$USERNAME" \
+	  --build-arg KVM_GROUP_ID="$KVM_GROUP_ID" \
+	  --no-cache \
+	  .
+}
+
+
+function print_help {
+    echo "Optional arguments:"
+    echo "  --base-image ubuntu       Use Ubuntu docker image"
+}
+
+
+# Determine which base image to use based on passed in parameters
+function base_image {
+    ARGUMENT_LIST=(
+        "base-image"
+    )
+
+    # read arguments
+    opts=$(getopt \
+        --longoptions "$(printf "%s:," "${ARGUMENT_LIST[@]}")" \
+        --name "$(basename "$0")" \
+        --options "" \
+        -- "$@"
+    )
+    eval set --"$opts"
+    BASE_IMAGE="alpine"
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --base-image)
+                BASE_IMAGE=$2
+                shift 2
+                ;;
+
+            *)  
+                break
+                ;;
+        esac
+    done
+
+    DOCKERFILE="Dockerfile"
+    if [ "$BASE_IMAGE" = "alpine" ]; then
+	BASE_REPO="alpine:3.11.5"
+	DOCKERFILE="Dockerfile"
+    elif [ "$BASE_IMAGE" = "ubuntu" ]; then
+	BASE_REPO="ubuntu:18.04"
+	DOCKERFILE="Dockerfile.ubuntu"
+    else
+	echo "$BASE_IMAGE is not a supported docker base image"
+	exit 1
+    fi
+}
+
+
+# Verify that all needed commands are installed
+function check_commands {
+    if [ ! -x  "$(command -v docker)" ]; then
+      printf -- "You don\'t seem to have Docker installed.\n";
+      printf -- 'Get it: https://www.docker.com/community-edition\n';
+      printf -- 'Or run docker in your terminal for suggestions for installing\n';
+      printf -- 'Exiting with code 127...\n';
+      exit 127;
+    fi;
+
+    if [ ! -x  "$(command -v getent)" ]; then
+      printf -- "You don\'t seem to have getent installed.\n";
+      printf -- 'This can usually be achieved by running: \n';
+      printf -- 'apt-get install libc-bin\n';
+      printf -- 'Exiting with code 127...\n';
+      exit 127;
+    fi;
+
+
+    if [ ! -x  "$(command -v yq)" ]; then
+      printf -- "You don\'t seem to have yq installed.\n";
+      printf -- 'This can usually be achieved by running: \n';
+      printf -- 'pip3 install yq\n';
+      printf -- 'Or by checking: https://mikefarah.gitbook.io/yq/';
+      printf -- 'Exiting with code 127...\n';
+      exit 127;
+    fi;
+}
+
+main "$@"; exit

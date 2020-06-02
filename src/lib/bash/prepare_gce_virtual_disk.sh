@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2020 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -26,7 +26,7 @@ source "$(realpath "$(dirname "${BASH_SOURCE[0]}")")/util/logger.sh"
 # Initialize required variables.  This should be called automatically by functions which need them.  If the variables
 # have already been initialized then this won't do anything.
 function gce_init_vars {
-    if [[ ! -z "$GCE_VARS_INITIALIZED" ]]; then
+    if [[ -n "$GCE_VARS_INITIALIZED" ]]; then
         return 0
     fi
     log_info "Initializing variables for GCE."

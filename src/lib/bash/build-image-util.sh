@@ -141,7 +141,7 @@ function is_iso_path_valid_url {
     ignore_tls="$(get_config_value "IGNORE_DOWNLOAD_URL_TLS")"
     local cert_check
     cert_check=""
-    if [[ ! -z "$ignore_tls" ]]; then
+    if [[ -n "$ignore_tls" ]]; then
         cert_check="--insecure"
     fi
 
@@ -273,7 +273,7 @@ function download_file_from_url {
     ignore_tls="$(get_config_value "IGNORE_DOWNLOAD_URL_TLS")"
     local cert_check
     cert_check=""
-    if [[ ! -z "$ignore_tls" ]]; then
+    if [[ -n "$ignore_tls" ]]; then
         cert_check="--no-check-certificate"
     fi
 
@@ -1006,8 +1006,11 @@ function verify_disk_space {
     local min_free_disk_storage_MB
     min_free_disk_storage_MB="$(get_config_value "MIN_FREE_DISK_STORAGE_MB")" 
     local space_remaining
-    space_remaining=$(df --block-size=M ./ | awk '{ print $4 }' | sed -n '2 p')
-    space_remaining="${space_remaining::-1}"
+    space_remaining=$(df -B M ./ | awk '{ print $4 }' | sed -n '2 p')
+
+    if [[ "$space_remaining" == *M* ]]; then
+        space_remaining="${space_remaining::-1}"
+    fi
 
     if (( space_remaining < min_free_disk_storage_MB )); then
         error_and_exit "At least $min_free_disk_storage_MB MB storage needed. Only $space_remaining MB found"
@@ -1110,7 +1113,7 @@ function publish_image {
         error_and_exit "Failed to copy $image_description MD5 [${image_path}] to [${publish_dir}]!"
     fi
 
-    if [[ ! -z "$sig_file_path" ]]; then
+    if [[ -n "$sig_file_path" ]]; then
         log_info "Copying $sig_file_path to [${publish_dir}]"
         if ! cp -f "$sig_file_path" "$publish_dir"; then
             error_and_exit "Failed to copy $sig_file_path to [${publish_dir}]!"
@@ -1260,7 +1263,7 @@ function take_snapshot {
         log_warning "Log file has not been set. Cannot collect snapshots."
         return 1
     fi
-    log_file=$(realpath --relative-base=. "$log_file")
+
     local snapshot
     snapshot="${log_file}.snapshot.zip"
     if ! rm -f "$snapshot"; then
@@ -1277,13 +1280,10 @@ function take_snapshot {
     # Add the list of the artifacts files to the snapshot file.
     local artifacts_dir
     artifacts_dir=$(get_config_value "ARTIFACTS_DIR")
-    if [[ ! -z "$artifacts_dir" ]]; then
-        artifacts_dir=$(realpath --relative-base=. "$artifacts_dir")
-    fi
     if [[ -d "$artifacts_dir" ]]; then
         local file_list
         file_list="$artifacts_dir/files.txt"
-        if ! du -a --time "$artifacts_dir" > "$file_list"; then
+        if ! du -a "$artifacts_dir" > "$file_list"; then
             log_warning "Failed to execute du for $artifacts_dir"
             return 1
         fi
@@ -1295,7 +1295,7 @@ function take_snapshot {
 
         # Add text artifact files to the snapshot file.
         # shellcheck disable=SC2034
-        while IFS=$'\t' read -r file_size file_time file_name
+        while IFS=$'\t' read -r file_size file_name
         do
             if [[ "text" == $(file -b --mime-type "$file_name" | sed 's|/.*||') ]]; then
                 if ! zip -qr "$snapshot" "$file_name"; then

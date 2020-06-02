@@ -435,7 +435,7 @@ function update_initrd_image {
     mkdir "$stage_initrd"
 
     # Step 1) Create a local file-system under $stage_initrd directory.
-    pushd "$stage_initrd" > /dev/null
+    pushd "$stage_initrd" > /dev/null || exit
 
     local etc_dir="etc"
     local artifacts_dir
@@ -492,7 +492,7 @@ function update_initrd_image {
 
     # Step 4) Zip the appended initrd.
     gzip -c --best "$unzipped_boot_initrd" > "$boot_initrd_base"
-    popd > /dev/null
+    popd > /dev/null || exit
 
     # Clean-up.
     rm -fr "$stage_initrd"
@@ -568,7 +568,7 @@ function exec_qemu_system {
     #       vncviewer -ViewOnly localhost:<Port number in the qemu output>
     # -no-reboot option because some qemu runs (like SELinux labeling) trigger
     # a reboot at the end, which must be blocked to avoid booting TMOS.
-    local cmd_line_arg="$OPTION_KVM_ENABLED -nographic -m 2048 -no-kvm-irqchip -no-reboot"
+    local cmd_line_arg="$OPTION_KVM_ENABLED -nographic -m 2048 -machine kernel_irqchip=off -no-reboot"
 
     # Append the disk to the cmd_line_arg.
     cmd_line_arg="$cmd_line_arg -drive file=$disk,format=raw,if=virtio,cache=writeback"
