@@ -45,11 +45,26 @@ The following table lists system requirements for using the Image Generator to c
 |---------------------------| :---------------------------------------------------------------| :------------------------------|
 | F5 BIG-IP Image Generator | 1.0                                                             | - **Memory**: 1GB memory <br> - **Disk space**: depends on number of images you want to create.<br> See following BIG-IP VE system requirements.|                                                             
 | [F5 BIG-IP VE][1]         | - BIG-IP 13.1.0.2+ (except Alibaba) <br>- BIG-IP 14.X<br> - BIG-IP 14.1.0.3+ (for Alibaba ONLY)<br> - BIG-IP 15.X          | A minimum of 20GB per image <br> The image generator uses sparse file systems, which results in local images that are smaller than deployed images.  For more information about images and deployed image sizes, see the [K14946][33] article.|    
-| Ubuntu (F5 Image Generator-validated)                    | 18.04 LTS operating system       | Tools: <br>- Git<br> - Python 3.x<br> - Cloud provider SDK tools <br> See [setup script][2].|
 | Open Virtualization Format Tool (ovftool) | 4.3.0 | If you deploy in VMware (ESX/i Server) or AWS cloud, you must install the [ovftool][22] for creating the virtual disk. |
 	 
 
 #### Supported platforms and prerequisites
+
+The following table lists supported operating systems:
+
+| Operating System                     | Version                                                                                                                                                                        
+|--------------------------------------| :---------------------------------------------------------------
+| Ubuntu (F5 Image Generator-validated)| 18.04 LTS operating system                                      
+| Alpine (F5 Image Generator-validated)| 3.11.5                                                          
+
+
+These operating systems require a unified [setup script][2] containing the following tools package:
+
+* Git
+* Python 3.x
+* Cloud provider SDK tools
+
+
 The following table lists supported public and private cloud platforms as well as account setup requirements:
 
 | Cloud Provider            | Requirements                                                                                                        
@@ -122,60 +137,8 @@ This section provides steps for installing the generator tool, and then using th
 3. Restart your computer, or log out, and then log back into your system.
 
 ### Docker container setup
-To avoid installing programs to your environment and enable running simultaneous image-builds on the same computer, you can set up a Docker container and build BIG-IP images using that container.
 
-##### TIP
-   ---------------------------------------------------
-   Before building a Docker image, F5 recommends placing all your asset files within that Docker file directory, rather than referencing a local file.
-   
-   ---------------------------------------------------
-
-1. To build the Docker image, change directories to the ``docker`` directory and type, ``./build-docker-image``.
-2. To pass in variables to the container, add a ``config.yml`` file to that ``docker`` directory, which you want mounted when running the container. Avoid keeping credentials in this config.yml file. Instead, consider passing in credentials as environment variables, similar to other docker containers, with the ``-e`` flag.
-3. After your container is built, run that container to build an image by running the ``build-image`` script as you would normally at the end of your docker run command (passing parameters is the same, as if not using a container). For example:
-
-   ### qcow2 
-
-   ```
-      docker run -it --device="/dev/kvm" -v "$(pwd):/mnt" -v "$(pwd)/../images:/workdir/images" ubuntu:ve_image_generator /bin/bash -c "/workdir/build-image -c /mnt/config.yml -i /mnt/BIGIP-15.0.1-0.0.11.iso -p qcow2 -m ltm -b 1;"
-   ```
-       
-   ##### NOTE
-   ---------------------------------------------------
-   This example mounts the current directory as a volume, so that you can pass in the config file, read the source iso, output the images, and so forth (rather than the container's filesystem).
-   
-   ---------------------------------------------------
-   
-   ### OVA or AWS
-  
-   If building an ova or aws image, then you need [ovftool][22]. Download and add the ovftool.bundle, which is renamed``ovftool.bundle``,  file into the ``docker`` folder. To make the file executable, type: 
-
-   ```
-    chmod +x ovftool.bundle
-   ```
-
-   and then run:
-  
-   ```
-      docker run --device="/dev/kvm" -it -e "AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}" -e "AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}" -v "$(pwd):/mnt" -v "$(pwd)/../images:/workdir/images" ubuntu:ve_image_generator /bin/bash -c "/mnt/ovftool.bundle;  /workdir/build-image -c /mnt/config.yml -i /mnt/BIGIP-15.0.1-0.0.11.iso -p aws -m ltm -b 1;"
-   ```   
-   
-   ##### TIP
-   ---------------------------------------------------
-   Once you read and accept the ovftool EULA, to auto-accept the EULA you can append this: ``--eulas-agreed --required --delete-install-components`` as a parameter to running the ``ovftool.bundle`` install.
-   
-   ---------------------------------------------------
-   
-   ### Without KVM hardware acceleration
-
-
-   Remove ``–device=”/dev/kvm”`` parameter, which indicates that Docker does not have access to that device. For example:
-
-   ```
-      docker run -it -v "$(pwd):/mnt" -v "$(pwd)/../images:/workdir/images" ubuntu:ve_image_generator /bin/bash -c "/workdir/build-image -c /mnt/config.yml -i /mnt/BIGIP-15.0.1-0.0.11.iso -p qcow2 -m ltm -b 1;"
-   ```
-   
-   For more information about virtualization support, see [KVM Virtualization][4]. 
+To avoid installing programs to your environment and enable running simultaneous image-builds on the same computer, you can utilize the [F5 container on Docker Hub][34] that provides a convenient pre-built runtime with many of the tool’s package dependencies pre-installed (with the exception of VMware’s ovftool). For complete information, consult [Docker Hub][34].
 
 ## User guide
 
@@ -570,3 +533,4 @@ completed and submitted the F5 Contributor License Agreement.
 [31]: https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal
 [32]: http://www.filepermissions.com/articles/understanding-octal-file-permissions
 [33]: https://support.f5.com/csp/article/K14946 
+[34]: https://hub.docker.com/r/f5devcentral/f5-bigip-image-generator

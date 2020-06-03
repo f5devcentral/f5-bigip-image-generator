@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2020 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -421,15 +421,15 @@ function gen_md5 {
     log_info "Generating ${file_path}.md5"
 
     # Temporary change to the output directory and generate MD5 there:
-    pushd "$out_dir" >/dev/null
+    pushd "$out_dir" >/dev/null || exit
     md5sum "$file_name" > "${file_name}".md5
     # shellcheck disable=SC2181
     if [[ $? -ne 0 ]]; then
         log_error "Generating MD5 for $file_path failed."
-        popd >/dev/null
+        popd >/dev/null || exit 
         return 1
     fi
-    popd >/dev/null
+    popd >/dev/null || exit
 }
 #####################################################################
 
@@ -638,7 +638,7 @@ function sign_file {
         rm -f "$out_sig_file"
     fi
 
-    if [[ ! -z "$private_key" ]] && [[ ! -f "$private_key" ]]; then
+    if [[ -n "$private_key" ]] && [[ ! -f "$private_key" ]]; then
        log_error "The provided private key file path does not exist"
        return 1
     fi
@@ -648,7 +648,7 @@ function sign_file {
        return 1
     fi
 
-    if [[ ! -z "$private_key" ]]; then
+    if [[ -n "$private_key" ]]; then
         log_info "Signing ${src_disk} using encryption type ${encryption_type} with private key ${private_key}"
         if openssl dgst -"$encryption_type" -sign "$private_key" "$src_disk" > "$out_sig_file"; then
             log_info "$out_sig_file was generated"

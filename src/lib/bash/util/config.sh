@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2020 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -61,7 +61,7 @@ function _init_config_arrays {
 # provided values.  Subsequent arguments will be treated as if they were passed in on the command line at program start.
 function init_config {
     # We only need to initialize the system once, so we'll return if that's already been done.
-    if [[ ! -z "$CONFIG_SYSTEM_INITIALIZED" ]]; then
+    if [[ -n "$CONFIG_SYSTEM_INITIALIZED" ]]; then
         return 0
     fi
 
@@ -93,7 +93,7 @@ function init_config {
 
     # If the version key has been set then we'll immediately look for the version number, display it, and exit.
     _config_init_bootstrap_key "VERSION" "$@"
-    if [[ ! -z "${CONFIG_VALUES[VERSION]}" ]]; then
+    if [[ -n "${CONFIG_VALUES[VERSION]}" ]]; then
         _config_init_bootstrap_key "VERSION_NUMBER" "$@"
         _config_output_version
         exit 0
@@ -106,7 +106,7 @@ function init_config {
     # If a platform was specified then we'll load variable definitions for it.
     _config_init_bootstrap_key "PLATFORM" "$@"
     local platform="${CONFIG_VALUES[PLATFORM]}"
-    if [[ ! -z "$platform" ]]; then
+    if [[ -n "$platform" ]]; then
         log_info "Initializing variable definitions for platform [${platform}]"
         if [[ "$platform" != "iso" ]]; then
             # iso alternations are independent of modules and boot locations
@@ -123,7 +123,7 @@ function init_config {
 
     # If the help key has been set then we'll immediately display help and exit.
     _config_init_bootstrap_key "HELP" "$@"
-    if [[ ! -z "${CONFIG_VALUES[HELP]}" ]]; then
+    if [[ -n "${CONFIG_VALUES[HELP]}" ]]; then
         _config_output_help
         exit 0
     fi
@@ -136,13 +136,13 @@ function init_config {
     _config_assign_defaults_from_definitions
 
     # If the docs key has been set then we'll generate config docs and exit.
-    if [[ ! -z "${CONFIG_VALUES[DOCS]}" ]]; then
+    if [[ -n "${CONFIG_VALUES[DOCS]}" ]]; then
         _config_output_docs
         exit 0
     fi
 
     # Perform validation, if requested.
-    if [[ ! -z "$validate" ]]; then
+    if [[ -n "$validate" ]]; then
         _config_validate_required_variables
     fi
 
@@ -209,7 +209,7 @@ function set_config_value {
     export env_key_ref="$value"
     CONFIG_VALUES[${key}]="$value"
     local protected="${CONFIG_PROTECTED[${key}]}"
-    if [[ ! -z "$protected" ]]; then
+    if [[ -n "$protected" ]]; then
         log_debug "Configuration key [$key] set to value [<protected>]"
     else
         log_debug "Configuration key [$key] set to value [$value]"
@@ -217,7 +217,7 @@ function set_config_value {
 
     # If the direct export flag was set for this variable then we'll also export it without the prefix.
     local direct_export="${CONFIG_DIRECT_EXPORT[${key}]}"
-    if [[ ! -z "$direct_export" ]]; then
+    if [[ -n "$direct_export" ]]; then
         local -n key_ref="$key"
         export key_ref="$value"
         log_debug "Configuration key [$key] exported to environment"
@@ -265,7 +265,7 @@ function _config_get_json_data {
 
     # If we've already loaded this file into memory then return its contents immediately instead of converting it again.
     local json_data="${CONFIG_FILES[${yaml_file}]}"
-    if [[ ! -z "$json_data" ]]; then
+    if [[ -n "$json_data" ]]; then
         echo "$json_data"
         return 0
     fi
@@ -292,20 +292,20 @@ function _config_init_bootstrap_key {
     # Parse command line arguments for a value.
     _config_parse_command_line_arguments 0 "$bootstrap_key" "$@"
     value="${CONFIG_VALUES[${bootstrap_key}]}"
-    if [[ ! -z "$value" ]]; then
+    if [[ -n "$value" ]]; then
         return 0
     fi
 
     # If no value was specified on the command line then we'll try reading it from the config file, if specified.
     local config_file="${CONFIG_VALUES[CONFIG_FILE]}"
-    if [[ ! -z "$config_file" ]]; then
+    if [[ -n "$config_file" ]]; then
         local config_data
         if ! config_data="$(_config_get_json_data "$config_file")"; then
           error_and_exit "$config_data"
         fi
         if ! value="$(jq -rc ".$bootstrap_key // empty" <<< "$config_data" 2>&1)" && [[ $? -gt 1 ]]; then
             error_and_exit "jq error while scanning ${config_file} for ${bootstrap_key}: $value"
-        elif [[ ! -z "$value" ]]; then
+        elif [[ -n "$value" ]]; then
             _config_set_user_value "$bootstrap_key" "$value"
             return 0
         fi
@@ -313,10 +313,10 @@ function _config_init_bootstrap_key {
 
     # If no value was specified in the config file either then we'll try reading it from the environment instead.
     local env_variable_prefix="${CONFIG_VALUES[ENVIRONMENT_VARIABLE_PREFIX]}"
-    if [[ ! -z "$env_variable_prefix" ]] || [[ "$bootstrap_key" == "ENVIRONMENT_VARIABLE_PREFIX" ]]; then
+    if [[ -n "$env_variable_prefix" ]] || [[ "$bootstrap_key" == "ENVIRONMENT_VARIABLE_PREFIX" ]]; then
         local env_bootstrap_key="${env_variable_prefix}${bootstrap_key}"
         value="${!env_bootstrap_key}"
-        if [[ ! -z "$value" ]]; then
+        if [[ -n "$value" ]]; then
             _config_set_user_value "$bootstrap_key" "$value"
             return 0
         fi
@@ -324,7 +324,7 @@ function _config_init_bootstrap_key {
 
     # If a value still wasn't specified then we'll try reading it from default values as a last resort.
     value="${CONFIG_DEFAULTS[${bootstrap_key}]}"
-    if [[ ! -z "$value" ]]; then
+    if [[ -n "$value" ]]; then
         set_config_value "$bootstrap_key" "$value"
         return 0
     fi
@@ -358,7 +358,7 @@ function _config_init_var_definitions {
         fi
 
         # Determine if the variable has already been defined.
-        if [[ ! -z "${CONFIG_DESCRIPTIONS[${key}]}" ]]; then
+        if [[ -n "${CONFIG_DESCRIPTIONS[${key}]}" ]]; then
             error_and_exit "Variable [${key}] has already been defined!"
         fi
 
@@ -366,7 +366,7 @@ function _config_init_var_definitions {
         local accepted
         if ! accepted="$(echo "$var_definition" | jq -rc ".accepted // empty" 2>&1)" && [[ $? -gt 1 ]]; then
             error_and_exit "jq error while scanning accepted values for ${key}: $accepted"
-        elif [[ ! -z "$accepted" ]]; then
+        elif [[ -n "$accepted" ]]; then
             CONFIG_ACCEPTED["$key"]="$accepted"
         fi
 
@@ -390,7 +390,7 @@ function _config_init_var_definitions {
         local default
         if ! default="$(echo "$var_definition" | jq -rc ".default // empty" 2>&1)" && [[ $? -gt 1 ]]; then
             error_and_exit "jq error while scanning default value for ${key}: $default"
-        elif [[ ! -z "$default" ]]; then
+        elif [[ -n "$default" ]]; then
             CONFIG_DEFAULTS["$key"]="$default"
         fi
 
@@ -398,7 +398,7 @@ function _config_init_var_definitions {
         local description
         if ! description="$(echo "$var_definition" | jq -rc ".description // empty" 2>&1)" && [[ $? -gt 1 ]]; then
             error_and_exit "jq error while scanning description for ${key}: $description"
-        elif [[ ! -z "$description" ]]; then
+        elif [[ -n "$description" ]]; then
             CONFIG_DESCRIPTIONS["$key"]="$description"
         else
             error_and_exit "Variable [${key}] has no description.  Please provide one in [${definitions_file}]!"
@@ -408,7 +408,7 @@ function _config_init_var_definitions {
         local direct_export
         if ! direct_export="$(echo "$var_definition" | jq -rc ".direct_export // empty" 2>&1)" && [[ $? -gt 1 ]]; then
             error_and_exit "jq error while scanning direct_export setting for ${key}: $direct_export"
-        elif [[ ! -z "$direct_export" ]]; then
+        elif [[ -n "$direct_export" ]]; then
             CONFIG_DIRECT_EXPORT["$key"]="$direct_export"
         fi
 
@@ -416,7 +416,7 @@ function _config_init_var_definitions {
         local flag
         if ! flag="$(echo "$var_definition" | jq -rc ".flag // empty" 2>&1)" && [[ $? -gt 1 ]]; then
             error_and_exit "jq error while scanning flag assignment for ${key}: $flag"
-        elif [[ ! -z "$flag" ]]; then
+        elif [[ -n "$flag" ]]; then
             if [[ ${#flag} -ne 1 ]]; then
                 error_and_exit "Please shorten the flag [${flag}] for key [${key}] to one character or remove it!"
             fi
@@ -481,7 +481,7 @@ function _config_output_arg_info {
 
     local values_remaining="${CONFIG_PARAMETERS[${key}]}"
     while [[ $values_remaining -gt 0 ]]; do
-        if [[ ! -z "$accepted_values" ]]; then
+        if [[ -n "$accepted_values" ]]; then
             output="${output} [${accepted_values}]"
         else
             output="${output} [value]"
@@ -498,8 +498,7 @@ function _config_output_platform_vars_doc {
     # Build a sorted list of all keys
     local keys
     keys=("${!CONFIG_REQUIRED[@]}" "${!CONFIG_OPTIONAL[@]}")
-    IFS=$'\n' sorted_keys=($(sort <<<"${keys[*]}"))
-    unset IFS
+    mapfile -t sorted_keys < <(printf '%s\n' "${keys[@]}" | sort)
 
     # If the key list is empty, do not output a file
     if [[ ${#sorted_keys[@]} -eq 0 ]]; then
@@ -570,7 +569,7 @@ function _config_output_platform_vars_doc {
         # Values column
         local values
         values=$(_config_output_arg_info "${key}")
-        if [[ ! -z "$values" ]]; then
+        if [[ -n "$values" ]]; then
             values=${values//|/ \\| }
             values="${values## }"
         else
@@ -609,6 +608,8 @@ function _config_output_docs {
     platforms="${platforms//|/ }"
     # platform "vm" does not exist, but yaml file shared by all vm platforms does
     platforms="${platforms} vm"
+
+    # shellcheck disable=SC2206
     platforms=(${platforms})
 
     # Create a doc for each platform
@@ -713,7 +714,7 @@ function _config_output_key_usage {
     local flag="${CONFIG_FLAGS[${key}]}"
 
     # Add the flag for this key, if it exists.
-    if [[ ! -z "$flag" ]]; then
+    if [[ -n "$flag" ]]; then
         key_string="${key_string} (-${flag})"
     fi
 
@@ -779,7 +780,7 @@ function _config_parse_command_line_arguments {
             key="${CONFIG_FLAGS_REVERSE[${flag}]}"
 
             # If we're in bootstrap mode and this isn't the key we're looking for then we'll skip to the next flag.
-            if [[ ! -z "$bootstrap_key" ]] && [[ "$key" != "$bootstrap_key" ]]; then
+            if [[ -n "$bootstrap_key" ]] && [[ "$key" != "$bootstrap_key" ]]; then
                 last_key="$key"
                 flag_position=$((flag_position + 1))
                 continue
@@ -797,7 +798,7 @@ function _config_parse_command_line_arguments {
                 # Save value as true since the key is boolean and no more arguments are needed.
                 if ! _config_set_user_value "$key" "true"; then
                     return 1
-                elif [[ ! -z "$bootstrap_key" ]]; then
+                elif [[ -n "$bootstrap_key" ]]; then
                     # We've got a value for the bootstrap key!
                     return 0
                 fi
@@ -831,7 +832,7 @@ function _config_parse_command_line_arguments {
 
                 # Reset value so it can be rebuilt for another key when appended to in subsequent iterations.
                 unset value
-                if [[ ! -z "$bootstrap_key" ]]; then
+                if [[ -n "$bootstrap_key" ]]; then
                     # We've got a value for the bootstrap key!
                     return 0
                 fi
@@ -852,7 +853,7 @@ function _config_parse_command_line_arguments {
             fi
 
             # If we're in bootstrap mode and this isn't the key we're looking for then we'll skip to the next argument.
-            if [[ ! -z "$bootstrap_key" ]] && [[ "$key" != "$bootstrap_key" ]]; then
+            if [[ -n "$bootstrap_key" ]] && [[ "$key" != "$bootstrap_key" ]]; then
                 last_key="$key"
                 shift
                 continue
@@ -869,7 +870,7 @@ function _config_parse_command_line_arguments {
             if [[ $expected_values -eq 0 ]]; then
                 # Save value as true since the key is boolean and no more arguments are needed.
                 _config_set_user_value "$key" "true"
-                if [[ ! -z "$bootstrap_key" ]]; then
+                if [[ -n "$bootstrap_key" ]]; then
                     # We've got a value for the bootstrap key!
                     return 0
                 fi
@@ -924,7 +925,7 @@ function _config_read_variables_from_environment {
         local current_value="${CONFIG_VALUES[${key}]}"
         if [[ -z "$current_value" ]]; then
             local value="${!key}"
-            if [[ ! -z "$value" ]]; then
+            if [[ -n "$value" ]]; then
                 _config_set_user_value "$key" "$value"
             fi
         fi
@@ -945,13 +946,13 @@ function _config_set_user_value {
     fi
 
     # If the user has already configured this value earlier then we'll skip it.  This ensures that priority is obeyed.
-    if [[ ! -z "${CONFIG_VALUES[${key}]}" ]]; then
+    if [[ -n "${CONFIG_VALUES[${key}]}" ]]; then
         return 0
     fi
 
     # Check if value is accepted.
     local accepted_regex="${CONFIG_ACCEPTED[${key}]}"
-    if [[ ! -z "$accepted_regex" ]]; then
+    if [[ -n "$accepted_regex" ]]; then
         # An accepted values regex is present. We'll have to check if the provided value matches it.
         if [[ ! "$value" =~ $accepted_regex ]]; then
             log_error "Value [${value}] for key [${key}] did not match accepted regex [${accepted_regex}]!"

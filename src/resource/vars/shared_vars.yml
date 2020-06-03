@@ -212,7 +212,7 @@ VERSION:
   parameters: 0
 
 VERSION_NUMBER:
-  default: 1.5
+  default: 1.6
   description: >-
     This is the current version of BIG-IP Image Generator.
   internal: true

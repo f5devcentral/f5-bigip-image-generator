@@ -1,5 +1,5 @@
 """AWS snapshot module"""
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2020 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -16,8 +16,10 @@
 
 import datetime
 
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, ParamValidationError
 
+from metadata.cloud_metadata import CloudImageMetadata
+from metadata.cloud_tag import CloudImageTags
 from util.config import get_config_value
 from util.logger import LOGGER
 from util.retrier import Retrier
@@ -39,6 +41,9 @@ class AWSSnapshot():
 
         # Import-task-id for the disk import operation.
         self.import_task_id = None
+
+        # Snapshot metadata.
+        self.metadata = CloudImageMetadata()
 
     def clean_up(self):
         """Delete cloud artifacts created during the life-time of this object."""
@@ -69,6 +74,7 @@ class AWSSnapshot():
                         self.s3_bucket, self.s3_disk)
             response = self.ec2_client.import_snapshot(Description=description,
                                                        DiskContainer={
+                                                           "Description": description,
                                                            "Format": "vmdk",
                                                            "UserBucket": {
                                                                "S3Bucket": self.s3_bucket,
@@ -85,6 +91,10 @@ class AWSSnapshot():
             # As the import operation successfully completed, reset it back to None
             # to avoid trying to cancel a completed import-task during clean-up.
             self.import_task_id = None
+
+            # Tag the snapshot
+            self.create_tags()
+
         except RuntimeError as runtime_error:
             LOGGER.exception(runtime_error)
             raise
@@ -140,6 +150,25 @@ class AWSSnapshot():
         except RuntimeError as runtime_exception:
             LOGGER.exception(runtime_exception)
             raise
+
+    def get_snapshot_tag_metadata(self):
+        """Returns associated snapshot metadata tags."""
+        metadata_tags = CloudImageTags(self.metadata)
+        return metadata_tags.get()
+
+    def create_tags(self):
+        """ Create tags for snapshot. Tags are fetched from metadata. """
+        snapshot_tags = self.get_snapshot_tag_metadata()
+        tags_to_add = []
+        for tag in snapshot_tags:
+            tags_to_add.append({'Key': tag, 'Value': snapshot_tags[tag]})
+
+        try:
+            response = self.ec2_client.create_tags(Resources=[self.snapshot_id], Tags=tags_to_add)
+        except (ClientError, ParamValidationError) as botocore_exception:
+            LOGGER.exception(botocore_exception)
+            raise RuntimeError('create_tags failed for snapshot\'{}\'!\n'.format(self.snapshot_id))
+        LOGGER.trace('create_tags response for snapshot %s: %s', self.snapshot_id, response)
 
     def delete_snapshot(self):
         """Delete the AWS snapshot created by this object."""

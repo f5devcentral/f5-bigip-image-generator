@@ -1,5 +1,5 @@
 """BuildInfo module"""
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2020 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -37,7 +37,9 @@ class BuildInfo:
         # 'pip3 freeze' output example: 'PyYAML==3.12'
         "python": ("pip3 freeze", r"(^.*?)==(.*)"),
         # 'apt list --installed' output example: 'zip/bionic,now 3.0-11build1 amd64 [installed]'
-        "ubuntu": ("apt list --installed", r"(^.*?)/.*?\s(.*?)\s.*")
+        "ubuntu": ("apt list --installed", r"(^.*?)/.*?\s(.*?)\s.*"),
+        # apk list
+        "alpine": ("apk -v info", r"(^.*?)-(.*)"),
     }
 
     def __init__(self):

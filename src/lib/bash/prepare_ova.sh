@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2020 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -68,7 +68,7 @@ function recreate_ova {
     local repack_dir="$3"
     local out_dir="$4"
     log_debug "Updating unpacked OVA contents at ${repack_dir}"
-    pushd "$repack_dir" > /dev/null
+    pushd "$repack_dir" > /dev/null || exit
 
     # Since the OVA contents have been modified we need to update the signatures in the manifest file
     local manifest_file encryption_type_prefix
@@ -104,7 +104,7 @@ function recreate_ova {
     local private_key public_key sig_file pub_file
     private_key="$(get_config_value "IMAGE_SIG_PRIVATE_KEY")"
     public_key="$(get_config_value "IMAGE_SIG_PUBLIC_KEY")"
-    if [[ ! -z "$private_key" ]] && [[ ! -z "$public_key" ]]; then
+    if [[ -n "$private_key" ]] && [[ -n "$public_key" ]]; then
         encryption_type="$(get_config_value "IMAGE_SIG_ENCRYPTION_TYPE")"
         log_info "Signing manifest ${manifest_file} using encryption type ${encryption_type} with private key ${private_key}"
         sig_file="${general_bundle_name}.sig"
@@ -150,7 +150,7 @@ function recreate_ova {
 
     # Save an md5 hash of the recreated OVA for use as a simple checksum
     gen_md5 "$out_file"
-    popd > /dev/null
+    popd > /dev/null || exit
 }
 #####################################################################
 

@@ -152,7 +152,7 @@ function main {
     local sig_file_loc
     sig_file_loc="$iso""$sig_file_ext"
 
-    if [[ ! -z "$iso_sig" ]]; then
+    if [[ -n "$iso_sig" ]]; then
         check_iso_sig_src "$iso_sig" "$out_msg_file" "$sig_file_loc"
         line=$(head -n 1 "$out_msg_file")
         if [[ $line == Error* ]]; then
@@ -162,7 +162,7 @@ function main {
     fi
 
     # Check if ehf_iso is present, either locally or via a URL
-    if [[ ! -z "$ehf_iso" ]]; then
+    if [[ -n "$ehf_iso" ]]; then
         check_iso_src "$ehf_iso" "ehf flag" "$tmp_dir" "$out_msg_file"
         line=$(head -n 1 "$out_msg_file")
         if [[ $line == Error* ]]; then
@@ -173,7 +173,7 @@ function main {
         # Check if a signature file corresponding to ehf_iso is present.
         local ehf_sig_file_loc
         ehf_sig_file_loc="$ehf_iso""$sig_file_ext"
-        if [[ ! -z "$ehf_iso_sig" ]]; then
+        if [[ -n "$ehf_iso_sig" ]]; then
             check_iso_sig_src "$ehf_iso_sig" "$out_msg_file" "$ehf_sig_file_loc"
             line=$(head -n 1 "$out_msg_file")
             if [[ $line == Error* ]]; then
@@ -192,8 +192,11 @@ function main {
         fi
     fi
 
-    #Verify there is enough disk space for the platform
-    verify_disk_space
+    #Verify there is enough disk space for the platform if not inside docker
+    # shellcheck disable=SC2143
+    if [[ ! -f "/.dockerenv" ]] &&  ! grep -q "docker" /proc/1/cgroup ; then
+	verify_disk_space
+    fi
 
     if ! verify_iso "$ehf_iso" "$ehf_iso_sig" "$pub_key1" "$encr_type_1"; then
         # iso verification was skipped or failed with pub_key1
@@ -257,7 +260,7 @@ function main {
     # If user provided cloud image name, check/fail early
     local cloud_image_opt
     cloud_image_opt="--user-image-name"
-    if [[ ! -z "$cloud_image_name" ]] && [[ "$platform" != "iso" ]]; then
+    if [[ -n "$cloud_image_name" ]] && [[ "$platform" != "iso" ]]; then
         "${script_dir}"/src/bin/prepare_image.py --artifacts-dir "$artifacts_directory" \
             --platform "$platform" --input "file_placeholder" --check-name \
             "$cloud_image_opt" "$cloud_image_name"
@@ -451,7 +454,7 @@ function main {
     fi
 
     log_info "The sig file path: $sig_file_path"
-    if [[ ! -z "$sig_file_path" ]]; then
+    if [[ -n "$sig_file_path" ]]; then
         sig_file_path="${artifacts_directory}/staging/${sig_file_path}"
     fi
 
@@ -462,7 +465,7 @@ function main {
     log_info "------======[ Finished disk generation for '$platform' '$modules'" \
             "'$boot_locations' boot-locations. ]======------"
 
-    if [[ ! -z "$cloud" ]]; then
+    if [[ -n "$cloud" ]]; then
         case "$cloud" in
         alibaba | azure | aws | gce)
             # If user didn't supply a cloud image name, create one.

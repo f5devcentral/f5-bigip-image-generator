@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2020 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -97,7 +97,7 @@ function alibaba_disk_package {
 
     # Compress the qcow2 into a tar archive.  Display the available disk space after the operation.
     log_info "Packaging Alibaba qcow2 [${qcow2_disk_path}] into archive [${bundle_name}]"
-    pushd "$temp_dir" >/dev/null
+    pushd "$temp_dir" >/dev/null || exit
     if ! execute_cmd tar -vczf "$bundle_name" "$qcow2_name" ; then
         log_error "Failed to compress - $qcow2_disk_path"
         print_json "$failure_token" "$prepare_vdisk_json"  "QCOW2 generation failed: could not zip" \
@@ -108,7 +108,7 @@ function alibaba_disk_package {
     else
         log_info "SUCCESS - $response"
     fi
-    popd >/dev/null
+    popd >/dev/null || exit
 
     # Save an md5sum alongside the packaged disk
     local md5_path="${bundle_name}.md5"

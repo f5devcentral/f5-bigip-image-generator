@@ -56,6 +56,13 @@ function create_version_metadata {
     echo "Wrote version $current_version to $info_file"
 }
 
+function check_nonroot_sudo {
+    if ! sudo -v; then
+        echo "Not running as root user and \"sudo\" is not installed"
+        exit 1
+    fi
+}
+
 # Process command line options
 while [[ $# -gt 0 ]]; do
     key="$1"
@@ -84,20 +91,11 @@ fi
 if grep -E "(ubuntu)|(debian)" <<< "$distro"; then
     PACKAGE_INSTALLER="apt-get"
     export DEBIAN_FRONTEND=noninteractive
-elif grep -E "(centos)|(redhat)" <<< "$distro"; then
-    PACKAGE_INSTALLER="yum"
+elif grep -E "alpine" <<< "$distro"; then
+    PACKAGE_INSTALLER="apk"
 else
     echo "No package installer supported for distro [$distro]! Unable to run setup script!"
     exit 1
-fi
-
-# Install sudo for packaging tools which are running as root.
-if [[ $EUID -eq 0 ]]; then
-    # Refresh packages to find sudo
-    $PACKAGE_INSTALLER update -y
-
-    # Install sudo
-    $PACKAGE_INSTALLER install -y sudo
 fi
 
 #-----------------------------------------------------------------------------#
@@ -105,23 +103,16 @@ fi
 #------------------------------#
 # First of all, install the build/development and distribution specific tools.
 case $PACKAGE_INSTALLER in
-yum)
-    # Install extra repository for some of the packages that are not part
-    # of the standard centos repo.
-    sudo $PACKAGE_INSTALLER install -y epel-release
-
-    # Install the build/development tools like make/gcc etc.
-    sudo $PACKAGE_INSTALLER groupinstall -y "Development Tools"
-
-    # qemu in CentOS provides qemu-system-x86_64 that bundle uses to run a VM
-    # locally to install the BIG-IP ISO. In Ubuntu, qemu package is undefined
-    # as qemu-kvm provides everything.
-    sudo $PACKAGE_INSTALLER install -y qemu
-    ;;
 apt-get)
-    # Refresh the installed packages and repo. This is necessary as subsequent
-    # apt-get for some of the packages can fail due to stale repos.
-    sudo $PACKAGE_INSTALLER update
+    if [[ $EUID -eq 0 ]]; then
+        # Refresh packages to find sudo
+        $PACKAGE_INSTALLER update -y
+
+        # Install sudo
+        $PACKAGE_INSTALLER install -y sudo
+    else
+        check_nonroot_sudo	
+    fi
 
     # Install the build/development tools like make/gcc etc.
     sudo $PACKAGE_INSTALLER install -y build-essential
@@ -137,24 +128,56 @@ apt-get)
         # to update rpm package contents.
         sudo $PACKAGE_INSTALLER install -y rpm
     fi
+
+    sudo $PACKAGE_INSTALLER install -y --no-install-recommends jq wget curl zip unzip
+
+    # qemu-kvm package in Ubuntu provides everything that we need for bundle
+    # including both qemu-system-x86_64 and qemu-img.
+    sudo $PACKAGE_INSTALLER install -y qemu-kvm
+
+    sudo $PACKAGE_INSTALLER install -y python3-pip
+    sudo $PACKAGE_INSTALLER install -y python3-venv
+
     ;;
+
+apk)
+    if [[ $EUID -eq 0 ]]; then
+        # Refresh packages to find sudo
+        $PACKAGE_INSTALLER update
+
+        # Install sudo
+        $PACKAGE_INSTALLER add sudo
+    else
+        check_nonroot_sudo
+    fi
+
+    sudo $PACKAGE_INSTALLER add make cdrkit tar
+    sudo $PACKAGE_INSTALLER add --upgrade gzip grep util-linux e2fsprogs coreutils
+    sudo $PACKAGE_INSTALLER add --no-cache python3-dev rpm2cpio gcc cpio musl-dev libffi-dev openssl-dev && \
+    if [ ! -e /usr/bin/python ]; then ln -sf python3 /usr/bin/python ; fi && \
+    \
+
+    sudo $PACKAGE_INSTALLER add jq wget curl zip unzip
+
+    sudo $PACKAGE_INSTALLER add libvirt-daemon qemu-img qemu-system-x86_64 openrc
+    rc-update add libvirtd
+
+    #adding glibc using wget
+    sudo $PACKAGE_INSTALLER --no-cache add ca-certificates wget
+    sudo wget -q -O /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub
+    sudo wget https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.28-r0/glibc-2.28-r0.apk
+    sudo $PACKAGE_INSTALLER add glibc-2.28-r0.apk
+    ;;
+
 *)
     >&2 echo "Unknown '$PACKAGE_INSTALLER'."
     exit 1
     esac
 
 
-sudo $PACKAGE_INSTALLER install -y --no-install-recommends jq wget curl zip unzip
-
-if [ -d "$OEM_DIR" ]; then
+if [ -d "$OEM_DIR" ] && [ "$PACKAGE_INSTALLER" == "apt-get" ]; then
     sudo $PACKAGE_INSTALLER install -y --no-install-recommends isomd5sum
 fi
-
-# qemu-kvm package in Ubuntu provides everything that we need for bundle
-# including both qemu-system-x86_64 and qemu-img.
-# In CentOS, qemu-kvm provides qemu-img package and needs qemu for other
-# binaries.
-sudo $PACKAGE_INSTALLER install -y qemu-kvm
 
 # Add the current user to "kvm" group if "kvm" group exists, and the user is not a member.
 if getent group kvm | grep -E &>/dev/null "(.*:){3}.*?\b${USER}\b"; then
@@ -162,7 +185,18 @@ if getent group kvm | grep -E &>/dev/null "(.*:){3}.*?\b${USER}\b"; then
     ADDED_USER_TO_KVM_GROUP=false
 else
     echo "Adding user '${USER}' to the 'kvm' group"
-    sudo usermod -aG kvm "$(id -un)"
+    case $PACKAGE_MANAGER in
+    apt-get)
+        sudo usermod -aG kvm "$(id -un)"
+        ;;
+    apk)
+        sudo adduser "$(whoami)" kvm
+        ;;
+
+    *)
+        >&2 echo "Unknown '$PACKAGE_INSTALLER'."
+        ;;
+    esac
     ADDED_USER_TO_KVM_GROUP=true
 fi
 
@@ -180,8 +214,6 @@ fi
 #-----------------------------------------------------------------------------#
 # Python package management
 #------------------------------#
-sudo $PACKAGE_INSTALLER install -y python3-pip
-sudo $PACKAGE_INSTALLER install -y python3-venv
 
 # Create Python virtual environment if it doesn't already exist.
 VENV_DIR="$PROJECT_DIR/.venv"
@@ -204,6 +236,7 @@ pip3 install wheel
 #------------------------------#
 pip3 install boto3==1.10.10
 pip3 install moto==1.3.13
+pip3 install pyyaml==5.3.1
 #-----------------------------------------------------------------------------#
 
 
@@ -213,19 +246,18 @@ pip3 install moto==1.3.13
 # These steps are taken from here in their entirity:
 #   https://cloud.google.com/storage/docs/gsutil_install
 case $PACKAGE_INSTALLER in
-yum)
-    export CLOUDSDK_CORE_DISABLE_PROMPTS=1
-    curl https://sdk.cloud.google.com | bash
-    ;;
 apt-get)
     # Create an environment variable for the correct distribution:
     sudo $PACKAGE_INSTALLER install -y lsb-release
     lsb_rel=$(lsb_release -c -s)
     export CLOUD_SDK_REPO="cloud-sdk-$lsb_rel"
 
-    # Add the Cloud SDK distribution URI as a package source:
-    echo "deb http://packages.cloud.google.com/apt $CLOUD_SDK_REPO main" \
-            | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
+    # If not already defined, add the Cloud SDK distribution URI as a package source:
+    google_sdk_uri="deb http://packages.cloud.google.com/apt $CLOUD_SDK_REPO main"
+    google_sources_file="/etc/apt/sources.list.d/google-cloud-sdk.list"
+    if ! grep -Fxq "$google_sdk_uri" "$google_sources_file"; then
+        echo "$google_sdk_uri" | sudo tee -a "$google_sources_file"
+    fi
 
     # Import the Google Cloud public key:
     curl https://packages.cloud.google.com/apt/doc/apt-key.gpg \
@@ -238,6 +270,11 @@ apt-get)
     # Install the Cloud SDK:
     sudo $PACKAGE_INSTALLER install -y google-cloud-sdk
     ;;
+apk)
+    # THe is no specific distribution for alpine
+    sudo pip install -U gsutil
+    ;;
+
 *)
     >&2 echo "Unknown '$PACKAGE_INSTALLER'."
     ;;
@@ -316,31 +353,43 @@ fi
 # Adding tools for verifying project code
 #-----------------------------------------------------------------------------#
 if [[ $ADD_DEVTOOLS = true ]]; then
-    # Install git (used for checking dependency files on pipeline)
-    sudo $PACKAGE_INSTALLER install -y git
-
-    # Install shellcheck (used for linting bash files)
-    sudo $PACKAGE_INSTALLER install -y shellcheck
-
     # Install pylint (used for linting python files)
     pip3 install pylint==2.4.3
+
+    case $PACKAGE_INSTALLER in
+    apt-get)
+	# Install git (used for checking dependency files on pipeline)
+        sudo $PACKAGE_INSTALLER install -y git
+
+        # Install shellcheck (used for linting bash files)
+        sudo $PACKAGE_INSTALLER install -y shellcheck
+
+        # Install BATS framework (used for unit testing bash files)
+        sudo $PACKAGE_INSTALLER install -y bats
+
+        # Install bc and dc (used for example unit tests)
+        sudo $PACKAGE_INSTALLER install -y bc
+        sudo $PACKAGE_INSTALLER install -y dc
+
+        # Install parted and udev for use by convert qemu unit tests
+        sudo $PACKAGE_INSTALLER install -y parted
+        sudo $PACKAGE_INSTALLER install -y udev
+
+        # Install modprobe
+        sudo $PACKAGE_INSTALLER install -y kmod
+	;;
+	
+    apk)
+	sudo $PACKAGE_INSTALLER add git shellcheck bats bc parted udev kmod
+       	;;
+    *)
+        >&2 echo "Unknown '$PACKAGE_INSTALLER'."
+        ;;
+    esac
 
     # Install anybadge (used for generating images to display on pipeline)
     pip3 install anybadge==1.5.1
 
-    # Install BATS framework (used for unit testing bash files)
-    sudo $PACKAGE_INSTALLER install -y bats
-
-    # Install bc and dc (used for example unit tests)
-    sudo $PACKAGE_INSTALLER install -y bc
-    sudo $PACKAGE_INSTALLER install -y dc
-
-    # Install parted and udev for use by convert qemu unit tests
-    sudo $PACKAGE_INSTALLER install -y parted
-    sudo $PACKAGE_INSTALLER install -y udev
-
-    # Install modprobe
-    sudo $PACKAGE_INSTALLER install -y kmod
 
     # Install update-copyright tool
     pip3 install update-copyright==0.6.2

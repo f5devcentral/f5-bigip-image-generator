@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2020 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -20,7 +20,7 @@ source "$PROJECT_DIR/src/lib/bash/util/logger.sh"
 # Set PYTHONPATH variable to access python modules.
 function set_python_path {
     local python_path
-    if [[ ! -z "$1" ]]; then
+    if [[ -n "$1" ]]; then
         python_path="$1"
     else
         python_path="$PROJECT_DIR/src/lib/python"
@@ -38,7 +38,7 @@ function set_python_path {
 # Activate a Python virtual environment.
 function set_python_environment {
     local venv_dir venv_config_file venv_activation_script
-    if [[ ! -z "$1" ]]; then
+    if [[ -n "$1" ]]; then
         venv_dir="$1"
     else
         venv_dir="$PROJECT_DIR/.venv"
