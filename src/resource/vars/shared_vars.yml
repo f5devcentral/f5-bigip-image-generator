@@ -48,6 +48,13 @@ DEFAULT_SIG_FILE_EXTENSION:
     this extension in the same directory as the provided ISO or EHF_ISO.
   internal: true
 
+DISABLE_TELEMETRY:
+  description: >-
+    Disable the telemetry feature used to collect platform and usage
+    information for product improvement purposes.  When disabled, data
+    is stored locally for debugging purposes.
+  parameters: 0
+
 DOCS:
   description: >-
     Create configuration docs.
@@ -128,6 +135,11 @@ IMAGE_SIG_PRIVATE_KEY:
 IMAGE_SIG_PUBLIC_KEY:
   description: >-
     Path to public key file used to sign images.
+
+INFO:
+  description: >-
+    Display image generator environment information.
+  parameters: 0
 
 ISO:
   description: >-
@@ -212,7 +224,7 @@ VERSION:
   parameters: 0
 
 VERSION_NUMBER:
-  default: 1.6
+  default: 1.7
   description: >-
     This is the current version of BIG-IP Image Generator.
   internal: true
