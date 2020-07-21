@@ -26,7 +26,7 @@ The F5 Virtual Edition (VE) team developed the F5 BIG-IP Image Generator interna
 * Provide pre-deployment file customization of BIG-IP (for example, SSH keys, trusted certificates, custom packages, and so forth).
 * Automatically publish images to public cloud providers.
 * Simplify deployment workflows, such as encrypting custom images in AWS (prevents launching an instance in the marketplace first).
-* Gather [non-identifiable usage data][35] for the purposes of improving the Image Generator product (consult the [sample Telemetry output data](telemetry-sample-output-data)  for more information). You can disable or opt-out of this feature using the [DISABLE_TELEMETRY](#create-config-file) parameter at any time.
+* Gather [non-identifiable usage data][35] for the purposes of improving the Image Generator product (consult the [sample Telemetry output data](#telemetry-sample-output-data) for more information). You can disable or opt-out of this feature using the [DISABLE_TELEMETRY](#create-config-file) parameter at any time.
 
 ##### SECURITY WARNING
 ----------------------
