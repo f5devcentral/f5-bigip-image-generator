@@ -20,7 +20,7 @@ from shutil import copy2, copytree
 import re
 import requests
 
-from util.build_info import BuildInfo
+from telemetry.build_info_inject import BuildInfoInject
 from util.config import get_config_value, get_list_from_config_yaml
 from util.logger import LOGGER
 
@@ -127,7 +127,8 @@ def prep_build_info_for_injection(files_to_inject):
     build_info_source = artifacts_dir + "/" + build_info_file_name
     build_info_destination = "/" + build_info_file_name
     files_to_inject.append({'source': build_info_source, 'destination': build_info_destination})
-    build_info = BuildInfo()
+    build_info = BuildInfoInject()
+    LOGGER.info(build_info.to_json())
     build_info.to_file(build_info_source)
 
 

@@ -1250,6 +1250,35 @@ function handle_upgrade {
     create_generator_info_json
 }
 
+
+# Publish to telemetry server unless disable telemetry config value is enabled
+function publish_telemetry {
+    if [[ -n "$(get_config_value "DISABLE_TELEMETRY")" ]]; then
+        log_info "Telemetry feature disabled. Telemetry data was not posted."
+	return
+    fi
+
+    build_end_time="$(date "+%FT%H:%M:%S")"
+    result="$1"
+    artifacts_directory="$2"
+
+    telemetry_end_file="$artifacts_directory/telemetry_end.json"
+    if ! jq -M -n \
+          --arg build_end_time "$build_end_time" \
+          --arg result "$result" \
+        '{ build_end_time: $build_end_time,
+    	result: $result }' \
+        > "$telemetry_end_file"
+    then
+        log_error "jq failed to create document."
+        log_error "Removing file $telemetry_end_file"
+        rm "$telemetry_end_file"
+        exit 1
+    fi
+    "$(realpath "$(dirname "${BASH_SOURCE[0]}")")"/../../bin/publish_telemetry.py
+}
+
+
 # Take a snapshot of the working space for the postmortem analysis.
 # The snapshot will include the log file and text files from the artifacts dir.
 # The snapshot will reside next to the log.
@@ -1260,7 +1289,7 @@ function take_snapshot {
     local log_file
     log_file=$(get_config_value "LOG_FILE")
     if [[ -z "$log_file" ]]; then
-        log_warning "Log file has not been set. Cannot collect snapshots."
+        log_debug "Log file has not been set. Cannot collect snapshots."
         return 1
     fi
 
