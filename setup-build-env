@@ -49,10 +49,19 @@ function create_version_metadata {
         error_and_exit "jq error while adding VERSION to json data: $json_write"
     fi
 
+
     # Write version to metadata file
+    # in Docker situations this needs to be where venv is
     local info_file
-    info_file="${PROJECT_DIR}/.$(basename "$0").json"
+    local venv_dir
+    venv_dir=$(dirname "$VIRTUAL_ENV")
+    if [ -z "$venv_dir" ]; then
+        info_file="${PROJECT_DIR}/.$(basename "$0").json"
+    else
+	info_file="$(dirname "$VIRTUAL_ENV")/.$(basename "$0").json"
+    fi
     echo "$json_write" > "$info_file"
+
     echo "Wrote version $current_version to $info_file"
 }
 
@@ -227,6 +236,8 @@ source "$VENV_DIR/bin/activate"
 pip3 install wheel
 #-----------------------------------------------------------------------------#
 
+# F5 Telemetry package
+pip3 install f5-teem
 
 #-----------------------------------------------------------------------------#
 # AWS Package setup.

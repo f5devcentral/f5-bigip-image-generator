@@ -25,6 +25,14 @@ source "$(realpath "$(dirname "${BASH_SOURCE[0]}")")/src/lib/bash/build-image-ut
 source "$(realpath "$(dirname "${BASH_SOURCE[0]}")")/src/lib/bash/util/logger.sh"
 
 function trap_cleanup() {
+    local return_value
+    return_value=$?
+
+    # Report to telemetry if run is a failure or unless disabled
+    if [ "$return_value" != "0" ]; then
+        publish_telemetry "FAILURE" "$artifacts_dir"
+    fi
+
     # Take the snapshot of the workspace before cleaning.
     take_snapshot
 
@@ -32,6 +40,7 @@ function trap_cleanup() {
     artifacts_dir="$(get_config_value "ARTIFACTS_DIR")"
     reuse="$(get_config_value "REUSE")"
     cleaning_msg="Cleaning up before EXIT."
+
     # cleaning up any tmp directory
     rm -rf ./tmp.*
     if [[ ! "$reuse" ]]; then
@@ -61,11 +70,6 @@ function main {
         set_python_path "${oem_dir}/src/lib/python"
     fi
 
-    # Config setup.
-    if ! init_config "validate" "$@"; then
-        error_and_exit "init_config has failed"
-    fi
-
     # Check that setup script has been run CHECK_SETUP_JSON_DIR is used so that this works
     # in environments where BASH_SOURCE isn't as expected.
     local check_setup_json_dir
@@ -78,6 +82,11 @@ function main {
         log_info "Use CHECK_SETUP_JSON_DIR for check_setup_json_dir:$check_setup_json_dir"
     fi
     check_setup "$check_setup_json_dir"
+
+    # Config setup.
+    if ! init_config "validate" "$@"; then
+        error_and_exit "init_config has failed"
+    fi
 
     local cloud iso iso_sig ehf_iso ehf_iso_sig pub_key modules boot_locations platform artifacts_directory \
           config_file cloud_image_name
@@ -105,6 +114,12 @@ function main {
     fi
     set_config_value "LOG_FILE" "$log_file"
 
+    local raw_command
+    local build_start_time
+    raw_command="$0 $*"
+    build_start_time="$(date "+%FT%H:%M:%S")"
+
+
     # Check if the old log file should be deleted
     local reuse
     reuse="$(get_config_value "REUSE")"
@@ -125,6 +140,7 @@ function main {
         error_and_exit "Logger creation failed"
     fi
 
+    
     # create a temporary directory to hold ISO downloaded from URL
     local line
     local tmp_dir
@@ -242,6 +258,19 @@ function main {
     export BIGIP_VERSION_NUMBER="$version_number"
     # make sure that iso is of a supported version
     validate_iso_version "$platform"
+
+    telemetry_start_file="${artifacts_directory}/telemetry_start.json"
+    if ! jq -M -n \
+          --arg raw_command "$raw_command" \
+          --arg build_start_time "$build_start_time" \
+        '{ build_start_time: $build_start_time }' \
+        > "$telemetry_start_file"
+    then
+          log_error "jq failed to create document."
+          log_error "Removing file $telemetry_start_file"
+          rm "$telemetry_start_file"
+          exit 1
+    fi
 
     # extract ve.info.json file from the ISO for disk sizing.
     local ve_info_json
@@ -461,6 +490,7 @@ function main {
     log_info "Copying staged virtual disk from [${staged_disk}] to [${output_disk}]"
     publish_image "$staged_disk" "$sig_file_path" "$output_dir" "staged virtual disk"
 
+
     # Logging finish marker.
     log_info "------======[ Finished disk generation for '$platform' '$modules'" \
             "'$boot_locations' boot-locations. ]======------"
@@ -489,6 +519,9 @@ function main {
     if [[ $? -ne 0 ]]; then
         error_and_exit "image creation has failed, check '$log_file' for more details."
     fi
+
+    # Report to telemetry unless disabled
+    publish_telemetry "SUCCESS" "$artifacts_directory"
 
     log_info "${BASH_SOURCE[0]} HAS FINISHED SUCCESSFULLY."
 }

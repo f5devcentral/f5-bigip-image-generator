@@ -1,5 +1,5 @@
 """Alibaba image module"""
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2020 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -110,7 +110,19 @@ class AlibabaImage(BaseImage):
         metadata.set(self.__class__.__name__, 'location', get_config_value('ALIBABA_REGION'))
 
         # Add tags to image
+        LOGGER.info('Add tags to image \'%s\'', self.image_id)
         self.client.add_tags(self.image_id, 'image', CloudImageTags(metadata).get())
+
+        # Add tags to associated snapshot
+        images_json = self.client.describe_images(self.image_id, None)
+        if not 'Images' in images_json.keys():
+            LOGGER.error('No image data found for image \'%s\'', self.image_id)
+            LOGGER.error('Unable to tag snapshot.')
+        else:
+            snapshot_id = images_json['Images']['Image'][0] \
+                              ['DiskDeviceMappings']['DiskDeviceMapping'][0]['SnapshotId']
+            LOGGER.info('Add tags to snapshot \'%s\'', snapshot_id)
+            self.client.add_tags(snapshot_id, 'snapshot', CloudImageTags(metadata).get())
 
     def share_image(self):
         """Reads a list of account IDs and shares the image with each of those accounts."""

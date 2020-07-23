@@ -16,6 +16,7 @@ You will find the following information:
 * [Troubleshooting guide](#troubleshooting-guide)
 * [Support guide](#support-guide)
   * [Known issues](#known-issues)
+* [Appendix](#appendix)
 
 ## Introduction
 
@@ -25,6 +26,7 @@ The F5 Virtual Edition (VE) team developed the F5 BIG-IP Image Generator interna
 * Provide pre-deployment file customization of BIG-IP (for example, SSH keys, trusted certificates, custom packages, and so forth).
 * Automatically publish images to public cloud providers.
 * Simplify deployment workflows, such as encrypting custom images in AWS (prevents launching an instance in the marketplace first).
+* Gather [non-identifiable usage data][35] for the purposes of improving the Image Generator product (consult the [sample Telemetry output data](#telemetry-sample-output-data) for more information). You can disable or opt-out of this feature using the [DISABLE_TELEMETRY](#create-config-file) parameter at any time.
 
 ##### SECURITY WARNING
 ----------------------
@@ -135,6 +137,10 @@ This section provides steps for installing the generator tool, and then using th
    * `--add-dev-tools` - installs additional tools for development, such as pylint, shellcheck, and bats
 
 3. Restart your computer, or log out, and then log back into your system.
+4. To view the Image Generator operating environment use ``./build-image --info``. This will collect information such as, installed software on the build machine. 
+
+
+
 
 ### Docker container setup
 
@@ -168,9 +174,10 @@ command line >  configuration file >  environment variable. To access the Image 
 
     |Parameter|Flag|Required|Values|Description|
     |:--------|:---|:-------|:-----|:----------|
-    |BOOT_LOCATIONS|-b|Yes|[1 \| 2]|Number of boot locations used in the source ISO file.|
+    |BOOT_LOCATIONS|-b|Yes|[1\2]|Number of boot locations used in the source ISO file.|
     |CLOUD_IMAGE_NAME| |No|[value]|The name of the generated cloud image.  The name is subject to cloud provider naming restrictions  and is not guaranteed to succeed.  If you provide no name, then one is generated automatically  based on the detected properties of the source ISO file.|
     |CONFIG_FILE|-c|No|[value]|Full path to a YAML configuration file containing a list of parameter key/value pairs used during image generation.|
+    |DISABLE_TELEMETRY| |No|[value]|Disable the telemetry feature used to collect platform and usage information for product improvement purposes.  When disabled, data is stored locally for debugging purposes.|
     |EHF_ISO|-e|No|[value]|Full path or URL to an engineering hotfix ISO file for installation on top of the existing ISO file.|
     |EHF_ISO_SIG|-x|No|[value]|Full path or URL to an engineering hotfix ISO signature file used to validate the engineering hotfix ISO.|
     |HELP|-h|No| |Print help and usage information, and then exit the program.|
@@ -180,15 +187,16 @@ command line >  configuration file >  environment variable. To access the Image 
     |IMAGE_SIG_PRIVATE_KEY| |No|[value]|Path to private key file used to sign images.|
     |IMAGE_SIG_PUBLIC_KEY| |No|[value]|Path to public key file used to verify images.|
     |IMAGE_TAGS| |No|[value]|List of key value pairs to set as tags/labels for the image.|
+    |INFO| |No|[value]|Display image generator environment information.|
     |ISO|-i|Yes|[value]|Full path or URL to a BIG-IP ISO file used as a basis for image generation.|
     |ISO_SIG|-s|No|[value]|Full path or URL to an ISO signature file used to validate the ISO.|
     |ISO_SIG_VERIFICATION_ENCRYPTION_TYPE| |No|[value]|Encryption type to use when signing/verifying ISO or Virtual disks|
     |ISO_SIG_VERIFICATION_PUBLIC_KEY| |No|[value]|Path to public key file used to verify an ISO.|
     |LOG_FILE| |No|[value]|Log filename that overrides the default log filename created in the logs directory. You can use a full path, directory, or filename. If full path, then the log file uses the full path. If directory, then the image generator creates a new log file in the specified directory. If filename, then the tool creates a log file in the logs directory using the specified filename.|
-    |LOG_LEVEL| |No|[CRITICAL \| ERROR \| WARNING \| INFO \| DEBUG \| TRACE]|Log level to use for the log file, indicating the lowest message severity level that can appear in the log file.|
-    |MODULES|-m|Yes|[all \| ltm]|BIG-IP components supported by the specified image.|
-    |PLATFORM|-p|Yes|[alibaba \| aws \| azure \| gce \| qcow2 \| vhd \| vmware]|The target platform for generated images.|
-    |REUSE| |No| |Keep/Reuse local files created by previous runs of the same [PLATFORM, MODULES, BOOT_LOCATIONS] combination.|    
+    |LOG_LEVEL| |No|[CRITICAL \ ERROR \ WARNING \ INFO \ DEBUG \ TRACE]|Log level to use for the log file, indicating the lowest message severity level that can appear in the log file.|
+    |MODULES|-m|Yes|[all\ltm]|BIG-IP components supported by the specified image.|
+    |PLATFORM|-p|Yes|[alibaba \ aws \ azure \ gce \ qcow2 \ vhd \ vmware]|The target platform for generated images.|
+    |REUSE| |No| |Keep\Reuse local files created by previous runs of the same [PLATFORM, MODULES, BOOT_LOCATIONS] combination.|    
     |UPDATE_IMAGE_FILES| |No|[value]|Files you want injected into the image. For each of the injections, REQUIRED values include **source** (file, directory, or URL) and **destination** (absolute full path), and an OPTIONAL **mode** (a string of file [chmod][32] permissions flag consisting of 1-4 octal digits for read/write/execute).|
     |UPDATE_LV_SIZES| |No|[value]|Increase the sizes (MiB) of the following logical volumes (LV): appdata, config, log, shared, and var. This is a dictionary mapping the LV name to the new LV size. Define the size using an integer representing the number of MiBs (for example, "appdata":32000).|
     |VERSION|-v|No| |Print version information, and then exit the program.|
@@ -470,6 +478,96 @@ To report defects and security vulnerabilties, or submit enhancements and genera
 ### Known issues
 All known issues are now on the GitHub **Issues** tab for better tracking and visibility. Sort the [issues list][27] by expanding the **Label** column and selecting **Known issue**.
 
+## Appendix
+This section contains sample configuration code and output data referenced elsewhere in this document.
+
+### Telemetry sample output data
+
+```
+{
+  "platform": {
+    "os": "Linux"
+  },
+  "environment": {
+    "pythonVersion": "3.6.9",
+    "pythonVersionDetailed": "3.6.9 (default, Apr 18 2020, 01:56:04) \n[GCC 8.4.0]",
+    "nodeVersion": None,
+    "goVersion": None,
+    "libraries": {
+      "git": "git version 2.17.1",
+      "ssh": "OpenSSH_7.6p1 Ubuntu-4ubuntu0.3, OpenSSL 1.0.2n  7 Dec 2017"
+    }
+  },
+  "product": {
+    "version": 1.7,
+    "locale": "en_US.UTF-8",
+    "installDate": "2020-05-10 23:37:25.355259",
+    "installationId": "fde0cdd8-d0d6-11e9-8307-0242ac110002",
+    "installedComponents": {
+      "gcp": {
+        "google-cloud-sdk": "301.0.0-0"
+      },
+      "alibaba": {
+        "oss2": "2.8.0",
+        "aliyun-python-sdk-core": "2.13.10",
+        "aliyun-python-sdk-ecs": "4.17.6"
+      },
+      "aws": {
+        "boto3": "1.10.10",
+        "moto": "1.3.13"
+      },
+      "azure": {
+        "azure-storage-blob": "2.1.0",
+        "azure-mgmt-compute": "4.4.0"
+      },
+      "pythonRequests": {
+        "requests": "2.22.0"
+      },
+      "retryPackage": {
+        "retry": "0.9.2"
+      },
+      "yaml": {
+        "yq": "2.9.2",
+        "pyyaml": "5.1.2"
+      },
+      "miscPythonTools": {
+        "distro": "1.4.0\nApache",
+        "pycdlib": "1.8.0"
+      },
+      "verifyingCodeTools": {
+        "git": "1:2.17.1-1ubuntu0.7",
+        "shellcheck": "0.4.6-1",
+        "pylint": "1.8.3-1",
+        "anybadge": "1.5.1",
+        "bats": "0.4.0-1.1",
+        "bc": "1.07.1-2",
+        "dc": "1.07.1-2",
+        "parted": "3.2-20ubuntu0.2",
+        "udev": "237-3ubuntu10.41",
+        "kmod": "24-1ubuntu3.4"
+      }
+    }
+  },
+  "Operation": {
+    "product": "BIG-IP",
+    "productVersion": "15.1.0.3",
+    "productBaseBuild": "0.0.12",
+    "productBuild": "0.0.12",
+    "platform": "qcow2",
+    "module": "ltm",
+    "bootLocations": "1",
+    "nestedVirtualization": "enabled",
+    "updateImageFiles": "disabled",
+    "updateLvSizes": "disabled",
+    "result": "SUCCESS",
+    "resultSummary": "",
+    "startTime": "2020-07-16T18:57:31",
+    "endTime": "2020-07-16T18:57:47"
+  }
+}
+
+```
+
 
 
 ### Copyright
@@ -534,3 +632,4 @@ completed and submitted the F5 Contributor License Agreement.
 [32]: http://www.filepermissions.com/articles/understanding-octal-file-permissions
 [33]: https://support.f5.com/csp/article/K14946 
 [34]: https://hub.docker.com/r/f5devcentral/f5-bigip-image-generator
+[35]: https://clouddocs.f5.com/products/extensions/f5-telemetry-streaming/latest/faq.html

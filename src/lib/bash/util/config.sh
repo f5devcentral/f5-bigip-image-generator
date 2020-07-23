@@ -99,6 +99,12 @@ function init_config {
         exit 0
     fi
 
+    _config_init_bootstrap_key "INFO" "$@"
+    if [[ -n "${CONFIG_VALUES[INFO]}" ]]; then
+        _config_output_info
+        exit 0
+    fi
+
     if [[ -z "$config_file" ]]; then
         log_info "CONFIG_FILE not set"
     fi
@@ -733,6 +739,15 @@ function _config_output_key_usage {
 function _config_output_version {
     local version="${CONFIG_VALUES[VERSION_NUMBER]}"
     log_info "version=$version"
+}
+
+# Output the build info.
+function _config_output_info {
+    if "$(realpath "$(dirname "${BASH_SOURCE[0]}")")"/../../../bin/get_build_info.py "$(realpath .)"; then
+        return 0
+    else
+        log_info "Getting info failed"
+    fi
 }
 
 # Parse command line arguments for defined keys and record their values based on the configurations for those keys.
