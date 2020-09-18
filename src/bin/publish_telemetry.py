@@ -19,11 +19,15 @@
 import sys
 import uuid
 from os import environ
+from urllib3.exceptions import ReadTimeoutError
+
 from f5teem import AnonymousDeviceClient
 
 from telemetry.build_info_telemetry import BuildInfoTelemetry
 from util.logger import LOGGER
 from util.misc import create_log_handler
+from util.retrier import Retrier
+from util.config import get_config_value
 
 def main():
     """main publish telemetry information function"""
@@ -52,13 +56,30 @@ def main():
     }
     telemetry_client = AnonymousDeviceClient(
         client_info, api_key=f5_api_key)
-    LOGGER.info('Post telemetry data.')
-    telemetry_client.report(
-        build_info_telemetry.build_info,
-        telemetry_type='Installation Usage',
-        telemetry_type_version='1'
-    )
+
+    retrier = Retrier(_publish_telemetry_database, build_info_telemetry, telemetry_client)
+    retrier.tries = int(get_config_value('PUBLISH_TELEMETRY_TASK_RETRY_COUNT'))
+    retrier.delay = int(get_config_value('PUBLISH_TELEMETRY_TASK_RETRY_DELAY'))
+    if retrier.execute():
+        LOGGER.info("Publishing to telemetry success.")
+        return True
+    LOGGER.info("Publishing to telemetry did not succeed.")
     sys.exit(0)
+
+
+def _publish_telemetry_database(build_info_telemetry, telemetry_client):
+    """Retry function for publishing to telemetry servers."""
+    LOGGER.info('Attempt to post telemetry data.')
+    try:
+        telemetry_client.report(
+            build_info_telemetry.build_info,
+            telemetry_type='Installation Usage',
+            telemetry_type_version='1'
+        )
+    except ReadTimeoutError:
+        LOGGER.error("ReadTimeoutError occured during publishing to telemetry database")
+        return False
+    return True
 
 
 if __name__ == "__main__":

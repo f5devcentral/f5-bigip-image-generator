@@ -89,7 +89,7 @@ function main {
     fi
 
     local cloud iso iso_sig ehf_iso ehf_iso_sig pub_key modules boot_locations platform artifacts_directory \
-          config_file cloud_image_name
+          config_file cloud_image_name add_ova_eula
     cloud="$(get_config_value "CLOUD")"
     iso="$(get_config_value "ISO")"
     iso_sig="$(get_config_value "ISO_SIG")"
@@ -104,19 +104,21 @@ function main {
     platform="$(get_config_value "PLATFORM")"
     config_file="$(get_config_value "CONFIG_FILE")"
     cloud_image_name="$(get_config_value "CLOUD_IMAGE_NAME")"
+    add_ova_eula="$(get_config_value "ADD_OVA_EULA")"
 
     # Initialize logging
     local log_file
     log_file="$(get_config_value "LOG_FILE")"
+    if [ "${log_file:0:1}" = '~' ]; then
+        error_and_exit "LOG_FILE path starting with '~' is not supported"
+    fi
     log_file="$(init_log_file "$log_file")"
     if ! touch "$log_file"; then
         error_and_exit "Do not have permission to write to log file."
     fi
     set_config_value "LOG_FILE" "$log_file"
 
-    local raw_command
     local build_start_time
-    raw_command="$0 $*"
     build_start_time="$(date "+%FT%H:%M:%S")"
 
 
@@ -141,18 +143,29 @@ function main {
     fi
 
     
-    # create a temporary directory to hold ISO downloaded from URL
+    # create a temporary directory to hold files downloaded from URL
     local line
     local tmp_dir
     tmp_dir=$(mktemp -d -p .)
     if [ ! -e "$tmp_dir" ]; then
-        error_and_exit "Error: Could not create a temporary directory to store the downloaded iso"
+        error_and_exit "Error: Could not create a temporary directory to store the downloaded files"
     fi
 
     local out_msg_file
     out_msg_file="$(mktemp -p "$tmp_dir" tmp.XXXXXX)"
     if [ ! -e "$out_msg_file" ]; then
         error_and_exit "Error: Could not create a temporary file to get data"
+    fi
+
+    # If the vmware EULA is provided and it is a URL, download and store it in tmp_dir
+    if [[ -n "$add_ova_eula" ]]; then
+        check_eula_src "$add_ova_eula" "$tmp_dir" "$out_msg_file"
+        line=$(head -n 1 "$out_msg_file")
+        if [[ $line == Error* ]]; then
+            error_and_exit "$line"
+        fi
+        add_ova_eula="$line"
+        log_info "Check user-defined OVA EULA passed: $add_ova_eula"
     fi
 
     # if the iso is a URL download and store it in tmp_dir
@@ -261,7 +274,6 @@ function main {
 
     telemetry_start_file="${artifacts_directory}/telemetry_start.json"
     if ! jq -M -n \
-          --arg raw_command "$raw_command" \
           --arg build_start_time "$build_start_time" \
         '{ build_start_time: $build_start_time }' \
         > "$telemetry_start_file"
@@ -351,7 +363,7 @@ function main {
         updated_iso_path="$(form_updated_iso_path "$platform" "$iso" "$cloud_image_name" "$artifacts_directory")"
         iso_prefix="$(extract_bigip_prefix_from_iso "$iso")"
         if "$(realpath "$(dirname "${BASH_SOURCE[0]}")")"/oem/src/bin/update_iso.py \
-           "$updated_iso_path" "$iso_prefix" "$PRODUCT_VERSION" "$PRODUCT_BUILD"; then
+           "$updated_iso_path" "$iso_prefix" "$PRODUCT_VERSION" "$PRODUCT_BASE_BUILD"; then
             log_info "Updated iso with altered rpms"
             if [[ "$platform" == "iso" ]]; then
                 # Save an md5sum alongside the packaged disk
@@ -467,7 +479,8 @@ function main {
 
     log_info "Create the cloud machine image for '$platform' from a raw image."
     produce_virtual_disk "$platform" "$modules" "$boot_locations" "$raw_disk" \
-            "$artifacts_directory" "$prepare_vdisk_json" "$staged_disk" "$log_file"
+            "$artifacts_directory" "$prepare_vdisk_json" "$staged_disk" \
+            "$add_ova_eula" "$log_file"
 
     # shellcheck disable=SC2181
     if [[ $? -ne 0 ]]; then

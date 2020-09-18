@@ -28,10 +28,16 @@ function init_log_file {
     local canned_name
     local canned_path
     local log_file
+    local build_image_dir
     if [[ $# != 1 ]]; then
         error_and_exit "Usage: ${FUNCNAME[0]} <log_file>"
     fi
     log_file=$1
+
+    if [ "${log_file:0:1}" = '~' ]; then
+        log_error "LOG_FILE path starting with '~' is not supported"
+        return 1
+    fi
 
     # Setup canned path/name
     canned_path="$(realpath "$(dirname "${BASH_SOURCE[0]}")")/../../../logs"
@@ -41,19 +47,60 @@ function init_log_file {
         canned_name="image-$platform-$modules-${boot_locations}slot"
     fi
 
+    build_image_dir="$(realpath "$(dirname "${BASH_SOURCE[0]}")")/../../../"
+
     if [ -z "$log_file" ]; then
        # If log file is not provided, use canned directory and filename
        mkdir -p "$canned_path"
        log_file="$canned_path/$canned_name"
     else
         if [ -d "$log_file" ]; then
-            # If directory is provided, use canned filename in that directory
-            log_file="$log_file/$canned_name"
+            # If directory is provided and exists, use canned filename in that directory
+	    if [ "${log_file:0:1}" = '/' ]; then
+	        # Path is absolute and exists
+		log_file="$log_file/$canned_name"
+	    else
+		# Path is relative and exists
+	        log_file="$build_image_dir$log_file/$canned_name"
+	    fi
         else
-            if [ "$(basename "$log_file")" == "$log_file" ]; then
-                # If log file doesn't contain path, use canned path
-                mkdir -p "$canned_path"
-                log_file="$canned_path/$log_file"
+	    if [[ ! "$log_file" = *"/"* ]]; then
+	        # Log file is a file, use canned path
+		mkdir -p "$canned_path"
+		log_file="$canned_path/$log_file"
+	    else
+		# Log file is a directory
+		# Get length to check if last char is slash to see if it's a directory
+		local length
+		length=${#log_file}
+                ((length--))
+	        if [ "${log_file:0:1}" = '/' ]; then
+                    # Path is absolute
+		    if [ "${log_file:$length:1}" == "/" ]; then
+	                # absolute path directory
+			mkdir -p "$log_file"
+                        log_file="$log_file$canned_name"
+		    else
+			# absolute path file
+			local log_file_dir
+			log_file_dir="$(dirname "$log_file")"
+			mkdir -p "$log_file_dir"
+		    fi
+		else
+	            # Path is relative
+                    local log_file_dir
+		    if [ "${log_file:$length:1}" == "/" ]; then
+	                # Relative path to directory
+			log_file_dir="$build_image_dir$log_file"
+                        mkdir -p "$log_file_dir"
+			log_file="$log_file_dir$canned_name"
+		    else
+			# Relative path to file
+                        log_file="$build_image_dir$log_file"
+                        log_file_dir="$(dirname "$log_file")"
+                        mkdir -p "$log_file_dir"
+                    fi
+	        fi
             fi
         fi
     fi
@@ -72,6 +119,11 @@ function init_image_dir {
     # Get current config value
     local image_dir
     image_dir="$(get_config_value "IMAGE_DIR")"
+
+    if [ "${image_dir:0:1}" = '~' ]; then
+        log_error "IMAGE_DIR path starting with '~' is not supported"
+        return 1
+    fi
 
     # Determine if current config value should be altered
     if [[ -z "$image_dir" ]]; then
@@ -123,17 +175,17 @@ function get_modules_production_name {
 }
 
 
-# Check if the input iso path is a local file or a URL 
+# Check if the input file path is a local file or a URL
 # If the file exists, return 0 to indicate it does not have to be downloaded
 # If the URL is valid ( http status code 200 or 320 ) return 0
 # else return 1
-function is_iso_path_valid_url {
-    local iso_url="$1"
+function is_file_path_valid_url {
+    local file_url="$1"
 
     if [[ $# -lt 1 ]]; then
-        error_and_exit "Usage: ${FUNCNAME[0]} <iso_path>"
+        error_and_exit "Usage: ${FUNCNAME[0]} <file_path>"
     elif [[ -z "$1" ]]; then
-        error_and_exit "Expected non-empty <iso_path>'$*'"
+        error_and_exit "Expected non-empty <file_path>'$*'"
     fi
 
     local http_code
@@ -145,13 +197,64 @@ function is_iso_path_valid_url {
         cert_check="--insecure"
     fi
 
-    http_code="$(curl "$cert_check" -o /dev/null -I -w "%{http_code}" "$iso_url")"
+    http_code="$(curl "$cert_check" -o /dev/null -I -w "%{http_code}" "$file_url")"
     if [[ "$http_code" -eq "200" ]] || [[ "$http_code" -eq "302" ]]; then
         return 0
     fi
     return 1
 }
 
+
+# Checks if the EULA file is locally available or is it a URL
+# If the EULA is a file and locally available, then just returns
+# the provided EULA argument value
+# If the EULA is a URL then downloads the EULA file and assigns
+# a canned EULA name and returns the EULA file path.
+function check_eula_src {
+    local eula="$1"
+    local store_dir="$2"
+    local out_file="$3"
+
+    if [[ $# -lt 3 ]]; then
+        error_and_exit "Usage: ${FUNCNAME[0]} <eula> <store_dir> <out_msg_file>"
+    elif [[ -z "$2" ]] || [[ -z "$3" ]]; then
+        error_and_exit "Expected non-empty <store_dir> <out_msg_file>. Received '$2' '$3'"
+    fi
+
+    if [[ -f "$eula" ]]; then
+       echo "$eula" > "$out_file"
+       return 0
+    fi
+
+    # Check if the input iso path is a URL
+    if is_file_path_valid_url "$eula"; then
+        log_info "EULA $eula is a valid URL"
+
+        # Create a path to store eula
+        tmp_eula="eula.txt"
+        tmp_eula_path="$store_dir/$tmp_eula"
+
+        # Check if the eula path is actually an url
+        if ! download_file_from_url "$eula" "$tmp_eula_path"; then
+            echo "Error: EULA download failed" > "$out_file"
+            return 1
+        fi
+
+        if [[ ! -f "$tmp_eula_path" ]]; then
+            echo "Error: Could not find the EULA - EULA download failed" > "$out_file"
+            return 1
+        fi
+
+        log_info "Downloaded EULA $tmp_eula_path"
+        echo "$tmp_eula_path" > "$out_file"
+        return 0
+    else
+        log_error "If you meant to pass an EULA path rather than a URL, check iso path/name accuracy"
+        echo "Error: The input EULA does not exist" > "$out_file"
+        return 1
+    fi
+    return 0
+}
 
 # Checks if the iso file is locally available or is it a URL
 # If the iso is a file and locally available, then just returns
@@ -183,7 +286,7 @@ function check_iso_src {
     fi
 
     # Check if the input iso path is a URL
-    if is_iso_path_valid_url "$iso"; then
+    if is_file_path_valid_url "$iso"; then
         log_info "$iso is a valid URL"
         # Create a temporary directory to download the iso to
                 
@@ -221,7 +324,8 @@ function check_iso_src {
         echo "$iso_name" > "$out_file"
         return 0
     else
-        echo "Error: Ths input iso does not exist" > "$out_file"
+	log_error "If you meant to pass an ISO path rather than a URL, check iso path/name accuracy"
+        echo "Error: The input iso does not exist" > "$out_file"
         return 1
     fi
     return 0
@@ -246,7 +350,7 @@ function check_iso_sig_src {
     fi
 
     # Check if the input iso path is a URL
-    if is_iso_path_valid_url "$iso_sig"; then
+    if is_file_path_valid_url "$iso_sig"; then
         log_info "$iso_sig URL is available"
         # Check if the iso path is actually an url
         if ! download_file_from_url "$iso_sig" "$save_to_loc"; then
@@ -264,10 +368,10 @@ function check_iso_sig_src {
 }
 
 
-# Download the iso into the provided path
+# Download the file into the provided path
 function download_file_from_url {
-    local iso_url="$1"
-    local out_iso_path="$2"
+    local file_url="$1"
+    local out_file_path="$2"
 
     local ignore_tls
     ignore_tls="$(get_config_value "IGNORE_DOWNLOAD_URL_TLS")"
@@ -277,12 +381,12 @@ function download_file_from_url {
         cert_check="--no-check-certificate"
     fi
 
-    if ! wget "$cert_check" --progress=dot:giga -O "$out_iso_path" "$iso_url"; then
-        log_error "Error: Unable to get iso from $iso_url"
+    if ! wget "$cert_check" --progress=dot:giga -O "$out_file_path" "$file_url"; then
+        log_error "Error: Unable to get iso from $file_url"
         return 1
     fi
 
-    log_info "Downloaded $out_iso_path from URL:$iso_url"
+    log_info "Downloaded $out_file_path from URL:$file_url"
     return 0
 }
 
@@ -590,21 +694,41 @@ function prepare_artifacts_directory {
     local script_dir
     script_dir="$(realpath "$(dirname "${BASH_SOURCE[0]}")")"
 
-    # drop the path and .iso extension from the iso name
+    # Drop the path and .iso extension from the iso name
     iso=$(basename "$iso" .iso)
 
-    # Create the artifacts directory.
+    # Path to start of artifacts directory
+    local artifacts_directory_input
+    # Full path through artifacts directory
     local artifacts_directory
+
+    # Get current config value
+    artifacts_directory_input="$(get_config_value "ARTIFACTS_DIR")"
+
+    if [ "${artifacts_directory_input:0:1}" = '~' ]; then
+        log_error "ARTIFACTS_DIR path starting with '~' is not supported"
+        return 1
+    fi
+
+    # Determine if current config value should be altered (else use config value)
+    if [[ -z "$artifacts_directory_input" ]]; then
+        # If artifacts directory is not provided, use canned 'artifacts' directory
+        artifacts_directory_input="${script_dir}/../../../artifacts"
+    elif [ ! "${artifacts_directory_input:0:1}" = '/' ]; then
+        # If path is not absolute, turn into absolute
+        artifacts_directory_input="$(realpath "$artifacts_directory_input")"
+    fi
+
     if [[ "$platform" == "iso" ]]; then
-        artifacts_directory="${script_dir}/../../../artifacts/${iso}/${platform}"
+        artifacts_directory="${artifacts_directory_input}/${iso}/${platform}"
     else
-        artifacts_directory="${script_dir}/../../../artifacts/${iso}/${platform}/${modules}_${boot_locations}slot"
+        artifacts_directory="${artifacts_directory_input}/${iso}/${platform}/${modules}_${boot_locations}slot"
     fi
 
     # Save the generated value.
     set_config_value "ARTIFACTS_DIR" "$artifacts_directory"
 
-    # create the directory
+    # Create the directory
     local reuse
     reuse="$(get_config_value "REUSE")"
     create_artifacts_directory "$reuse"
@@ -871,6 +995,30 @@ function create_disk_name {
     local ehf_iso="$9"
     local img_tag="${10}"
 
+    local plat
+    local image_name
+    plat="$(get_config_value "PLATFORM")"
+    image_name="$(get_config_value "HYPERVISOR_IMAGE_NAME")"
+    local hypervisor_list="vmware qcow2 vhd"
+    if [ -n "$image_name" ]; then
+	# Special case for vmware since extenstion is ova not vmware
+	if [[ "$plat" == "vmware" ]]; then
+            if [[ "$image_name" != "*ova" ]]; then
+                image_name="${image_name}.ova"
+	    fi 
+	    echo "$image_name"
+            return
+	fi
+
+	if [[ "$hypervisor_list" == *"$plat"* ]]; then
+	    if [[ "$image_name" != *$plat ]]; then
+	        image_name="${image_name}.$plat"
+	    fi
+            echo "$image_name.$format"
+	    return
+        fi
+    fi
+
     if [[ $# -lt 7 ]]; then
         error_and_exit "Usage: ${FUNCNAME[0]} <format> <product> <version> <build>" \
                 "<platform> <modules> <boot_loc> <project-name> <ehf_iso> <img_tag>"
@@ -946,11 +1094,12 @@ function produce_virtual_disk {
     local artifacts_dir="$5"
     local prepare_vdisk_json="$6"
     local staged_disk="$7"
-    local log_file="$8"
+    local add_ova_eula="$8"
+    local log_file="$9"
     local script_dir
     script_dir="$(realpath "$(dirname "${BASH_SOURCE[0]}")")"
 
-    if [[ $# -lt 8 ]]; then
+    if [[ $# -lt 9 ]]; then
         error_and_exit "Received a wrong number ($#) of parameters: $*"
     fi
 
@@ -969,7 +1118,7 @@ function produce_virtual_disk {
             # shellcheck disable=SC2094
             bash "${script_dir}/../../bin/ova_package_disk" "$platform" "$input_raw_disk" \
                     "$artifacts_dir" "$internal_disk_name" "$staged_disk" \
-                    "$prepare_vdisk_json" "$log_file"
+                    "$prepare_vdisk_json" "$add_ova_eula" "$log_file"
             ;;
         alibaba)
             # shellcheck disable=SC2094
