@@ -26,7 +26,6 @@ The F5 Virtual Edition (VE) team developed the F5 BIG-IP Image Generator interna
 * Provide pre-deployment file customization of BIG-IP (for example, SSH keys, trusted certificates, custom packages, and so forth).
 * Automatically publish images to public cloud providers.
 * Simplify deployment workflows, such as encrypting custom images in AWS (prevents launching an instance in the marketplace first).
-* Gather [non-identifiable usage data][35] for the purposes of improving the Image Generator product (consult the [sample Telemetry output data](#telemetry-sample-output-data) for more information). You can disable or opt-out of this feature using the [DISABLE_TELEMETRY](#create-config-file) parameter at any time.
 
 ##### SECURITY WARNING
 ----------------------
@@ -174,12 +173,14 @@ command line >  configuration file >  environment variable. To access the Image 
 
     |Parameter|Flag|Required|Values|Description|
     |:--------|:---|:-------|:-----|:----------|
+    | ADD_OVA_EULA |          |  No    |       |Full path or URL to a text-based EULA that you want added to VMware OVA images. |
+    |ARTIFACTS_DIR |     | No       |      | Enter a directory (either absolute or relative path) where newly created artifacts will reside. If blank, the tool will auto-create this directory.|
     |BOOT_LOCATIONS|-b|Yes|[1\2]|Number of boot locations used in the source ISO file.|
     |CLOUD_IMAGE_NAME| |No|[value]|The name of the generated cloud image.  The name is subject to cloud provider naming restrictions  and is not guaranteed to succeed.  If you provide no name, then one is generated automatically  based on the detected properties of the source ISO file.|
     |CONFIG_FILE|-c|No|[value]|Full path to a YAML configuration file containing a list of parameter key/value pairs used during image generation.|
     |DISABLE_TELEMETRY| |No|[value]|Disable the telemetry feature used to collect platform and usage information for product improvement purposes.  When disabled, data is stored locally for debugging purposes.|
     |EHF_ISO|-e|No|[value]|Full path or URL to an engineering hotfix ISO file for installation on top of the existing ISO file.|
-    |EHF_ISO_SIG|-x|No|[value]|Full path or URL to an engineering hotfix ISO signature file used to validate the engineering hotfix ISO.|
+    |EHF_ISO_SIG|-x|No|[value]|Full path or URL to an engineering hotfix ISO signature file used to validate the engineering hotfix ISO.| 
     |HELP|-h|No| |Print help and usage information, and then exit the program.|
     |IGNORE_DOWNLOAD_URL_TLS| |No| |Ignore TSL certificate verification when downloading files.|
     |IMAGE_DIR| |No|[value]|The directory where you want generated images to reside. Provide either an absolute path or a relative path. If this directory does not exist, the tool will create it.|
@@ -276,7 +277,7 @@ command line >  configuration file >  environment variable. To access the Image 
    * shared
    * var
 
-   For example, if you use declarative on-boarding for LTM only, then you may want to increase the  ``var`` LV size to 1.5GiB. Type:
+   For example, if you use multiple extensions on an instance that defaults to 500Mb, then you may want to increase the ``var`` LV size to 1.5GiB. Type:
 
    Configuration file (recommended):
 

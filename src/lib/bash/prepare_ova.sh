@@ -493,13 +493,15 @@ function prepare_ova {
     local general_bundle_name="$4"
     local bundle_name="$5"
     local output_json="$6"
-    local log_file="$7"
+    local add_ova_eula="$7"
+    local log_file="$8"
 
     output_json="$(realpath "$output_json")"
 
-    if [[ $# != 7 ]]; then
-        log_error "Usage: ${FUNCNAME[0]} <platform> <raw_disk> <artifacts_dir>" \
-                 "<general_bundle_name> <bundle_name> <output_json>"
+    if [[ $# != 8 ]]; then
+        log_error "Usage: ${FUNCNAME[0]} <platform> <raw_disk> <artifacts_dir> " \
+                 "<general_bundle_name> <bundle_name> <output_json> " \
+                 "<add_ova_eula> <log_file>"
         print_fail_status_json "$output_json" "$log_file"
         return 1
     fi
@@ -533,6 +535,9 @@ function prepare_ova {
         log_error "Missing variable output_json"
         print_fail_status_json "$output_json" "$log_file"
         return 1
+    fi
+    if [[ -z "$add_ova_eula" ]]; then
+        log_info "No user-defined OVA EULA provided"
     fi
     if [[ -z "$log_file" ]]; then
         log_error "Missing variable log_file"
@@ -624,7 +629,12 @@ function prepare_ova {
     # Bundle into OVA
     start_task=$(timer)
     log_info "Initial OVA generation -- start time: $(date +%T)"
-    ovftool --diskMode=streamOptimized "$prod_vmx_file" "$out_ova_file"
+    if [[ -n "$add_ova_eula" ]]; then
+        log_info "Include user-defined EULA: $add_ova_eula"
+        ovftool --diskMode=streamOptimized --eula@="$add_ova_eula" "$prod_vmx_file" "$out_ova_file"
+    else
+        ovftool --diskMode=streamOptimized "$prod_vmx_file" "$out_ova_file"
+    fi
     # shellcheck disable=SC2181
     if [[ $? -ne 0 ]] ; then
         log_error "Error while running ovftool on $prod_vmx_file"

@@ -13,6 +13,15 @@
 # the License.
 
 
+ADD_OVA_EULA:
+  description: >-
+    Full path or URL to a text-based EULA that you want added to VMware OVA images.
+
+ARTIFACTS_DIR:
+  description: >-
+    Enter a directory (either absolute or relative path) where newly created 
+    artifacts will reside. If blank, the tool will auto-create this directory.
+
 CLOUD:
   accepted: "^alibaba$|^aws$|^azure$|^gce$"
   description: >-
@@ -99,6 +108,12 @@ IMAGE_DIR:
   description: >-
     The directory where you want generated images to reside. Provide either an absolute path or a
     relative path. If this directory does not exist, the tool will create it.
+
+HYPERVISOR_IMAGE_NAME:
+  description: >-
+    The name of the generated non-cloud image.
+    If you provide no name, then one is generated automatically
+    based on the detected properties of the source ISO file.
 
 IMAGE_TAGS:
   description: >-
@@ -189,6 +204,20 @@ PLATFORM:
   flag: p
   required: true
 
+PUBLISH_TELEMETRY_TASK_RETRY_COUNT:
+  accepted: "^[0-9]+$"
+  default: 5
+  description: >-
+    Maximum number of retries for publish to telemetry servers operation to complete.
+  internal: true
+
+PUBLISH_TELEMETRY_TASK_RETRY_DELAY:
+  accepted: "^[0-9]+$"
+  default: 10
+  description: >-
+    Sleep duration (in seconds) between retries when checking for publish to telemetry servers operation to complete.
+  internal: true
+
 REUSE:
   description: >-
     Keep/Reuse local files created by previous runs of the same <PLATFORM, MODULES, BOOT_LOCATIONS> combination.
@@ -224,7 +253,7 @@ VERSION:
   parameters: 0
 
 VERSION_NUMBER:
-  default: 1.7
+  default: 1.8
   description: >-
     This is the current version of BIG-IP Image Generator.
   internal: true
