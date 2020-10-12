@@ -1400,6 +1400,41 @@ function handle_upgrade {
 }
 
 
+# Checks if output json file has been requested then calls script to create the file
+function output_json_file {
+    make_end_file "$1" "$2"
+    local output_json_value
+    output_json_value="$(get_config_value "OUTPUT_JSON_FILE")"
+
+    if [[ -z "$output_json_value" ]]; then
+        log_info "Outputting json file has not been requested."
+        return
+    fi 
+    "$(realpath "$(dirname "${BASH_SOURCE[0]}")")"/../../bin/output_json_file.py "$output_json_value"
+}
+
+
+# gathers the end time of the run and writes that plus the result to a file
+function make_end_file {
+    build_end_time="$(date "+%FT%H:%M:%S")"
+    result="$1"
+    artifacts_directory="$2"
+
+    end_file="$artifacts_directory/end_file.json"
+    if ! jq -M -n \
+          --arg build_end_time "$build_end_time" \
+          --arg result "$result" \
+        '{ build_end_time: $build_end_time,
+        result: $result }' \
+        > "$end_file"
+    then
+        log_error "jq failed to create document."
+        log_error "Removing file $end_file"
+        rm "$end_file"
+        exit 1
+    fi
+}
+
 # Publish to telemetry server unless disable telemetry config value is enabled
 function publish_telemetry {
     if [[ -n "$(get_config_value "DISABLE_TELEMETRY")" ]]; then
@@ -1407,23 +1442,8 @@ function publish_telemetry {
 	return
     fi
 
-    build_end_time="$(date "+%FT%H:%M:%S")"
-    result="$1"
-    artifacts_directory="$2"
+    make_end_file "$1" "$2"
 
-    telemetry_end_file="$artifacts_directory/telemetry_end.json"
-    if ! jq -M -n \
-          --arg build_end_time "$build_end_time" \
-          --arg result "$result" \
-        '{ build_end_time: $build_end_time,
-    	result: $result }' \
-        > "$telemetry_end_file"
-    then
-        log_error "jq failed to create document."
-        log_error "Removing file $telemetry_end_file"
-        rm "$telemetry_end_file"
-        exit 1
-    fi
     "$(realpath "$(dirname "${BASH_SOURCE[0]}")")"/../../bin/publish_telemetry.py
 }
 

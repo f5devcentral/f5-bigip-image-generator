@@ -36,6 +36,7 @@ def main():
 
     # gather telemetry info
     build_info_telemetry = BuildInfoTelemetry()
+    LOGGER.debug("telemetry info:")
     LOGGER.debug(build_info_telemetry.build_info)
 
     version = build_info_telemetry.build_info['product']['version']

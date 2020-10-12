@@ -100,7 +100,7 @@ def get_update_lv_sizes():
 
 def get_result():
     """returns if the build was a success or failure."""
-    return read_file_value("telemetry_end.json", "result")
+    return read_file_value("end_file.json", "result")
 
 def get_result_summary():
     """not yet implemented."""
@@ -108,11 +108,11 @@ def get_result_summary():
 
 def get_start_time():
     """returns at what time the build began."""
-    return read_file_value("telemetry_start.json", "build_start_time")
+    return read_file_value("start_file.json", "build_start_time")
 
 def get_end_time():
     """returns at what time the build finished."""
-    return read_file_value("telemetry_end.json", "build_end_time")
+    return read_file_value("end_file.json", "build_end_time")
 
 def read_file_value(file_name, value_name):
     """Reads a file from the artifacts directory and returns a value."""

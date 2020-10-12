@@ -1,5 +1,5 @@
 """AWS image module"""
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2020 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -27,6 +27,8 @@ from metadata.cloud_tag import CloudImageTags
 from util.config import get_config_value, get_list_from_config_yaml
 from util.logger import LOGGER
 from util.retrier import Retrier
+from util.misc import save_image_id
+
 
 class AWSImage(BaseImage):
     """Class for handling AWS image related actions"""
@@ -108,6 +110,9 @@ class AWSImage(BaseImage):
             raise RuntimeError('could not find \'ImageId\' key for image {} '.format(image_name) +
                                'in create_image response: {}'.format(response))
         LOGGER.info('Image id: %s', self.image_id)
+
+        # save image id in artifacts dir json file
+        save_image_id(self.image_id)
 
         # wait till the end of the image creation
         self.wait_for_image_availability()

@@ -1,5 +1,5 @@
 """Google Image module"""
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2020 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -14,6 +14,7 @@
 # the License.
 
 
+import json
 
 from google.oauth2 import service_account
 from googleapiclient import discovery
@@ -137,6 +138,14 @@ class GoogleImage(BaseImage):
                     bucket_name, self.disk.uploaded_disk_name)
             }
         }
+
+        gce_location_json = {"gce_location": "https://storage.googleapis.com/{}/{}".format(
+            bucket_name, self.disk.uploaded_disk_name)}
+
+        # save gce location in artifacts dir json file
+        artifacts_dir = get_config_value("ARTIFACTS_DIR")
+        with open(artifacts_dir + "/gce_location.json", "w") as gce_location_json_file:
+            json.dump(gce_location_json, gce_location_json_file)
 
         try:
             # pylint: disable=no-member

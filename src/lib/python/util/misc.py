@@ -47,6 +47,13 @@ def ensure_value_from_dict(value_dict, key):
         raise ValueError(error_message)
     return value
 
+def save_image_id(image_id):
+    """Takes in an image_id and saves it to artifacts_id/image_id.json."""
+    image_id_json = {"image_id": image_id}
+    artifacts_dir = get_config_value("ARTIFACTS_DIR")
+    with open(artifacts_dir + "/image_id.json", "w") as image_id_json_file:
+        json.dump(image_id_json, image_id_json_file)
+
 
 def remove_prefix_from_string(prefix, string):
     """Removes a prefix from a string if it exists.  Otherwise returns the unmodified string."""
