@@ -1,5 +1,5 @@
 """Azure disk module"""
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2020 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -14,7 +14,7 @@
 # the License.
 
 
-
+import json
 from os.path import getsize
 from time import time
 
@@ -119,6 +119,13 @@ class AzureDisk(BaseDisk):
             self.uploaded_disk_url = self.svc.make_blob_url(self.container_name,
                                                             self.uploaded_disk_name)
 
+            # save uploaded disk in artifacts dir json file
+            vhd_url_json = {"vhd_url": self.uploaded_disk_url}
+            artifacts_dir = get_config_value("ARTIFACTS_DIR")
+            with open(artifacts_dir + "/vhd_url.json", "w") as vhd_url_json_file:
+                json.dump(vhd_url_json, vhd_url_json_file)
+
+            # insert file with vhd url
             self.metadata.set(self.__class__.__name__, 'vhd_url', self.uploaded_disk_url)
             self.metadata.set(self.__class__.__name__, 'image_id', self.uploaded_disk_name)
             LOGGER.info('Uploaded disk url is: %s', self.uploaded_disk_url)

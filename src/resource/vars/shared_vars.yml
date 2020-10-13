@@ -197,6 +197,12 @@ MIN_FREE_DISK_STORAGE_MB:
     Minimum storage needed to create an image
   internal: true
 
+OUTPUT_JSON_FILE:
+  description: >-
+    Define this parameter to produce an output json file
+    with image build environment information (for example, image name and image ID)
+    by providing the json filename and/or path.
+
 PLATFORM:
   accepted: "^alibaba$|^aws$|^azure$|^gce$|^qcow2$|^vhd$|^vmware$|^iso$"
   description: >-
@@ -253,7 +259,7 @@ VERSION:
   parameters: 0
 
 VERSION_NUMBER:
-  default: 1.8
+  default: 1.9
   description: >-
     This is the current version of BIG-IP Image Generator.
   internal: true

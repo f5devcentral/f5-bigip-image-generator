@@ -1,5 +1,5 @@
 """Alibaba disk module"""
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2020 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -19,6 +19,8 @@ import os
 import random
 import string
 import time
+import json
+
 import oss2
 from image.base_disk import BaseDisk
 from util.config import get_config_value
@@ -116,6 +118,12 @@ class AlibabaDisk(BaseDisk):
         region = get_config_value('ALIBABA_REGION')
         bucket_name = get_config_value('ALIBABA_BUCKET')
         self.bucket = oss2.Bucket(auth, 'https://oss-' + region + '.aliyuncs.com', bucket_name)
+
+        # save bucket in artifacts dir json file
+        alibaba_location_json = {"alibaba_location": 'https://oss-{}.aliyuncs.com'.format(region)}
+        artifacts_dir = get_config_value("ARTIFACTS_DIR")
+        with open(artifacts_dir + "/alibaba_location.json", "w") as alibaba_location_json_file:
+            json.dump(alibaba_location_json, alibaba_location_json_file)
 
         try:
             self.bucket.get_bucket_info()
