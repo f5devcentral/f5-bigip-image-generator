@@ -196,6 +196,7 @@ command line >  configuration file >  environment variable. To access the Image 
     |LOG_FILE| |No|[value]|Log filename that overrides the default log filename created in the logs directory. You can use a full path, directory, or filename. If full path, then the log file uses the full path. If directory, then the image generator creates a new log file in the specified directory. If filename, then the tool creates a log file in the logs directory using the specified filename.|
     |LOG_LEVEL| |No|[CRITICAL \ ERROR \ WARNING \ INFO \ DEBUG \ TRACE]|Log level to use for the log file, indicating the lowest message severity level that can appear in the log file.|
     |MODULES|-m|Yes|[all\ltm]|BIG-IP components supported by the specified image.|
+    |OUTPUT_JSON_FILE| | No | [value] | Define this parameter to produce an output json file with image build environment information (for example, image name and image ID) by providing the json filename and/or path.|
     |PLATFORM|-p|Yes|[alibaba \ aws \ azure \ gce \ qcow2 \ vhd \ vmware]|The target platform for generated images.|
     |REUSE| |No| |Keep\Reuse local files created by previous runs of the same [PLATFORM, MODULES, BOOT_LOCATIONS] combination.|    
     |UPDATE_IMAGE_FILES| |No|[value]|Files you want injected into the image. For each of the injections, REQUIRED values include **source** (file, directory, or URL) and **destination** (absolute full path), and an OPTIONAL **mode** (a string of file [chmod][32] permissions flag consisting of 1-4 octal digits for read/write/execute).|

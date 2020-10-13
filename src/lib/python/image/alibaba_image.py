@@ -26,6 +26,7 @@ from metadata.cloud_tag import CloudImageTags
 from util.config import get_config_value, get_list_from_config_yaml
 from util.logger import LOGGER
 from util.retrier import Retrier
+from util.misc import save_image_id
 
 class AlibabaImage(BaseImage):
     """ Class for handling Alibaba image related actions """
@@ -85,6 +86,10 @@ class AlibabaImage(BaseImage):
             raise RuntimeError('ImageId and/or TaskId were not found in the response ' +
                                'cannot initiate image import')
         self.image_id = imported_image['ImageId']
+
+        # save image id in artifacts dir json file
+        save_image_id(self.image_id)
+
         task_id = imported_image['TaskId']
         LOGGER.info('Started image import with image id \'%s\' and task id \'%s\'', self.image_id,
                     task_id)

@@ -24,15 +24,8 @@ source "$(realpath "$(dirname "${BASH_SOURCE[0]}")")/src/lib/bash/build-image-ut
 # shellcheck source=src/lib/bash/util/logger.sh
 source "$(realpath "$(dirname "${BASH_SOURCE[0]}")")/src/lib/bash/util/logger.sh"
 
+
 function trap_cleanup() {
-    local return_value
-    return_value=$?
-
-    # Report to telemetry if run is a failure or unless disabled
-    if [ "$return_value" != "0" ]; then
-        publish_telemetry "FAILURE" "$artifacts_dir"
-    fi
-
     # Take the snapshot of the workspace before cleaning.
     take_snapshot
 
@@ -40,6 +33,17 @@ function trap_cleanup() {
     artifacts_dir="$(get_config_value "ARTIFACTS_DIR")"
     reuse="$(get_config_value "REUSE")"
     cleaning_msg="Cleaning up before EXIT."
+
+    # read file to determine if success return code was ever written
+    return_value="$(jq .result "$artifacts_dir"/start_file.json)"
+
+    if [[ "$return_value" == 0 ]]; then
+        output_json_file "SUCCESS" "$artifacts_dir"
+        publish_telemetry "SUCCESS" "$artifacts_dir"
+    else
+        output_json_file "FAILURE" "$artifacts_dir"
+        publish_telemetry "FAILURE" "$artifacts_dir"
+    fi
 
     # cleaning up any tmp directory
     rm -rf ./tmp.*
@@ -120,8 +124,7 @@ function main {
 
     local build_start_time
     build_start_time="$(date "+%FT%H:%M:%S")"
-
-
+ 
     # Check if the old log file should be deleted
     local reuse
     reuse="$(get_config_value "REUSE")"
@@ -272,15 +275,15 @@ function main {
     # make sure that iso is of a supported version
     validate_iso_version "$platform"
 
-    telemetry_start_file="${artifacts_directory}/telemetry_start.json"
+    start_file="${artifacts_directory}/start_file.json"
     if ! jq -M -n \
           --arg build_start_time "$build_start_time" \
         '{ build_start_time: $build_start_time }' \
-        > "$telemetry_start_file"
+        > "$start_file"
     then
           log_error "jq failed to create document."
-          log_error "Removing file $telemetry_start_file"
-          rm "$telemetry_start_file"
+          log_error "Removing file $start_file"
+          rm "$start_file"
           exit 1
     fi
 
@@ -503,7 +506,6 @@ function main {
     log_info "Copying staged virtual disk from [${staged_disk}] to [${output_disk}]"
     publish_image "$staged_disk" "$sig_file_path" "$output_dir" "staged virtual disk"
 
-
     # Logging finish marker.
     log_info "------======[ Finished disk generation for '$platform' '$modules'" \
             "'$boot_locations' boot-locations. ]======------"
@@ -518,6 +520,7 @@ function main {
                                     "$PRODUCT_BUILD" "$modules" "$boot_locations" "$PROJECT_NAME" \
                                     "$ehf_iso")"
             fi
+            set_config_value "CLOUD_IMAGE_NAME" "$cloud_image_name"
 
             "${script_dir}"/src/bin/prepare_image.py --artifacts-dir "$artifacts_directory" \
                 --platform "$platform" --input "$staged_disk" \
@@ -527,14 +530,30 @@ function main {
             error_and_exit "Unimplemented cloud platform $cloud"
             ;;
         esac
-    fi
+    else
+	set_config_value "HYPERVISOR_IMAGE_NAME" "$(basename "$output_disk")"
+	local location_file="${artifacts_directory}/location.json"
+        if ! jq -M -n \
+              --arg output_dir "$output_dir" \
+              '{ location_dir: $output_dir }' \
+               > "$location_file"
+        then
+            log_error "jq failed to create document."
+            log_error "Removing file $location_file"
+            rm "$location_file"
+            exit 1
+        fi
+    fi 
+
     # shellcheck disable=SC2181
     if [[ $? -ne 0 ]]; then
         error_and_exit "image creation has failed, check '$log_file' for more details."
     fi
 
-    # Report to telemetry unless disabled
-    publish_telemetry "SUCCESS" "$artifacts_directory"
+    # set status to result status to SUCCESS
+    updated_start_file="$(jq '.result = 0' "$start_file")"
+    rm "$start_file"
+    echo "$updated_start_file" > "$start_file"
 
     log_info "${BASH_SOURCE[0]} HAS FINISHED SUCCESSFULLY."
 }
