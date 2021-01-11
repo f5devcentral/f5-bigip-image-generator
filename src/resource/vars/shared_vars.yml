@@ -203,6 +203,11 @@ OUTPUT_JSON_FILE:
     with image build environment information (for example, image name and image ID)
     by providing the json filename and/or path.
 
+OVA_PROP_NET_USER:
+  description: >-
+    Adds a block of text into the .ovf file, enabling vmware to apply the mgmt IP and passwords.
+  parameters: 0
+
 PLATFORM:
   accepted: "^alibaba$|^aws$|^azure$|^gce$|^qcow2$|^vhd$|^vmware$|^iso$"
   description: >-
@@ -258,8 +263,9 @@ VERSION:
   flag: v
   parameters: 0
 
+# Note: This is a string because jq/yq drops trailing zeroes for floating point (e.g. 1.10 --> 1.1)
 VERSION_NUMBER:
-  default: 1.9
+  default: "1.10"
   description: >-
     This is the current version of BIG-IP Image Generator.
   internal: true

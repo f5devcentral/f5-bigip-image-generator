@@ -42,7 +42,7 @@ function print_help {
 function create_version_metadata {
     # Get version from shared config vars file
     shared_vars_file="$PROJECT_DIR/src/resource/vars/shared_vars.yml"
-    current_version=$(yq .VERSION_NUMBER.default "$shared_vars_file")
+    current_version=$(yq -r .VERSION_NUMBER.default "$shared_vars_file")
 
     # Create version metadata
     if ! json_write="$(jq -n --arg v "$current_version" '{"VERSION": $v}' 2>&1)"; then
