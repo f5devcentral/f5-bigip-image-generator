@@ -184,6 +184,7 @@ command line >  configuration file >  environment variable. To access the Image 
     |HELP|-h|No| |Print help and usage information, and then exit the program.|
     |IGNORE_DOWNLOAD_URL_TLS| |No| |Ignore TSL certificate verification when downloading files.|
     |IMAGE_DIR| |No|[value]|The directory where you want generated images to reside. Provide either an absolute path or a relative path. If this directory does not exist, the tool will create it.|
+    |HYPERVISOR_IMAGE_NAME| |No| [value]|Name of the generated non-cloud image. If blank, then a name is generated automatically, based on the detected properties of the source ISO file.|
     |IMAGE_SIG_ENCRYPTION_TYPE| |No|[value]|Encryption type to use when signing images.|
     |IMAGE_SIG_PRIVATE_KEY| |No|[value]|Path to private key file used to sign images.|
     |IMAGE_SIG_PUBLIC_KEY| |No|[value]|Path to public key file used to verify images.|
