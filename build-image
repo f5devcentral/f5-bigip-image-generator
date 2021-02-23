@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2018-2020 F5 Networks, Inc
+# Copyright (C) 2018-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -301,10 +301,10 @@ function main {
         touch "$artifacts_directory/.legacy_selinux_labeling"
     fi
 
-    # If user provided cloud image name, check/fail early
+    # If cloud platform, and user provided cloud image name, check/fail early
     local cloud_image_opt
     cloud_image_opt="--user-image-name"
-    if [[ -n "$cloud_image_name" ]] && [[ "$platform" != "iso" ]]; then
+    if [[ -n "$cloud" ]] && [[ -n "$cloud_image_name" ]] && [[ "$platform" != "iso" ]]; then
         "${script_dir}"/src/bin/prepare_image.py --artifacts-dir "$artifacts_directory" \
             --platform "$platform" --input "file_placeholder" --check-name \
             "$cloud_image_opt" "$cloud_image_name"

@@ -1,4 +1,4 @@
-# Copyright (C) 2019-2020 F5 Networks, Inc
+# Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -265,7 +265,7 @@ VERSION:
 
 # Note: This is a string because jq/yq drops trailing zeroes for floating point (e.g. 1.10 --> 1.1)
 VERSION_NUMBER:
-  default: "1.10"
+  default: "1.11"
   description: >-
     This is the current version of BIG-IP Image Generator.
   internal: true
