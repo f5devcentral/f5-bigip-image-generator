@@ -17,6 +17,7 @@ You will find the following information:
 * [Support guide](#support-guide)
   * [Known issues](#known-issues)
 * [Appendix](#appendix)
+  * [Telemetry sample output data](#telemetry-sample-output-data)
 
 ## Introduction
 
@@ -34,7 +35,7 @@ It is your responsibility to:
 1.	Secure and restrict access to the environment on which you run the VE Image Generator tool, and in your cloud environment. 
 2.	Remove any sensitive data on the created image PRIOR to automatically publishing the image to the cloud.
 
-------------------------------
+---------------------------------
 
 ## Prerequisites
 This section provides prerequisites for running the F5 Image Generator, creating virtual images, and for supported cloud providers.
@@ -139,11 +140,10 @@ This section provides steps for installing the generator tool, and then using th
 4. To view the Image Generator operating environment use ``./build-image --info``. This will collect information such as, installed software on the build machine. 
 
 
-
-
 ### Docker container setup
 
 To avoid installing programs to your environment and enable running simultaneous image-builds on the same computer, you can utilize the [F5 container on Docker Hub][34] that provides a convenient pre-built runtime with many of the tool’s package dependencies pre-installed (with the exception of VMware’s ovftool). For complete information, consult [Docker Hub][34].
+
 
 ## User guide
 
@@ -184,6 +184,7 @@ command line >  configuration file >  environment variable. To access the Image 
     |HELP|-h|No| |Print help and usage information, and then exit the program.|
     |IGNORE_DOWNLOAD_URL_TLS| |No| |Ignore TSL certificate verification when downloading files.|
     |IMAGE_DIR| |No|[value]|The directory where you want generated images to reside. Provide either an absolute path or a relative path. If this directory does not exist, the tool will create it.|
+    |HYPERVISOR_IMAGE_NAME| |No| [value]|Name of the generated non-cloud image. If blank, then a name is generated automatically, based on the detected properties of the source ISO file.|
     |IMAGE_SIG_ENCRYPTION_TYPE| |No|[value]|Encryption type to use when signing images.|
     |IMAGE_SIG_PRIVATE_KEY| |No|[value]|Path to private key file used to sign images.|
     |IMAGE_SIG_PUBLIC_KEY| |No|[value]|Path to public key file used to verify images.|
@@ -197,6 +198,7 @@ command line >  configuration file >  environment variable. To access the Image 
     |LOG_LEVEL| |No|[CRITICAL \ ERROR \ WARNING \ INFO \ DEBUG \ TRACE]|Log level to use for the log file, indicating the lowest message severity level that can appear in the log file.|
     |MODULES|-m|Yes|[all\ltm]|BIG-IP components supported by the specified image.|
     |OUTPUT_JSON_FILE| | No | [value] | Define this parameter to produce an output json file with image build environment information (for example, image name and image ID) by providing the json filename and/or path.|
+    |OVA_PROP_NET_USER| | No | [value] | Adds a block of text into the .ovf file, enabling VMware to apply the mgmt IP and passwords.|
     |PLATFORM|-p|Yes|[alibaba \ aws \ azure \ gce \ qcow2 \ vhd \ vmware]|The target platform for generated images.|
     |REUSE| |No| |Keep\Reuse local files created by previous runs of the same [PLATFORM, MODULES, BOOT_LOCATIONS] combination.|    
     |UPDATE_IMAGE_FILES| |No|[value]|Files you want injected into the image. For each of the injections, REQUIRED values include **source** (file, directory, or URL) and **destination** (absolute full path), and an OPTIONAL **mode** (a string of file [chmod][32] permissions flag consisting of 1-4 octal digits for read/write/execute).|
@@ -216,7 +218,7 @@ command line >  configuration file >  environment variable. To access the Image 
    * VHD (Microsoft Hyper-V)
    * VMware (ESX/i Server)
 
-4. OPTIONAL: The Image Generator tool can inject additional files (for example, keys, certs, and custom lx packages) and optionally designate file permissions into the virtual disk image to allow for image customization. You can do this using the command line; however, the syntax is simpler using the configuration file:
+4. OPTIONAL: The Image Generator tool can inject additional files (for example, keys, certs, [Declarative Onboarding][37], and language extension (lx) packages) and optionally designate file permissions into the virtual disk image to allow for image customization. You can do this using the command line; however, the syntax is simpler using the configuration file:
 
    ```
       UPDATE_IMAGE_FILES:   
@@ -226,17 +228,17 @@ command line >  configuration file >  environment variable. To access the Image 
       -  source: "/home/ubuntu/custom/trusted-ca.pem"
          destination: "/config/ssl/ssl.crt/trusted-ca.pem"
       -  source: "https://github.com/F5Networks/f5-declarative-onboarding/releases/download/v1.8.0/f5-declarative-onboarding-1.8.0-2.noarch.rpm"
-         destination: "/config/f5-declarative-onboarding-1.8.0-2.noarch.rpm"
+         destination: "/var/config/rest/downloads/f5-declarative-onboarding-1.8.0-2.noarch.rpm"
       -  source: "https://github.com/F5Networks/f5-appsvcs-extension/releases/download/v3.15.0/f5-appsvcs-3.15.0-6.noarch.rpm"
-         destination: "/config/f5-appsvcs-3.15.0-6.noarch.rpm"
+         destination: "/var/config/rest/downloads/f5-appsvcs-3.15.0-6.noarch.rpm"
       -  source: "https://github.com/F5Networks/f5-telemetry-streaming/releases/download/v1.7.0/f5-telemetry-1.7.0-1.noarch.rpm"
-         destination: "/config/f5-telemetry-1.7.0-1.noarch.rpm"   
+         destination: "/var/config/rest/downloads/f5-telemetry-1.7.0-1.noarch.rpm"   
    ```
        
 
    ##### IMPORTANT
    -----------------------
-   Avoid overwriting existing system related files unless directed by F5 networks. Place these additional files in typical locations where you store customizations. For example, place files in the `/config` directory where they can be included in the user configuration set (UCS) file or in the `/shared` directory, so each slot can access the customizations. Otherwise, you will lose these changes during an upgrade. For more information about UCS, see the  *file inclusion into UCS archives* topic on [AskF5][24].  
+   Avoid overwriting existing system related files unless directed by F5 networks. Place these additional files in typical locations where you store customizations. For example, place files in the `/var/config/rest/downloads/` directory where they can be included in the user configuration set (UCS) file or in the `/shared` directory, so each slot can access the customizations. Otherwise, you will lose these changes during an upgrade. For more information about UCS, see the  *file inclusion into UCS archives* topic on [AskF5][24].  
 
    --------------------------------
 
@@ -333,6 +335,16 @@ command line >  configuration file >  environment variable. To access the Image 
    ```
    lvs --units m
    ```
+   
+8. OPTIONAL: Onboard VMware OVA files ONLY using the ``--ova-prop-net-user`` directive. This directive uses the OVA Properties file to streamline onboarding by injecting a [block of text][36] that contains onboard network (mgmt IP) and user (password) properties into the .ovf file that resides within the .ova file. Use file injection to back the onboarding RPMs into the image, similar to **step 4** in this [User guide](#user-guide).
+   
+   For example:
+
+   ```
+      ./build-image -i /var/tmp/BIGIP-15.1.1-0.0.6.iso -c config.yml -p vmware -m ltm -b 1 --ova-prop-net-user
+
+   ```
+   
       
       
 ### Monitor progress
@@ -574,7 +586,7 @@ This section contains sample configuration code and output data referenced elsew
 
 ### Copyright
 
-Copyright (C) 2019-2020 F5 Networks, Inc.
+Copyright (C) 2019-2021 F5 Networks, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not
 use this file except in compliance with the License. You may obtain a copy of
@@ -635,3 +647,5 @@ completed and submitted the F5 Contributor License Agreement.
 [33]: https://support.f5.com/csp/article/K14946 
 [34]: https://hub.docker.com/r/f5devcentral/f5-bigip-image-generator
 [35]: https://clouddocs.f5.com/products/extensions/f5-telemetry-streaming/latest/faq.html
+[36]: https://clouddocs.f5.com/cloud/public/v1/vmware/vmware_setup.html#ova-properties-file-for-setting-management-ip-address-and-default-passwords
+[37]: https://clouddocs.f5.com/products/extensions/f5-declarative-onboarding/latest/

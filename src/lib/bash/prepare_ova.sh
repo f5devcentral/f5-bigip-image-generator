@@ -432,10 +432,11 @@ function update_ovf_file_fields {
          return 1
     fi
 
-    # ISSUE - Try to replace the logic below.
-    # Use a tool which can parser/change XML directly instead of massaging it with sed.
-    log_debug "Adding new AnnotationSection and ProductSection"
-    sed -i "/<OperatingSystemSection/ i\
+    # if user would like to configure password and managment IP in deployment
+    # we add in the needed section to the ovf file
+    ova_prop_net_user="$(get_config_value "OVA_PROP_NET_USER")"
+
+    prop_text="/<OperatingSystemSection/ i\
         <AnnotationSection>\n\
           <Info>F5 $ve_product_name Virtual Edition</Info>\n\
           <Annotation>$ve_product_descr\n\
@@ -450,9 +451,33 @@ function update_ovf_file_fields {
           <Vendor>F5 Networks</Vendor>\n\
           <Version>$product_version</Version>\n\
           <FullVersion>$product_version-$product_build</FullVersion>\n\
-          <VendorUrl>http://www.f5.com</VendorUrl>\n\
-        </ProductSection>
-    " "$ovf_file"
+          <VendorUrl>http://www.f5.com</VendorUrl>\n\ "
+    
+    if [[ -n "$ova_prop_net_user" ]]; then
+	prop_text="${prop_text}<Category>Network properties</Category>\n\
+		<Property ovf:key=\"net.mgmt.addr\" ovf:type=\"string\" ovf:value=\"\" ovf:userConfigurable=\"true\">\n\
+		<Label>mgmt-addr</Label>\n\
+		<Description>F5 BIG-IP VE\'s management address in the format of \"IP/prefix\"</Description>\n\
+		</Property>\n\
+		<Property ovf:key=\"net.mgmt.gw\" ovf:type=\"string\" ovf:value=\"\" ovf:userConfigurable=\"true\">\n\
+		<Label>mgmt-gw</Label>\n\
+		<Description>F5 BIG-IP VE\'s management default gateway</Description>\n\
+		</Property>\n\
+		<Category>User properties</Category>\n\
+		<Property ovf:key=\"user.root.pwd\" ovf:type=\"string\" ovf:value=\"\" ovf:userConfigurable=\"true\">\n\
+		<Label>root-pwd</Label>\n\
+		<Description>F5 BIG-IP VE\'s SHA-512 shadow or plain-text password for \"root\" user</Description>\n\
+		</Property>\n\
+		<Property ovf:key=\"user.admin.pwd\" ovf:type=\"string\" ovf:value=\"\" ovf:userConfigurable=\"true\">\n\
+		<Label>admin-pwd</Label>\n\
+		<Description>F5 BIG-IP VE\'s SHA-512 shadow or plain-text password for \"admin\" user</Description>\n\
+		</Property>\n\ "
+    fi
+
+    prop_text="${prop_text}</ProductSection>"
+
+    sed -i "${prop_text}" "$ovf_file"
+
     # shellcheck disable=SC2181
     if [[ $? -ne 0 ]] ;then
         log_error "Error while modifying $ovf_file with product info"
