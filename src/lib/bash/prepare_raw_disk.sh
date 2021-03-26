@@ -224,10 +224,6 @@ function install_iso_on_disk {
         return 1
     fi
 
-    # RTM only installation or Hotfix installation as well?
-    local skip_post_install=0
-    [[ -n "$hotfix_iso" ]] && skip_post_install=1
-
     # Extract the default initrd and kernel images from the ISO.
     BOOT_DIR="$TEMP_DIR/boot"
     local boot_initrd_base="$BOOT_DIR/initrd.base.img"
@@ -239,7 +235,7 @@ function install_iso_on_disk {
 
     # Create a new updated initrd image with custom files.
     update_initrd_image "RTM" "$bigip_iso" "$boot_initrd_base" \
-            "$skip_post_install" "$disk_json"
+            "$disk_json"
 
     # Build new kernel arguments to pass.
     local boot_conf="$BOOT_DIR/isolinux.cfg"
@@ -267,9 +263,8 @@ function install_iso_on_disk {
     # Apply HF if present - avoid extra mkvm options and use only
     # the common kernel command part.
     if [[ -n "$hotfix_iso" ]]; then
-        skip_post_install=0
         update_initrd_image "HOTFIX" "$hotfix_iso" "$boot_initrd_base" \
-                "$skip_post_install" "$disk_json"
+                "$disk_json"
 
         qemu_logfile="$TEMP_DIR/qemu.hotfix.log"
         exec_qemu_system "$disk" "$hotfix_iso" "$qemu_pidfile" "$boot_vmlinuz" \
@@ -379,9 +374,7 @@ function add_legacy_selinux_labeling_scripts {
 #           - Arg2: ISO name from which the initrd image is extracted.
 #           - Arg3: Base boot initrd file path. This is the returned initrd
 #                   image that the caller uses in its qemu run.
-#           - Arg4: Skip post-install or not. (post-install is skipped for RTM
-#                   if Hotfix ISO is also provided.)
-#           - Arg5: Option argument that gives the raw_disk.json from the previous
+#           - Arg4: Option argument that gives the raw_disk.json from the previous
 #                   step in the build pipeline. This json file contains the disk
 #                   size for the partitions.
 #
@@ -391,11 +384,10 @@ function update_initrd_image {
     local install_mode=$1
     local iso_file=$2
     local boot_initrd_base="$3"
-    local skip_post_install="$4"
-    local disk_json="$5"
-    if [[ $# != 5 ]]; then
+    local disk_json="$4"
+    if [[ $# != 4 ]]; then
         log_error "Usage: ${FUNCNAME[0]} <install-mode> <ISO> <boot-initrd-img path>" \
-                " <skip-post-install> <raw-disk-json>"
+                "  <raw-disk-json>"
         return 1
     elif [[ "$install_mode" != "RTM" ]] && [[ "$install_mode" != "HOTFIX" ]]; then
         log_error "Unknown install_mode = '$install_mode'."
@@ -450,22 +442,19 @@ function update_initrd_image {
             return 1
         fi
 
-        # Is this an RTM + Hotfix bundle ? If so, delay adding post-install to the
-        # initrd for now, in order to skip its execution during RTM ISO install.
-        if [[ $skip_post_install == 0 ]]; then
-            if ! add_injected_files "$top_call_dir"; then
-                return 1
-            fi
-            log_info "Include post-install in initrd:"
-            cp -f "$(realpath "$(dirname "${BASH_SOURCE[0]}")")"/../../bin/post-install \
-                    "$etc_dir"
-            if [[ -f "$artifacts_dir/.legacy_selinux_labeling" ]]; then
-                add_legacy_selinux_labeling_scripts "$etc_dir"
-            fi
-        else
-            log_info "Skipped copying post-install in initrd as this is an RTM + HF install."
+        if ! add_injected_files "$top_call_dir"; then
+            return 1
         fi
-        if ! add_one_boot_location_markers "$disk_json" "$etc_dir"; then
+
+	# copy post-install in initrd
+        log_info "Include post-install in initrd:"
+        cp -f "$(realpath "$(dirname "${BASH_SOURCE[0]}")")"/../../bin/post-install \
+                 "$etc_dir"
+        if [[ -f "$artifacts_dir/.legacy_selinux_labeling" ]]; then
+            add_legacy_selinux_labeling_scripts "$etc_dir"
+        fi
+
+	if ! add_one_boot_location_markers "$disk_json" "$etc_dir"; then
             log_error "add_one_boot_location_markers() failed."
             return 1
         fi
