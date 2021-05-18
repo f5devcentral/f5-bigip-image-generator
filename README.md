@@ -198,7 +198,7 @@ command line >  configuration file >  environment variable. To access the Image 
     |LOG_LEVEL| |No|[CRITICAL \ ERROR \ WARNING \ INFO \ DEBUG \ TRACE]|Log level to use for the log file, indicating the lowest message severity level that can appear in the log file.|
     |MODULES|-m|Yes|[all\ltm]|BIG-IP components supported by the specified image.|
     |OUTPUT_JSON_FILE| | No | [value] | Define this parameter to produce an output json file with image build environment information (for example, image name and image ID) by providing the json filename and/or path.|
-    |OVA_PROP_NET_USER| | No | [value] | Adds a block of text into the .ovf file, enabling VMware to apply the mgmt IP and passwords.|
+    |OVA_PROP_NET_USER| | No | [value] | Adds a [block of text][36] into the .ovf file, enabling VMware to apply the mgmt IP and passwords. The script will check for the following BIG-IP versions that support IPv6: 14.1.4.1+, 15.1.3+, 16.0.1.1+, and 16.1+|
     |PLATFORM|-p|Yes|[alibaba \ aws \ azure \ gce \ qcow2 \ vhd \ vmware]|The target platform for generated images.|
     |REUSE| |No| |Keep\Reuse local files created by previous runs of the same [PLATFORM, MODULES, BOOT_LOCATIONS] combination.|    
     |UPDATE_IMAGE_FILES| |No|[value]|Files you want injected into the image. For each of the injections, REQUIRED values include **source** (file, directory, or URL) and **destination** (absolute full path), and an OPTIONAL **mode** (a string of file [chmod][32] permissions flag consisting of 1-4 octal digits for read/write/execute).|
