@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2018-2020 F5 Networks, Inc
+# Copyright (C) 2018-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -1000,22 +1000,22 @@ function create_disk_name {
     plat="$(get_config_value "PLATFORM")"
     image_name="$(get_config_value "HYPERVISOR_IMAGE_NAME")"
     local hypervisor_list="vmware qcow2 vhd"
-    if [ -n "$image_name" ]; then
-	# Special case for vmware since extenstion is ova not vmware
-	if [[ "$plat" == "vmware" ]]; then
+    if [[ -n "$image_name" ]] && [[ "$format" != "raw" ]]; then
+        # Special case for vmware since extension is ova not vmware
+        if [[ "$plat" == "vmware" ]]; then
             if [[ "$image_name" != "*ova" ]]; then
                 image_name="${image_name}.ova"
-	    fi 
-	    echo "$image_name"
+            fi
+            echo "$image_name"
             return
-	fi
+        fi
 
-	if [[ "$hypervisor_list" == *"$plat"* ]]; then
-	    if [[ "$image_name" != *$plat ]]; then
-	        image_name="${image_name}.$plat"
-	    fi
-            echo "$image_name.$format"
-	    return
+        if [[ "$hypervisor_list" == *"$plat"* ]]; then
+            if [[ "$image_name" != *$plat ]]; then
+                image_name="${image_name}.$plat"
+            fi
+                echo "$image_name.$format"
+            return
         fi
     fi
 

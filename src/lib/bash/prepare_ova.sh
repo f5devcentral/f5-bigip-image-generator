@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2019-2020 F5 Networks, Inc
+# Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -280,6 +280,7 @@ function add_cpu_choices_in_ovf {
           <rasd:Description>Number of Virtual CPUs</rasd:Description>\n\
           <rasd:ElementName>1 virtual CPU</rasd:ElementName>\n\
           <rasd:InstanceID>1</rasd:InstanceID>\n\
+          <rasd:Reservation>2000</rasd:Reservation>\n\
           <rasd:ResourceType>CPUTYPE</rasd:ResourceType>\n\
           <rasd:VirtualQuantity>1</rasd:VirtualQuantity>\n\
         </Item> \n\
@@ -297,6 +298,7 @@ function add_cpu_choices_in_ovf {
           <rasd:Description>Number of Virtual CPUs</rasd:Description>\n\
           <rasd:ElementName>4 virtual CPU(s)</rasd:ElementName>\n\
           <rasd:InstanceID>1</rasd:InstanceID>\n\
+          <rasd:Reservation>8000</rasd:Reservation>\n\
           <rasd:ResourceType>CPUTYPE</rasd:ResourceType>\n\
           <rasd:VirtualQuantity>4</rasd:VirtualQuantity>\n\
         </Item> \n\
@@ -314,6 +316,7 @@ function add_cpu_choices_in_ovf {
           <rasd:Description>Number of Virtual CPUs</rasd:Description>\n\
           <rasd:ElementName>8 virtual CPU(s)</rasd:ElementName>\n\
           <rasd:InstanceID>1</rasd:InstanceID>\n\
+          <rasd:Reservation>16000</rasd:Reservation>\n\
           <rasd:ResourceType>CPUTYPE</rasd:ResourceType>\n\
           <rasd:VirtualQuantity>8</rasd:VirtualQuantity>\n\
         </Item> \n\
@@ -394,6 +397,88 @@ function modify_template_vmx_file {
 }
 #####################################################################
 
+
+# BUG:https://bugzilla.olympus.f5net.com/show_bug.cgi?id=904845
+# not supported versions:
+# inclusive      exclusive
+# 14.1.3.1  ->   14.1.4.1
+# 15.1.1    ->   15.1.3
+# 16.0.1    ->   16.0.1.2
+function check_for_bug_ova {
+    if [[ $BIGIP_VERSION_NUMBER -ge 14010301 ]] && [[ $BIGIP_VERSION_NUMBER -lt 14010401 ]]; then
+        echo " 14.1.3.1  ->   14.1.4.1"
+        return
+    fi
+    if [[ $BIGIP_VERSION_NUMBER -ge 15010100 ]] && [[ $BIGIP_VERSION_NUMBER -lt 15010300 ]]; then
+        echo " 15.1.1  ->   15.1.3"
+        return
+    fi
+    if [[ $BIGIP_VERSION_NUMBER -ge 16000100 ]] && [[ $BIGIP_VERSION_NUMBER -lt 16000102 ]]; then
+        echo " 16.0.1  ->   16.0.2"
+        return
+    fi
+    echo "0"
+
+}
+#####################################################################
+
+
+# Called if user specifies ova_prop_net_user parameter. Adds properties to ovffile to allow customization of
+# mgmt IP's, gateways, and passwords.
+function add_ova_net_prop {
+    net_text="<Category>Network properties</Category>\n\
+                <Property ovf:key=\"net.mgmt.addr\" ovf:type=\"string\" ovf:value=\"\" ovf:userConfigurable=\"true\">\n\
+                <Label>mgmt-addr</Label>\n\
+                <Description>F5 BIG-IP VE\'s management address in the format of \"IP/prefix\"</Description>\n\
+                </Property>\n\ "
+    
+    local major_version="${BIGIP_VERSION_NUMBER:0:2}"
+    local add_ipv6=false 
+
+    # For support of ipv6 in ova configuration
+    # 14.1.x  =  14.1.4.1+
+    # 15.1.x  =  15.1.3+
+    # 16.x    =  16.0.1.2+
+    if [[ $BIGIP_VERSION_NUMBER -ge 14010401 ]]; then
+        if [[ $major_version -eq 14 ]]; then
+            add_ipv6=true
+        fi
+        if [[ $major_version -eq 15 ]] && [[ $BIGIP_VERSION_NUMBER -ge 15010300 ]]; then
+            add_ipv6=true
+        fi
+        if [[ $major_version -eq 16 ]] && [[ $BIGIP_VERSION_NUMBER -ge 16000102 ]]; then
+            add_ipv6=true
+            
+        fi
+    fi 
+    if [[ $add_ipv6 == "true" ]]; then
+        net_text="${net_text}<Property ovf:key=\"net.mgmt.addr6\" ovf:type=\"string\" ovf:value=\"\" ovf:userConfigurable=\"true\">\n\
+            <Label>mgmt-addr6</Label>\n\
+            <Description>F5 BIG-IP VE\'s management IPv6 address in the format of \"IP/prefix\"</Description>\n\
+            </Property>\n\
+            <Property ovf:key=\"net.mgmt.gw6\" ovf:type=\"string\" ovf:value=\"\" ovf:userConfigurable=\"true\">\n\
+            <Label>mgmt-gw6</Label>\n\
+            <Description>F5 BIG-IP VE\'s management default IPv6 gateway</Description>\n\
+            </Property>\n\ "
+    fi
+
+    net_text="${net_text}<Property ovf:key=\"net.mgmt.gw\" ovf:type=\"string\" ovf:value=\"\" ovf:userConfigurable=\"true\">\n\
+                <Label>mgmt-gw</Label>\n\
+                <Description>F5 BIG-IP VE\'s management default gateway</Description>\n\
+                </Property>\n\
+                <Category>User properties</Category>\n\
+                <Property ovf:key=\"user.root.pwd\" ovf:type=\"string\" ovf:value=\"\" ovf:userConfigurable=\"true\">\n\
+                <Label>root-pwd</Label>\n\
+                <Description>F5 BIG-IP VE\'s SHA-512 shadow or plain-text password for \"root\" user</Description>\n\
+                </Property>\n\
+                <Property ovf:key=\"user.admin.pwd\" ovf:type=\"string\" ovf:value=\"\" ovf:userConfigurable=\"true\">\n\
+                <Label>admin-pwd</Label>\n\
+                <Description>F5 BIG-IP VE\'s SHA-512 shadow or plain-text password for \"admin\" user</Description>\n\
+                </Property>\n\ "
+     echo "$net_text"
+}
+
+
 #####################################################################
 # Modify several sections of the ovf file to contain BIGIP specific info
 function update_ovf_file_fields {
@@ -403,6 +488,7 @@ function update_ovf_file_fields {
 
     local ve_product_name="BIG-IP"
     local ve_product_descr="BIG-IP Local Traffic Manager Virtual Edition"
+    local check_for_bug="0"
 
     if [[ $# != 3 ]]; then
         log_error "Usage: ${FUNCNAME[0]} <OVF file name> <product build> <product version>"
@@ -452,31 +538,21 @@ function update_ovf_file_fields {
           <Version>$product_version</Version>\n\
           <FullVersion>$product_version-$product_build</FullVersion>\n\
           <VendorUrl>http://www.f5.com</VendorUrl>\n\ "
-    
+
     if [[ -n "$ova_prop_net_user" ]]; then
-	prop_text="${prop_text}<Category>Network properties</Category>\n\
-		<Property ovf:key=\"net.mgmt.addr\" ovf:type=\"string\" ovf:value=\"\" ovf:userConfigurable=\"true\">\n\
-		<Label>mgmt-addr</Label>\n\
-		<Description>F5 BIG-IP VE\'s management address in the format of \"IP/prefix\"</Description>\n\
-		</Property>\n\
-		<Property ovf:key=\"net.mgmt.gw\" ovf:type=\"string\" ovf:value=\"\" ovf:userConfigurable=\"true\">\n\
-		<Label>mgmt-gw</Label>\n\
-		<Description>F5 BIG-IP VE\'s management default gateway</Description>\n\
-		</Property>\n\
-		<Category>User properties</Category>\n\
-		<Property ovf:key=\"user.root.pwd\" ovf:type=\"string\" ovf:value=\"\" ovf:userConfigurable=\"true\">\n\
-		<Label>root-pwd</Label>\n\
-		<Description>F5 BIG-IP VE\'s SHA-512 shadow or plain-text password for \"root\" user</Description>\n\
-		</Property>\n\
-		<Property ovf:key=\"user.admin.pwd\" ovf:type=\"string\" ovf:value=\"\" ovf:userConfigurable=\"true\">\n\
-		<Label>admin-pwd</Label>\n\
-		<Description>F5 BIG-IP VE\'s SHA-512 shadow or plain-text password for \"admin\" user</Description>\n\
-		</Property>\n\ "
+	check_for_bug=$(check_for_bug_ova)
+	if [[ "$check_for_bug" != "0" ]]; then
+	    log_info "ERROR: $check_for_bug not supported for ova properties config"
+	    return 1
+	fi
+	net_text=$(add_ova_net_prop)
+        prop_text="$prop_text $net_text"
     fi
 
     prop_text="${prop_text}</ProductSection>"
-
-    sed -i "${prop_text}" "$ovf_file"
+    log_info "Property text to add to ovf file:"
+    log_info "$prop_text"
+    sed -i "$prop_text" "$ovf_file"
 
     # shellcheck disable=SC2181
     if [[ $? -ne 0 ]] ;then
@@ -777,18 +853,28 @@ function prepare_ova {
     fi
 
     local f_ovf
-    log_debug "Adding Memory resource reservation"
+    log_debug "Adding CPU/Memory resource reservation info"
     for f_ovf in $ovf_file $my_ovf; do
         if [[ ! -f "$f_ovf" ]]; then
             log_error "The $f_ovf is not present"
             print_fail_status_json "$output_json" "$log_file"
             return 1
         fi
+
+        sed -i 's%<rasd:ResourceType>3%<rasd:Reservation>4000</rasd:Reservation>\n        <rasd:ResourceType>3%' \
+                "$f_ovf"
+        # shellcheck disable=SC2181
+        if [[ $? -ne 0 ]] ; then
+            log_error "Error while inserting CPU Reservation info in $f_ovf"
+            print_fail_status_json "$output_json" "$log_file"
+            return 1
+        fi
+
         sed -i 's%<rasd:ResourceType>4%<rasd:Reservation>4096</rasd:Reservation>\n        <rasd:ResourceType>4%' \
                 "$f_ovf"
         # shellcheck disable=SC2181
         if [[ $? -ne 0 ]] ; then
-            log_error "Error while inserting Reservation infor in $f_ovf"
+            log_error "Error while inserting Memory Reservation info in $f_ovf"
             print_fail_status_json "$output_json" "$log_file"
             return 1
         fi
