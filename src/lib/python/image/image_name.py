@@ -1,5 +1,5 @@
 """Base image name module"""
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -34,7 +34,7 @@ class ImageNameRules: #pylint: disable=too-few-public-methods
         try:
             re.compile(match_regex)
         except re.error as exc:
-            raise ValueError('match_regex is invalid: {}'.format(str(exc)))
+            raise ValueError('match_regex is invalid: {}'.format(str(exc))) from exc
 
         self.min_chars = min_chars
         self.max_chars = max_chars
@@ -49,7 +49,7 @@ class ImageNameTransform: #pylint: disable=too-few-public-methods
         try:
             re.compile(disallowed_regex)
         except re.error as exc:
-            raise ValueError('disallowed_regex is invalid: {}'.format(str(exc)))
+            raise ValueError('disallowed_regex is invalid: {}'.format(str(exc))) from exc
         if replacement_char is None or len(replacement_char) != 1:
             raise ValueError('One replacement_char is required.')
         if trailing_char_count is None or trailing_char_count < 2:

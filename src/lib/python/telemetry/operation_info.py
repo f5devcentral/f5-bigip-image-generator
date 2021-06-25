@@ -1,5 +1,5 @@
 """Platform information module"""
-# Copyright (C) 2020 F5 Networks, Inc
+# Copyright (C) 2020-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -77,12 +77,12 @@ def get_boot_locations():
 
 def get_nested_virt():
     """returns enabled or disabled for nested virtualization on system."""
-    process = subprocess.Popen(["grep", "-c", "-E", "svm|vmx", "/proc/cpuinfo"],
-                               stdout=subprocess.PIPE)
-    output = re.findall(r'\d+', str(process.communicate()[0]))
-    if output[0] != '0':
-        return "enabled"
-    return "disabled"
+    with subprocess.Popen(["grep", "-c", "-E", "svm|vmx", "/proc/cpuinfo"],
+            stdout=subprocess.PIPE) as process:
+        output = re.findall(r'\d+', str(process.communicate()[0]))
+        if output[0] != '0':
+            return "enabled"
+        return "disabled"
 
 def get_update_image_files():
     """returns enabled or disabled for if files are being updated."""

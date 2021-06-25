@@ -377,7 +377,10 @@ fi
 #-----------------------------------------------------------------------------#
 if [[ $ADD_DEVTOOLS = true ]]; then
     # Install pylint (used for linting python files)
-    pip3 install pylint==2.4.3
+    pip3 install pylint==2.8.2
+
+    # Install coverage (used for python unittest coverage)
+    pip3 install coverage==5.5
 
     case $PACKAGE_INSTALLER in
     apt-get)

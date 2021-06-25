@@ -1,4 +1,4 @@
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -30,12 +30,6 @@ GCE_IMAGE_NAME_LENGTH_MIN:
   default: 1
   description: >-
     Minimum required number of characters in a GCE image name (https://bit.ly/2GkHIY4).
-  internal: true
-
-GCE_REQUIRED_DISK_NAME:
-  default: "disk.raw"
-  description: >-
-    Required name of the file which the packaged gzipped tar file must include for GCE.
   internal: true
 
 GOOGLE_APPLICATION_CREDENTIALS:

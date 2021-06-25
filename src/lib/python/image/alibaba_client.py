@@ -1,5 +1,5 @@
 """Alibaba client module"""
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -63,24 +63,25 @@ class AlibabaClient():
             response_str = client.do_action_with_exception(request)
         except ClientException as exc:
             LOGGER.exception(exc)
-            raise RuntimeError('Check correctness of ALIBABA_REGION configuration variable')
+            raise RuntimeError('Check correctness of ALIBABA_REGION configuration variable') \
+                from exc
         except ServerException as exc:
             LOGGER.exception(exc)
             if exc.get_error_code() == 'InvalidAccessKeyId.NotFound' and \
                     exc.get_error_msg() == 'Specified access key is not found.':
                 raise RuntimeError('InvalidAccessKeyId.NotFound: Check correctness of ' +
-                                   'ALIBABA_ACCESS_KEY_ID configuration variable')
+                                   'ALIBABA_ACCESS_KEY_ID configuration variable') from exc
             if exc.get_error_code() == 'IncompleteSignature' and \
                     exc.get_error_msg().startswith('The request signature does not conform to ' +
                                                    'Aliyun standards'):
                 raise RuntimeError('IncompleteSignature: Check correctness of ' +
-                                   'ALIBABA_ACCESS_KEY_SECRET configuration variable')
+                                   'ALIBABA_ACCESS_KEY_SECRET configuration variable') from exc
             if exc.get_error_code() == 'InvalidAccessKeySecret' and \
                     exc.get_error_msg() == 'The AccessKeySecret is incorrect. Please check ' + \
                                            'your AccessKeyId and AccessKeySecret.':
                 raise RuntimeError('InvalidAccessKeySecret: Check correctness of ' +
                                    'ALIBABA_ACCESS_KEY_ID and ALIBABA_ACCESS_KEY_SECRET ' +
-                                   'configuration variables')
+                                   'configuration variables') from exc
             raise exc
 
         response = json.loads(response_str)

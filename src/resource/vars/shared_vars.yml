@@ -197,6 +197,11 @@ MIN_FREE_DISK_STORAGE_MB:
     Minimum storage needed to create an image
   internal: true
 
+NO_UPLOAD:
+  description: >-
+    Create the cloud image without uploading to the cloud.
+  parameters: 0
+
 OUTPUT_JSON_FILE:
   description: >-
     Define this parameter to produce an output json file
@@ -265,7 +270,7 @@ VERSION:
 
 # Note: This is a string because jq/yq drops trailing zeroes for floating point (e.g. 1.10 --> 1.1)
 VERSION_NUMBER:
-  default: "1.12"
+  default: "1.13"
   description: >-
     This is the current version of BIG-IP Image Generator.
   internal: true

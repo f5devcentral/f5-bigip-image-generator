@@ -1,5 +1,5 @@
 """Image metadata filter"""
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -136,7 +136,7 @@ class MetadataFilter():
             try:
                 re.compile(disallowed_regex)
             except re.error as exc:
-                raise ValueError('disallowed_regex is invalid: {}'.format(str(exc)))
+                raise ValueError('disallowed_regex is invalid: {}'.format(str(exc))) from exc
 
             if replacement_char is None or replacement_char == '':
                 raise ValueError('Replacement character is required for disallowed_regex')

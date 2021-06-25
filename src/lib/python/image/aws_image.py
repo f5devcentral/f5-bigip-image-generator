@@ -1,5 +1,5 @@
 """AWS image module"""
-# Copyright (C) 2019-2020 F5 Networks, Inc
+# Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -99,7 +99,8 @@ class AWSImage(BaseImage):
                 )
         except (ClientError, ParamValidationError) as botocore_exception:
             LOGGER.exception(botocore_exception)
-            raise RuntimeError('register_image failed for image\'{}\'!'.format(image_name))
+            raise RuntimeError('register_image failed for image\'{}\'!'.format(image_name)) \
+                from botocore_exception
 
         # get image id
         try:
@@ -108,7 +109,7 @@ class AWSImage(BaseImage):
         except KeyError as key_error:
             LOGGER.exception(key_error)
             raise RuntimeError('could not find \'ImageId\' key for image {} '.format(image_name) +
-                               'in create_image response: {}'.format(response))
+                               'in create_image response: {}'.format(response)) from key_error
         LOGGER.info('Image id: %s', self.image_id)
 
         # save image id in artifacts dir json file
@@ -144,8 +145,9 @@ class AWSImage(BaseImage):
                     second_image_id = response['Images'][1]['ImageId']
             except KeyError as key_error:
                 LOGGER.exception(key_error)
-                raise RuntimeError('could not find ImageId key for image {} '.format(image_name) +
-                                   'in describe_images response: {}'.format(response))
+                raise RuntimeError(
+                    'could not find ImageId key for image {} '.format(image_name) +
+                    'in describe_images response: {}'.format(response)) from key_error
 
             LOGGER.info('There is an old image %s named %s, deleting it.', first_image_id,
                         image_name)
@@ -162,7 +164,8 @@ class AWSImage(BaseImage):
                 Filters=[{'Name': 'name', 'Values':[image_name]}])
         except (ClientError, ParamValidationError) as botocore_exception:
             LOGGER.exception(botocore_exception)
-            raise RuntimeError('describe_images failed for image \'{}\' !'.format(image_name))
+            raise RuntimeError('describe_images failed for image \'{}\' !'.format(image_name)) \
+                from botocore_exception
         LOGGER.trace('describe_images response for image %s: %s', image_name, response)
         return response
 
@@ -172,7 +175,8 @@ class AWSImage(BaseImage):
             self.ec2_client.deregister_image(ImageId=image_id)
         except (ClientError, ParamValidationError) as botocore_exception:
             LOGGER.exception(botocore_exception)
-            raise RuntimeError('deregister_image failed for image \'{}\' !'.format(image_id))
+            raise RuntimeError('deregister_image failed for image \'{}\' !'.format(image_id)) \
+                from botocore_exception
 
     def wait_for_image_availability(self):
         """ Wait for image to be created and available """
@@ -184,9 +188,10 @@ class AWSImage(BaseImage):
             except (ClientError, ParamValidationError) as botocore_exception:
                 LOGGER.exception(botocore_exception)
                 raise RuntimeError('EC2.Client.describe_images() failed for {} !'.
-                                   format(self.image_id))
+                                   format(self.image_id)) from botocore_exception
             if not response:
-                raise RuntimeError('EC2.Client.describe_images() returned none response!')
+                raise RuntimeError('EC2.Client.describe_images() returned none response!') \
+                    from botocore_exception
             try:
                 if response['Images'][0]['State'] == 'available':
                     return True
@@ -195,7 +200,7 @@ class AWSImage(BaseImage):
                 LOGGER.exception(image_describe_exception)
                 raise RuntimeError('EC2.Client.describe_images() did not have ' +
                                    '[\'Images\'][0][\'State\'] in its response: response \'{}\''.
-                                   format(response))
+                                   format(response)) from image_describe_exception
 
         retrier = Retrier(_wait_for_image_availability)
         retrier.tries = int(get_config_value('AWS_CREATE_IMAGE_RETRY_COUNT'))
@@ -224,7 +229,8 @@ class AWSImage(BaseImage):
             response = self.ec2_client.create_tags(Resources=[self.image_id], Tags=tags_to_add)
         except (ClientError, ParamValidationError) as botocore_exception:
             LOGGER.exception(botocore_exception)
-            raise RuntimeError('create_tags failed for image\'{}\'!\n'.format(self.image_id))
+            raise RuntimeError('create_tags failed for image\'{}\'!\n'.format(self.image_id)) \
+                from botocore_exception
         LOGGER.trace('create_tags response for image %s: %s', self.image_id, response)
 
     def prep_disk(self):
@@ -263,7 +269,8 @@ class AWSImage(BaseImage):
                     else:
                         # Any other type of error can be irrecoverable and might
                         # point to a deeper malaise.
-                        raise RuntimeError('aws IMAGE was not shared with other accounts')
+                        raise RuntimeError('aws IMAGE was not shared with other accounts') \
+                            from client_error
 
             # Acknowledge all the account-ids that the image was shared with.
             self.is_share_image_succeeded(share_account_ids)

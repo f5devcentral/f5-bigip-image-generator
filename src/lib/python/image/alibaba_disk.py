@@ -1,5 +1,5 @@
 """Alibaba disk module"""
-# Copyright (C) 2019-2020 F5 Networks, Inc
+# Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -77,7 +77,8 @@ class AlibabaDisk(BaseDisk):
                 result = True
             except FileNotFoundError as exc:
                 LOGGER.exception(exc)
-                raise RuntimeError('Could not find file to upload: {}'.format(self.disk_to_upload))
+                raise RuntimeError('Could not find file to upload: {}'
+                        .format(self.disk_to_upload)) from exc
             except oss2.exceptions.NoSuchUpload as exc:
                 LOGGER.error('Upload failed. UploadId: %s', exc.details['UploadId'])
                 LOGGER.exception(exc)
@@ -129,18 +130,18 @@ class AlibabaDisk(BaseDisk):
             self.bucket.get_bucket_info()
         except oss2.exceptions.SignatureDoesNotMatch as exc:
             LOGGER.exception(exc)
-            raise RuntimeError('Bad credentials to get bucket info')
+            raise RuntimeError('Bad credentials to get bucket info') from exc
         except oss2.exceptions.ServerError as exc:
             if exc.details['Code'] == 'InvalidBucketName':
                 LOGGER.exception(exc)
-                raise RuntimeError('Invalid bucket name: ' + exc.details['BucketName'])
+                raise RuntimeError('Invalid bucket name: ' + exc.details['BucketName']) from exc
             LOGGER.exception(exc)
             raise RuntimeError('Unexpected Alibaba oss server error. ' +
-                               'One of possible errors: invalid credentials.')
+                               'One of possible errors: invalid credentials.') from exc
         except oss2.exceptions.RequestError as exc:
             LOGGER.exception(exc)
             raise RuntimeError('Alibaba oss request error. ' +
-                               'One of possible errors: invalid Alibaba region.')
+                               'One of possible errors: invalid Alibaba region.') from exc
 
     def upload_cleanup(self):
         """clean up after a (single iteration of a) failed upload

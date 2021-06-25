@@ -1,5 +1,5 @@
 """AWS disk module"""
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -133,4 +133,4 @@ class AWSDisk(BaseDisk):
             LOGGER.info("Successfully uploaded '%s'.", self.uploaded_disk_name)
         except ClientError as client_error:
             LOGGER.exception(client_error)
-            raise RuntimeError("AWS upload disk operation failed.")
+            raise RuntimeError("AWS upload disk operation failed.") from client_error

@@ -1,5 +1,5 @@
 """Product information module"""
-# Copyright (C) 2020 F5 Networks, Inc
+# Copyright (C) 2020-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -158,11 +158,11 @@ def get_linux_version(package, operating_system):
             version = output.split("\\n")[1].split(" ")[1]
             return version
     elif operating_system == "Alpine":
-        process = subprocess.Popen(["sudo", "apk", "search",
+        with subprocess.Popen(["sudo", "apk", "search",
                                     "-v", "-x", package],
-                                   stdout=subprocess.PIPE)
-        output = str(process.communicate()[0])
-        return output.split(" ")[0]
+                                    stdout=subprocess.PIPE) as process:
+            output = str(process.communicate()[0])
+            return output.split(" ")[0]
     else:
         LOGGER.error("operating system %s not supported", operating_system)
         return ""

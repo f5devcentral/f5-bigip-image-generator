@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Prepare Cloud Image"""
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -177,7 +177,7 @@ class ImageController(): # pylint: disable=too-many-instance-attributes
 
         except BaseException as base_exception:
             LOGGER.exception(base_exception)
-            raise BaseException
+            raise BaseException from base_exception
 
     def create_working_dir(self, artifacts_dir):
         """Create temporary directory"""
