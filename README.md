@@ -197,6 +197,7 @@ command line >  configuration file >  environment variable. To access the Image 
     |LOG_FILE| |No|[value]|Log filename that overrides the default log filename created in the logs directory. You can use a full path, directory, or filename. If full path, then the log file uses the full path. If directory, then the image generator creates a new log file in the specified directory. If filename, then the tool creates a log file in the logs directory using the specified filename.|
     |LOG_LEVEL| |No|[CRITICAL \ ERROR \ WARNING \ INFO \ DEBUG \ TRACE]|Log level to use for the log file, indicating the lowest message severity level that can appear in the log file.|
     |MODULES|-m|Yes|[all\ltm]|BIG-IP components supported by the specified image.|
+    |NO_UPLOAD|  | No |  | Create the cloud image without uploading to the cloud.|
     |OUTPUT_JSON_FILE| | No | [value] | Define this parameter to produce an output json file with image build environment information (for example, image name and image ID) by providing the json filename and/or path.|
     |OVA_PROP_NET_USER| | No | [value] | Adds a [block of text][36] into the .ovf file, enabling VMware to apply the mgmt IP and passwords. The script will check for the following BIG-IP versions that support IPv6: 14.1.4.1+, 15.1.3+, 16.0.1.1+, and 16.1+|
     |PLATFORM|-p|Yes|[alibaba \ aws \ azure \ gce \ qcow2 \ vhd \ vmware]|The target platform for generated images.|
