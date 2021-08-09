@@ -1284,7 +1284,7 @@ function check_setup {
     # There are a number of conditions that will be flagged, but the message to the user will
     # be the same.
     local setup_script="setup-build-env"
-    local error_msg="Error: Run ${setup_script} before running build-image."
+    local error_msg="Error: Run the setup script with the appropriate or all platforms before running build-image."
 
     # Check check setup json file directory exists
     if [[ ! -d "$check_setup_json_dir" ]]; then
@@ -1293,11 +1293,21 @@ function check_setup {
         error_and_exit "$error_msg"
     fi
 
-    # Check check setup json file exists
-    local info_file="${check_setup_json_dir}/.${setup_script}.json"
+    # If a cloud check for a cloud specific marker file, otherwise check for generic
+    local info_file
+    local platform
+    platform="$(get_config_value "PLATFORM")"
+    if is_supported_cloud "$platform"; then
+        info_file="${check_setup_json_dir}/.${platform}.json"
+	echo "in is supported cloud"
+	echo "$info_file"
+    else
+        info_file="${check_setup_json_dir}/.raw_disk_install.json"
+    fi
+
     if [[ ! -f "$info_file" ]]; then
         log_warning "Setup json file $info_file doesn't exist"
-        log_warning "Warning: The ${setup_script} script must be run when creating a workspace."
+	log_warning "setup script must be run for platform $platform before building an image"
         error_and_exit "$error_msg"
     fi
 

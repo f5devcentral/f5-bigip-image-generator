@@ -23,17 +23,8 @@ import time
 
 from datetime import timedelta
 
-from image.alibaba_image import AlibabaImage
-from image.alibaba_image_name import AlibabaImageName
-from image.aws_image import AWSImage
-from image.aws_image_name import AWSImageName
-from image.azure_image import AzureImage
-from image.azure_image_name import AzureImageName
-from image.google_image import GoogleImage
-from image.google_image_name import GoogleImageName
 from metadata.cloud_metadata import CloudImageMetadata
 from metadata.cloud_register import CloudImageRegister
-from util.misc import is_supported_cloud
 from util.logger import LOGGER
 
 
@@ -55,8 +46,6 @@ class ImageController(): # pylint: disable=too-many-instance-attributes
 
         if not os.path.isdir(artifacts_dir):
             raise ValueError("Missing or invalid artifacts directory '{}'.".format(artifacts_dir))
-        if not is_supported_cloud(cloud_type):
-            raise ValueError("Unexpected cloud '{}'.".format(cloud_type))
         if not os.path.isfile(image_disk_path):
             raise ValueError("Missing image disk '{}'.".format(image_disk_path))
 
@@ -66,17 +55,22 @@ class ImageController(): # pylint: disable=too-many-instance-attributes
 
         try:
             # Factory (could be a separate object)
+            # pylint: disable=import-outside-toplevel
             if cloud_type == 'alibaba':
+                from image.alibaba_image import AlibabaImage
                 self.cloud_image = AlibabaImage(self.working_dir, self.image_disk_path)
             elif cloud_type == 'aws':
+                from image.aws_image import AWSImage
                 self.cloud_image = AWSImage(self.working_dir, self.image_disk_path)
             elif cloud_type == 'azure':
+                from image.azure_image import AzureImage
                 self.cloud_image = AzureImage(self.working_dir, self.image_disk_path)
             elif cloud_type == 'gce':
+                from image.google_image import GoogleImage
                 self.cloud_image = GoogleImage(self.working_dir, self.image_disk_path)
             else:
                 raise ValueError('Unexpected cloud type: {}'.format(cloud_type))
-
+            # pylint: enable=import-outside-toplevel
             self.cloud_image_name = self.image_name_factory(cloud_type)
         except BaseException as base_exception:
             LOGGER.exception(base_exception)
@@ -103,16 +97,21 @@ class ImageController(): # pylint: disable=too-many-instance-attributes
     @staticmethod
     def image_name_factory(cloud_type):
         """Factory pattern for ImageName"""
+        # pylint: disable=import-outside-toplevel
         if cloud_type == 'alibaba':
+            from image.alibaba_image_name import AlibabaImageName
             return AlibabaImageName()
         if cloud_type == 'aws':
+            from image.aws_image_name import AWSImageName
             return AWSImageName()
         if cloud_type == 'azure':
+            from image.azure_image_name import AzureImageName
             return AzureImageName()
         if cloud_type == 'gce':
+            from image.google_image_name import GoogleImageName
             return GoogleImageName()
-
         raise ValueError('Unexpected cloud type: {}'.format(cloud_type))
+        # pylint: enable=import-outside-toplevel
 
     @staticmethod
     def check_valid_name(cloud_type, user_image_name):
@@ -132,7 +131,7 @@ class ImageController(): # pylint: disable=too-many-instance-attributes
             self.image_name = \
                 self.cloud_image_name.apply_transform(seed_image_name.strip())[0]
 
-    def initialize_image_metadata(self, artifacts_dir):
+    def initialize_image_metadata(self, artifacts_dir, pipeline_build=False):
         """Initialize image metadata"""
         self.metadata = CloudImageMetadata()
         self.metadata.load_artifact_files(artifacts_dir)
@@ -140,10 +139,10 @@ class ImageController(): # pylint: disable=too-many-instance-attributes
         # Set common metadata values
         self.metadata.set(self.__class__.__name__, 'input', self.image_disk_path)
         self.metadata.set(self.__class__.__name__, 'image_name', self.image_name)
-        if os.getenv('CI') is None:
-            self.metadata.set(self.__class__.__name__, 'build_type', 'local')
-        else:
+        if pipeline_build is True:
             self.metadata.set(self.__class__.__name__, 'build_type', 'pipeline')
+        else:
+            self.metadata.set(self.__class__.__name__, 'build_type', 'local')
 
         # License model is currently hardwired
         self.metadata.set(self.__class__.__name__, 'license_model', 'byol')
@@ -155,7 +154,8 @@ class ImageController(): # pylint: disable=too-many-instance-attributes
             LOGGER.info("Starting prepare cloud image '%s'.", self.image_name)
             self.cloud_image.set_uploaded_disk_name(self.image_name)
 
-            self.initialize_image_metadata(self.artifacts_dir)
+            pipeline_build = os.getenv('CI') is not None
+            self.initialize_image_metadata(self.artifacts_dir, pipeline_build)
 
             self.cloud_image.extract_disk()
             self.cloud_image.upload_disk()
@@ -177,7 +177,7 @@ class ImageController(): # pylint: disable=too-many-instance-attributes
 
         except BaseException as base_exception:
             LOGGER.exception(base_exception)
-            raise BaseException from base_exception
+            raise base_exception
 
     def create_working_dir(self, artifacts_dir):
         """Create temporary directory"""

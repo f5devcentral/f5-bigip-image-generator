@@ -144,10 +144,11 @@ def get_installed_components(operating_system):
 
 def get_python_version(package):
     """Returns the version number for a pip package."""
-    with os.popen("pip3 show " + package + "|grep Version| awk -F ' ' {'print $2'}") as stream:
-        output = stream.read().strip()
+    cmd = "pip3 show " + package + "|grep Version| awk -F ' ' {'print $2'}"
+    with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                          shell=True) as stream:
+        output = stream.communicate()[0].decode("utf-8")
     return output
-
 
 def get_linux_version(package, operating_system):
     """Returns Ubuntu version number of package."""

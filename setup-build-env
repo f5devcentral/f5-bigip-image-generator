@@ -30,10 +30,23 @@ OEM_DIR="$PROJECT_DIR/oem/"
 ###############################################################################
 
 ADD_DEVTOOLS=false
+INSTALL_ALIBABA=false
+INSTALL_AWS=false
+INSTALL_AZURE=false
+INSTALL_GCE=false
+INSTALL_ALL=true
+RAW_DISK_INSTALL_MARKER=".raw_disk_install"
 
 function print_help {
     echo "Optional arguments:"
     echo "  --add-dev-tools       Adds tools to verify code style and functionality"
+    echo "  --alibaba             Installs only tools needed for alibaba"
+    echo "  --aws                 Installs only tools needed for aws"
+    echo "  --azure               Installs only tools needed for azure"
+    echo "  --gce                 Installs only tools needed for gce"
+    echo "  --qcow2               Installs only tools needed for qcow2"
+    echo "  --vhd                 Installs only tools needed for vhd"
+    echo "  --vmware              Installs only tools needed for vmware"
 }
 
 #-----------------------------------------------------------------------------#
@@ -49,6 +62,33 @@ function create_version_metadata {
         error_and_exit "jq error while adding VERSION to json data: $json_write"
     fi
 
+    local marker_location
+    local venv_dir
+    venv_dir=$(dirname "$VIRTUAL_ENV")
+    if [ -z "$venv_dir" ]; then
+        marker_location="${PROJECT_DIR}"
+    else
+        marker_location="$(dirname "$VIRTUAL_ENV")"
+    fi
+    if [ "$INSTALL_ALL" == "true" ]; then
+	echo "$json_write" > "${marker_location}/.alibaba.json"
+	echo "$json_write" > "${marker_location}/.aws.json"
+	echo "$json_write" > "${marker_location}/.azure.json"
+	echo "$json_write" > "${marker_location}/.gce.json"
+    else
+	if [ "$INSTALL_ALIBABA" == "true" ]; then
+           echo "$json_write" > "${marker_location}/.alibaba.json"
+	fi
+	if [ "$INSTALL_AWS" == "true" ]; then
+            echo "$json_write" > "${marker_location}/.aws.json"
+        fi
+	if [ "$INSTALL_AZURE" == "true" ]; then
+            echo "$json_write" > "${marker_location}/.azure.json"
+        fi
+	if [ "$INSTALL_GCE" == "true" ]; then
+            echo "$json_write" > "${marker_location}/.gce.json"
+        fi
+    fi
 
     # Write version to metadata file
     # in Docker situations this needs to be where venv is
@@ -56,9 +96,9 @@ function create_version_metadata {
     local venv_dir
     venv_dir=$(dirname "$VIRTUAL_ENV")
     if [ -z "$venv_dir" ]; then
-        info_file="${PROJECT_DIR}/.$(basename "$0").json"
+        info_file="${PROJECT_DIR}/${RAW_DISK_INSTALL_MARKER}.json"
     else
-	info_file="$(dirname "$VIRTUAL_ENV")/.$(basename "$0").json"
+	info_file="$(dirname "$VIRTUAL_ENV")/${RAW_DISK_INSTALL_MARKER}.json"
     fi
     echo "$json_write" > "$info_file"
 
@@ -80,7 +120,35 @@ while [[ $# -gt 0 ]]; do
         --add-dev-tools)
             ADD_DEVTOOLS=true
             ;;
-        -h|--help)
+        --alibaba)
+            INSTALL_ALIBABA=true
+	    INSTALL_ALL=false
+	    ;;
+	--aws)
+            INSTALL_AWS=true
+	    INSTALL_ALL=false
+            ;;
+	--azure)
+            INSTALL_AZURE=true
+	    INSTALL_ALL=false
+            ;;
+	--gce)
+            INSTALL_GCE=true
+	    INSTALL_ALL=false
+            ;;
+        --qcow2)
+	    #INSTALL_QCOW2=true
+	    INSTALL_ALL=false
+	    ;;
+	--vhd)
+            #INSTALL_VHD=true
+            INSTALL_ALL=false
+	    ;;
+	--vmware)
+            #INSTALL_VMWARE=true
+            INSTALL_ALL=false
+            ;;
+	-h|--help)
             print_help
             exit 1
             ;;
@@ -106,6 +174,7 @@ else
     echo "No package installer supported for distro [$distro]! Unable to run setup script!"
     exit 1
 fi
+
 
 #-----------------------------------------------------------------------------#
 # Packages required for bundle.
@@ -237,6 +306,9 @@ source "$VENV_DIR/bin/activate"
 python3 -m pip install pip==21.1
 
 pip3 install wheel
+export CRYPTOGRAPHY_DONT_BUILD_RUST=1
+pip3 install cryptography==3.4.7
+
 #-----------------------------------------------------------------------------#
 
 # F5 Telemetry package
@@ -248,11 +320,11 @@ pip3 install f5-teem
 #        bonus trivia:  Boto is not an acronym.  It's a species of pink river
 #        dolphin which lives in the Amazon rain forest.
 #------------------------------#
-export CRYPTOGRAPHY_DONT_BUILD_RUST=1
-pip3 install cryptography==3.4.7
-pip3 install boto3==1.17.57
-pip3 install moto==1.3.13
-pip3 install pyyaml==5.4.1
+if [ "$INSTALL_AWS" == "true" ] || [ "$INSTALL_ALL" == "true" ]; then
+    pip3 install boto3==1.17.57
+    pip3 install moto==1.3.13
+    pip3 install pyyaml==5.4.1
+fi   
 #-----------------------------------------------------------------------------#
 
 
@@ -261,82 +333,88 @@ pip3 install pyyaml==5.4.1
 #------------------------------#
 # These steps are taken from here in their entirity:
 #   https://cloud.google.com/storage/docs/gsutil_install
-case $PACKAGE_INSTALLER in
-apt-get)
-    # Create an environment variable for the correct distribution:
-    sudo $PACKAGE_INSTALLER install -y lsb-release
-    lsb_rel=$(lsb_release -c -s)
-    export CLOUD_SDK_REPO="cloud-sdk-$lsb_rel"
 
-    # If not already defined, add the Cloud SDK distribution URI as a package source:
-    google_sdk_uri="deb http://packages.cloud.google.com/apt $CLOUD_SDK_REPO main"
-    google_sources_file="/etc/apt/sources.list.d/google-cloud-sdk.list"
-    if ! grep -Fxq "$google_sdk_uri" "$google_sources_file"; then
-        echo "$google_sdk_uri" | sudo tee -a "$google_sources_file"
-    fi
+if [ "$INSTALL_GCE" == "true" ] || [ "$INSTALL_ALL" == "true" ]; then
 
-    # Import the Google Cloud public key:
-    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg \
-            | sudo apt-key add -
+    case $PACKAGE_INSTALLER in
+    apt-get)
+	# Create an environment variable for the correct distribution:
+	sudo $PACKAGE_INSTALLER install -y lsb-release
+	lsb_rel=$(lsb_release -c -s)
+	export CLOUD_SDK_REPO="cloud-sdk-$lsb_rel"
 
-    # Refresh the list of packages as per the updated gcloud package source
-    # in the above two steps.
-    sudo $PACKAGE_INSTALLER update
+	# If not already defined, add the Cloud SDK distribution URI as a package source:
+	google_sdk_uri="deb http://packages.cloud.google.com/apt $CLOUD_SDK_REPO main"
+	google_sources_file="/etc/apt/sources.list.d/google-cloud-sdk.list"
+	if ! grep -Fxq "$google_sdk_uri" "$google_sources_file"; then
+	    echo "$google_sdk_uri" | sudo tee -a "$google_sources_file"
+	fi
 
-    # Install the Cloud SDK:
-    sudo $PACKAGE_INSTALLER install -y google-cloud-sdk
-    ;;
-apk)
-    # THe is no specific distribution for alpine
-    sudo pip install -U gsutil
-    ;;
+	# Import the Google Cloud public key:
+	curl https://packages.cloud.google.com/apt/doc/apt-key.gpg \
+		| sudo apt-key add -
 
-*)
-    >&2 echo "Unknown '$PACKAGE_INSTALLER'."
-    ;;
-esac
-#-----------------------------------------------------------------------------#
+	# Refresh the list of packages as per the updated gcloud package source
+	# in the above two steps.
+	sudo $PACKAGE_INSTALLER update
 
+	# Install the Cloud SDK:
+	sudo $PACKAGE_INSTALLER install -y google-cloud-sdk
+	;;
+    apk)
+	# THe is no specific distribution for alpine
+	sudo pip install -U gsutil
+	;;
+
+    *)
+	>&2 echo "Unknown '$PACKAGE_INSTALLER'."
+	;;
+    esac
+    #-----------------------------------------------------------------------------#
+    #-----------------------------------------------------------------------------#
+    # Google Cloud package setup.
+    #------------------------------#
+    # required Google Cloud Python SDK modules
+    #  - https://pypi.org/project/google-cloud-storage/ (for uploading blob and
+    #  metadata tags)
+    #  - https://pypi.org/project/google-api-python-client/ (for creating image
+    #  with blob url) (optional if directly deploying with blob)
+    #  - https://pypi.org/project/google-auth/ (for authenticating to google using
+    #  oauth2 credentials.  This is a replacement for the deprecated oauth2client
+    #  module)
+
+    pip3 install google-api-python-client==2.2.0 google-cloud-storage==1.37.1 google-auth==1.29.0
+
+    pip3 install google-cloud-core==1.6.0
+fi 
 
 #-----------------------------------------------------------------------------#
 # Azure package setup
 #------------------------------#
 
-# for use when azure pip is upgraded
-pip3 install azure-identity==1.5.0
-pip3 install msrestazure
+if [ "$INSTALL_AZURE" == "true" ] || [ "$INSTALL_ALL" == "true" ]; then
+    # for use when azure pip is upgraded
+    pip3 install azure-identity==1.5.0
+    pip3 install msrestazure
 
-# python based azure-cli ARM tool
-pip3 install azure-storage-blob==2.1.0
-# Azure SDK for Python
-pip3 install azure-mgmt-compute==4.4.0   #20.0.0 in future when credential issues are resolved
+    # python based azure-cli ARM tool
+    pip3 install azure-storage-blob==2.1.0
+    # Azure SDK for Python
+    pip3 install azure-mgmt-compute==4.4.0   #20.0.0 in future when credential issues are resolved
+fi
 #-----------------------------------------------------------------------------#
 
 
 #-----------------------------------------------------------------------------#
 # Alibaba package setup.
 #------------------------------#
-# oss2 of aliyun-oss-python-sdk is used to upload to the storage
-pip3 install oss2==2.14.0
-# aliyun python APIs used in alibaba_commands.py
-pip3 install aliyun-python-sdk-core==2.13.33
-pip3 install aliyun-python-sdk-ecs==4.23.11
-
-
-#-----------------------------------------------------------------------------#
-# Google Cloud package setup.
-#------------------------------#
-# required Google Cloud Python SDK modules
-#  - https://pypi.org/project/google-cloud-storage/ (for uploading blob and
-#  metadata tags)
-#  - https://pypi.org/project/google-api-python-client/ (for creating image
-#  with blob url) (optional if directly deploying with blob)
-#  - https://pypi.org/project/google-auth/ (for authenticating to google using
-#  oauth2 credentials.  This is a replacement for the deprecated oauth2client
-#  module)
-pip3 install google-api-python-client==2.2.0 google-cloud-storage==1.37.1 google-auth==1.29.0
-
-pip3 install google-cloud-core==1.6.0
+if [ "$INSTALL_ALIBABA" == "true" ] || [ "$INSTALL_ALL" == "true" ]; then
+    # oss2 of aliyun-oss-python-sdk is used to upload to the storage
+    pip3 install oss2==2.14.0
+    # aliyun python APIs used in alibaba_commands.py
+    pip3 install aliyun-python-sdk-core==2.13.33
+    pip3 install aliyun-python-sdk-ecs==4.23.11
+fi
 
 
 #-----------------------------------------------------------------------------#

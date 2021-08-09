@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2019-2020 F5 Networks, Inc
+# Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -17,10 +17,46 @@ set -e
 
 main() {
 
-    if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
-        print_help
-        exit 1
-    fi
+PARAMETERS=" "
+BASE_IMAGE="alpine"
+# Process command line options
+while [[ $# -gt 0 ]]; do
+    key="$1"
+    shift
+    case $key in
+        --add-dev-tools)
+	    PARAMETERS+="--add-dev-tools "
+            ;;
+        --alibaba)
+            PARAMETERS+="--alibaba "
+            ;;
+        --aws)
+            PARAMETERS="--aws "
+            ;;
+        --azure)
+            PARAMETERS+="--azure "
+            ;;
+	--base-image-ubuntu)
+            BASE_IMAGE="ubuntu"
+	    ;;
+        --gce)
+            PARAMETERS+="--gce "
+	    ;;
+	--vhd)
+	    PARAMETERS+="--vhd "
+	    ;;
+	--vmware)
+            PARAMETERS+="--vmware "
+	    ;;
+	--qcow2)
+            PARAMETERS+="--qcow2 "
+	    ;;
+        -h|--help)
+            print_help
+            exit 1
+            ;;
+    esac
+done    
 
     check_commands
     base_image "$@"
@@ -30,7 +66,6 @@ main() {
     REPO="f5devcentral"
     PRODUCT="f5-bigip-image-generator"
     TAG="$REPO/$PRODUCT:$VERSION"
-    ADD_DEVTOOLS_OPTION=""
     USERNAME="$(whoami)"
     KVM_GROUP_ID=$(getent group kvm | awk -F: '{printf "%d", $3}')
 
@@ -38,7 +73,7 @@ main() {
 	  -f "docker/$DOCKERFILE" \
 	  --tag "$TAG" \
 	  --build-arg BASE_REPO="$BASE_REPO" \
-	  --build-arg ADD_DEVTOOLS_OPTION="$ADD_DEVTOOLS_OPTION" \
+          --build-arg PARAMETERS="$PARAMETERS" \
 	  --build-arg USERNAME="$USERNAME" \
 	  --build-arg KVM_GROUP_ID="$KVM_GROUP_ID" \
 	  --no-cache \
@@ -48,38 +83,17 @@ main() {
 
 function print_help {
     echo "Optional arguments:"
-    echo "  --base-image ubuntu       Use Ubuntu docker image"
+    echo "  --base-image-ubuntu   Use Ubuntu docker image, default is Alpine"
+    echo "  --add-dev-tools       Adds tools to verify code style and functionality"
+    echo "  --alibaba             Installs only tools needed for alibaba"
+    echo "  --aws                 Installs only tools needed for aws"
+    echo "  --azure               Installs only tools needed for azure"
+    echo "  --gce                 Installs only tools needed for gce"
 }
 
 
 # Determine which base image to use based on passed in parameters
 function base_image {
-    ARGUMENT_LIST=(
-        "base-image"
-    )
-
-    # read arguments
-    opts=$(getopt \
-        --longoptions "$(printf "%s:," "${ARGUMENT_LIST[@]}")" \
-        --name "$(basename "$0")" \
-        --options "" \
-        -- "$@"
-    )
-    eval set --"$opts"
-    BASE_IMAGE="alpine"
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            --base-image)
-                BASE_IMAGE=$2
-                shift 2
-                ;;
-
-            *)  
-                break
-                ;;
-        esac
-    done
-
     DOCKERFILE="Dockerfile"
     if [ "$BASE_IMAGE" = "alpine" ]; then
 	BASE_REPO="alpine:3.11.5"

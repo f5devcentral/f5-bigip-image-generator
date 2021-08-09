@@ -1,5 +1,5 @@
 #!/bin/bash -e
-# Copyright (C) 2018-2020 F5 Networks, Inc
+# Copyright (C) 2018-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -336,6 +336,55 @@ function cleanup_root_keys_symlinks_on_cloud {
 
 
 #####################################################################
+# Hot-patch post-i2b-fixup to alter tty0
+function hot_patch_post_i2b_fixup {
+    local fixup_file
+    fixup_file="/var/tmp/install/post-i2b-fixup"
+
+    # Skip patch for hotfix.
+    if [ ! -f $fixup_file ]; then
+        if [ "$F5_INSTALL_SESSION_TYPE" == "hotfix" ]; then
+            log_echo "Hotfix install. Skip patch post_i2b_fixup."
+            return
+        else
+            err_exit "Missing fixup file: $fixup_file"
+        fi
+    fi
+    chmod +w $fixup_file
+
+    DISABLE_SPLASH_JSON=$(grep 'disableSplash' < "$INST_ROOT"'/build_info.json')
+    CONSOLES_STRING_JSON=$(grep 'console' < "$INST_ROOT"'/build_info.json')
+    # Example "console": "ttys0 tty0 tty1",
+    [[ $CONSOLES_STRING_JSON =~ :(.*) ]]
+    CONSOLES_VALUE_JSON_1="${BASH_REMATCH[1]}" # Gets everything after the :
+    CONSOLES_VALUE_JSON_2="${CONSOLES_VALUE_JSON_1::-2}" #removes the double quote and comma
+    CONSOLES_VALUE="${CONSOLES_VALUE_JSON_2:2}" # Removes the space and double quote
+
+    # Remove the line from the fixup file that adds the splash screen when requested.
+    if [[ "$DISABLE_SPLASH_JSON" != *"null"* ]]; then
+        log_echo "Disable grub.conf splash screen image."
+        sed -i '/1isplashimage/d' $fixup_file
+    else
+        log_echo "No changes to grub.conf splash screen image."
+    fi
+
+    # Add a line to the fixup file to alter console values when requested.  ttySO is required
+    # to check status of selinux relabel.  So, the ttyS0 entry is not altered.
+    #
+    if [ -n "$CONSOLES_VALUE" ]; then
+        log_echo "Modify grub.conf console value(s)."
+        # Note: Disable shellcheck warning.  We don't want $WORK_DIR to expand here. $WORK_DIR in
+        # the sed command written to the fixup file should expand when run in the fixup file.
+        # shellcheck disable=SC2016
+        sed -i "/Content of grub.conf/a sed -i 's/tty0/$CONSOLES_VALUE/g' \$WORK_DIR/mnt/grub/grub.conf" "$fixup_file"
+    else
+        log_echo "No changes to grub.conf console value(s)."
+    fi
+}
+#####################################################################
+
+
+#####################################################################
 # Hot-patch autotask for GCE only:
 # Remove the call which will add splash screen in GRUB menu.
 #
@@ -625,6 +674,7 @@ if [ -f "$VADC_PLATFORM_FILE" ]; then
     ensure_shared_dir_is_mounted
     copy_injected_files
     ensure_shared_dir_is_unmounted
+    hot_patch_post_i2b_fixup
 
     if [[ -f "$LEGACY_LABELING" ]]; then
         dbg_echo "Adding legacy selinux labeling scripts."
@@ -638,4 +688,3 @@ log_echo ""
 log_echo "post-install - $(date) - DONE"
 log_echo "#############################"
 for _ in {1..15} ; do dbg_echo "" ; done
-

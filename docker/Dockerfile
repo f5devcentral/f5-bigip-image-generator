@@ -1,6 +1,6 @@
 ARG BASE_REPO
 FROM ${BASE_REPO}
-ARG ADD_DEVTOOLS_OPTION
+ARG PARAMETERS
 ARG USERNAME
 ARG KVM_GROUP_ID
 WORKDIR /f5
@@ -9,7 +9,7 @@ COPY . /f5/
 RUN apk update && \
     apk add sudo bash && \
     echo "Set disable_coredump false" >> /etc/sudo.conf
-RUN bash /f5/setup-build-env $ADD_DEVTOOLS_OPTION
+RUN bash /f5/setup-build-env $PARAMETERS
 ENV PATH /f5:$PATH
 ENV VENV_DIR /f5/.venv
 ENV PATH ${VENV_DIR}/bin:$PATH

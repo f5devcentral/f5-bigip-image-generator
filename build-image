@@ -85,12 +85,12 @@ function main {
         check_setup_json_dir="$CHECK_SETUP_JSON_DIR"
         log_info "Use CHECK_SETUP_JSON_DIR for check_setup_json_dir:$check_setup_json_dir"
     fi
-    check_setup "$check_setup_json_dir"
 
     # Config setup.
     if ! init_config "validate" "$@"; then
         error_and_exit "init_config has failed"
     fi
+    check_setup "$check_setup_json_dir"
 
     local cloud iso iso_sig ehf_iso ehf_iso_sig pub_key modules boot_locations platform artifacts_directory \
           config_file cloud_image_name add_ova_eula

@@ -2,7 +2,7 @@
 """Version file metadata CLI
 
    Creates version file metadata file and config file."""
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -30,7 +30,7 @@ def main():
                         help='Print debug messages')
     parser.add_argument('-f', '--file', required=True,
                         help='Version file')
-    parser.add_argument('-o', '--out-base-dir',
+    parser.add_argument('-o', '--out-base-dir', required=True,
                         help='Output base directory')
 
     args = parser.parse_args()
@@ -45,5 +45,5 @@ def main():
     version.create_metadata()
     version.create_config()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

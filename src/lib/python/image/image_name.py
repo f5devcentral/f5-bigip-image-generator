@@ -104,7 +104,7 @@ class ImageName():
             if excess_chars > self.transform.trailing_char_count:
                 raise ValueError(
                     'Excess {} chars in name exceed length of random postfix {}.'.format(
-                        excess_chars, len(self.transform.trailing_char_count)))
+                        excess_chars, self.transform.trailing_char_count))
 
             # Trim random number portion (including separator if it would be the
             # only remaining char).
