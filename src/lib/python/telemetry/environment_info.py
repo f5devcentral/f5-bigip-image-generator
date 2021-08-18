@@ -1,5 +1,5 @@
 """environment information module"""
-# Copyright (C) 2020 F5 Networks, Inc
+# Copyright (C) 2020-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -58,11 +58,11 @@ def get_go_version():
 def get_git_version():
     """Returns the git version."""
     try:
-        proc = subprocess.Popen(['git', '--version'],
+        with subprocess.Popen(['git', '--version'],
                                 stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT)
-        out, _ = proc.communicate()
-        return out.decode("UTF-8").strip()
+                                stderr=subprocess.STDOUT) as proc:
+            out, _ = proc.communicate()
+            return out.decode("UTF-8").strip()
     except OSError as error:
         LOGGER.info(error)
         return None
@@ -70,11 +70,14 @@ def get_git_version():
 def get_ssh_version():
     """Returns the ssh version."""
     try:
-        proc = subprocess.Popen(['ssh', '-V'],
+        with subprocess.Popen(['ssh', '-V'],
                                 stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT)
-        out, _ = proc.communicate()
-        return out.decode("UTF-8").strip()
+                                stderr=subprocess.STDOUT) as proc:
+            out, _ = proc.communicate()
+            return out.decode("UTF-8").strip()
+    except FileNotFoundError as error:
+        LOGGER.info('The ssh client is not installed.')
+        return None
     except OSError as error:
         LOGGER.info(error)
         return None

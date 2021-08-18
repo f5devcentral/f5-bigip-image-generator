@@ -1,5 +1,5 @@
 """Base Disk module"""
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -97,7 +97,7 @@ class BaseDisk:
                                           "compressed disk {}!".format(input_file_ext, input_disk))
         except (tarfile.ReadError, zipfile.BadZipFile) as read_error:
             LOGGER.exception(read_error)
-            raise RuntimeError("Failed to read {} file".format(input_disk))
+            raise RuntimeError("Failed to read {} file".format(input_disk)) from read_error
         except RuntimeError as runtime_error:
             LOGGER.exception(runtime_error)
             raise runtime_error

@@ -128,13 +128,11 @@ This section provides steps for installing the generator tool, and then using th
         `ubuntu@image-generator-ip:~$ tar -xzvf f5-bigip-image-generator-1.0.tar.gz` <br/>
         `ubuntu@image-generator-ip:~$ cd f5-bigip-image-generator-1.0`  
 
-2. To run the [setup script][2], type:  
-
-   `./setup-build-env`
+2. To run the [setup script][2], type:  `./setup-build-env` which installs all tools required for all supported platforms. To reduce the footprint required for development tools that you install based on the platform for which you are building, use the supported Platform variable options; for example, ``./setup-build-env --qcow2``, ``./setup-build-env --aws``,  ``./setup-build-env --vhd``, and other supported platforms. Consult the [User Guide](#create-config-file) for the complete ``PLATFORM`` parameter description.
    
    Options include:
    
-   * `--add-dev-tools` - installs additional tools for development, such as pylint, shellcheck, and bats
+   * `--add-dev-tools` - installs additional tools used during development, such as pylint, shellcheck, and bats
 
 3. Restart your computer, or log out, and then log back into your system.
 4. To view the Image Generator operating environment use ``./build-image --info``. This will collect information such as, installed software on the build machine. 
@@ -178,6 +176,8 @@ command line >  configuration file >  environment variable. To access the Image 
     |BOOT_LOCATIONS|-b|Yes|[1\2]|Number of boot locations used in the source ISO file.|
     |CLOUD_IMAGE_NAME| |No|[value]|The name of the generated cloud image.  The name is subject to cloud provider naming restrictions  and is not guaranteed to succeed.  If you provide no name, then one is generated automatically  based on the detected properties of the source ISO file.|
     |CONFIG_FILE|-c|No|[value]|Full path to a YAML configuration file containing a list of parameter key/value pairs used during image generation.|
+    |CONSOLE_DEVICES | |No|[value]|Used to identify the locally attached devices to your generated VE image. The default value ``ttyS0`` is required to build images. Start numbering your serial devices/consoles using ``ttyS1``.|
+    |DISABLE_SPLASH| |No|[value]|Used to disable the boot screen, which can cause automation processes to stall.|
     |DISABLE_TELEMETRY| |No|[value]|Disable the telemetry feature used to collect platform and usage information for product improvement purposes.  When disabled, data is stored locally for debugging purposes.|
     |EHF_ISO|-e|No|[value]|Full path or URL to an engineering hotfix ISO file for installation on top of the existing ISO file.|
     |EHF_ISO_SIG|-x|No|[value]|Full path or URL to an engineering hotfix ISO signature file used to validate the engineering hotfix ISO.| 
@@ -197,8 +197,9 @@ command line >  configuration file >  environment variable. To access the Image 
     |LOG_FILE| |No|[value]|Log filename that overrides the default log filename created in the logs directory. You can use a full path, directory, or filename. If full path, then the log file uses the full path. If directory, then the image generator creates a new log file in the specified directory. If filename, then the tool creates a log file in the logs directory using the specified filename.|
     |LOG_LEVEL| |No|[CRITICAL \ ERROR \ WARNING \ INFO \ DEBUG \ TRACE]|Log level to use for the log file, indicating the lowest message severity level that can appear in the log file.|
     |MODULES|-m|Yes|[all\ltm]|BIG-IP components supported by the specified image.|
+    |NO_UPLOAD|  | No |  | Create the cloud image without uploading to the cloud.|
     |OUTPUT_JSON_FILE| | No | [value] | Define this parameter to produce an output json file with image build environment information (for example, image name and image ID) by providing the json filename and/or path.|
-    |OVA_PROP_NET_USER| | No | [value] | Adds a block of text into the .ovf file, enabling VMware to apply the mgmt IP and passwords.|
+    |OVA_PROP_NET_USER| | No | [value] | Adds a [block of text][36] into the .ovf file, enabling VMware to apply the mgmt IP and passwords. The script will check for the following BIG-IP versions that support IPv6: 14.1.4.1+, 15.1.3+, 16.0.1.1+, and 16.1+|
     |PLATFORM|-p|Yes|[alibaba \ aws \ azure \ gce \ qcow2 \ vhd \ vmware]|The target platform for generated images.|
     |REUSE| |No| |Keep\Reuse local files created by previous runs of the same [PLATFORM, MODULES, BOOT_LOCATIONS] combination.|    
     |UPDATE_IMAGE_FILES| |No|[value]|Files you want injected into the image. For each of the injections, REQUIRED values include **source** (file, directory, or URL) and **destination** (absolute full path), and an OPTIONAL **mode** (a string of file [chmod][32] permissions flag consisting of 1-4 octal digits for read/write/execute).|
@@ -344,7 +345,18 @@ command line >  configuration file >  environment variable. To access the Image 
       ./build-image -i /var/tmp/BIGIP-15.1.1-0.0.6.iso -c config.yml -p vmware -m ltm -b 1 --ova-prop-net-user
 
    ```
-   
+
+9.  OPTIONAL: To update the ``grub.conf`` file and bake the following changes into your generated VE image: 
+
+    * **Disable splash screen** – use ``--disable-splash`` to disable the boot screen, which can stall automation processes. Add the following to your config file: ``DISABLE_SPLASH: 1``.
+    * **Enable serial console** – use ``console-devices ['ttyS1','tty1']`` for identifying locally-attached peripheral devices. The default value ``ttyS0`` is required to build images. Start numbering your serial devices/consoles using ``ttyS1``. Add the following to your config file, and all existing console entries are replaced with your defined console devices (use one ``console=`` for each entry): 
+      
+      ```
+      CONSOLE_DEVICES:  
+      - ttyS1
+      - tty1
+      
+      ```
       
       
 ### Monitor progress

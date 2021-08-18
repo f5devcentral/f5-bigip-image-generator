@@ -1,7 +1,7 @@
 """Module containing functionality for the config system.  The config system is currently
 initialized by BASH code, so there's not much to do here.  If/when we migrate the config system to
 Python we'll expand this module into a full class."""
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -21,6 +21,7 @@ import os
 import json
 
 import yaml
+from yaml import YAMLError
 
 from util.logger import LOGGER
 
@@ -135,7 +136,7 @@ def get_list_from_config_yaml(key):
         try:
             with open(value_string, "r") as value_file:
                 value_list = yaml.safe_load(value_file)
-        except ValueError:
+        except YAMLError:
             LOGGER.error("Unable to parse YAML from file [%s]!", value_string)
             raise
     else:

@@ -1,5 +1,5 @@
 """AWS snapshot module"""
-# Copyright (C) 2019-2020 F5 Networks, Inc
+# Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -127,7 +127,7 @@ class AWSSnapshot():
             except ClientError as client_error:
                 LOGGER.exception(client_error)
                 raise RuntimeError("describe_import_snapshot_tasks() failed for [{}]!".
-                                   format(import_task_id))
+                                   format(import_task_id)) from client_error
 
         retrier = Retrier(_is_snapshot_ready)
         retrier.tries = int(get_config_value('AWS_IMPORT_SNAPSHOT_TASK_RETRY_COUNT'))
@@ -167,7 +167,8 @@ class AWSSnapshot():
             response = self.ec2_client.create_tags(Resources=[self.snapshot_id], Tags=tags_to_add)
         except (ClientError, ParamValidationError) as botocore_exception:
             LOGGER.exception(botocore_exception)
-            raise RuntimeError('create_tags failed for snapshot\'{}\'!\n'.format(self.snapshot_id))
+            raise RuntimeError('create_tags failed for snapshot\'{}\'!\n'
+                               .format(self.snapshot_id)) from botocore_exception
         LOGGER.trace('create_tags response for snapshot %s: %s', self.snapshot_id, response)
 
     def delete_snapshot(self):

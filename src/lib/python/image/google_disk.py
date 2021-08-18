@@ -1,5 +1,5 @@
 """Google disk module"""
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -86,14 +86,15 @@ class GoogleDisk(BaseDisk):
             project = ensure_value_from_dict(creds_dict, "project_id")
         except ValueError as value_exc:
             LOGGER.exception(value_exc)
-            raise RuntimeError("Failed to initialize GOOGLE_APPLICATION_CREDENTIALS credentials.")
+            raise RuntimeError("Failed to initialize GOOGLE_APPLICATION_CREDENTIALS credentials.") \
+                from value_exc
 
         try:
             storage_client = storage.Client(credentials=credentials, project=project)
         except google.auth.exceptions.DefaultCredentialsError as exception:
             LOGGER.exception(exception)
-            raise RuntimeError("storage.Client failed with DefaultCredentialsError.")
-
+            raise RuntimeError("storage.Client failed with DefaultCredentialsError.") \
+                from exception
         # ensure bucket exists
         bucket_name = get_config_value('GCE_BUCKET')
         if not bucket_name:
@@ -103,7 +104,8 @@ class GoogleDisk(BaseDisk):
             self.bucket = storage_client.lookup_bucket(bucket_name)
         except google.api_core.exceptions.BadRequest as exception:
             LOGGER.exception(exception)
-            raise RuntimeError("storage_client.lookup_bucket failed with BadRequest.")
+            raise RuntimeError("storage_client.lookup_bucket failed with BadRequest.") \
+                from exception
 
         if self.bucket is None:
             LOGGER.info('Creating bucket [%s]', bucket_name)
@@ -111,7 +113,7 @@ class GoogleDisk(BaseDisk):
                 self.bucket = storage_client.create_bucket(bucket_name)
             except GoogleAPIError as exception:
                 LOGGER.exception(exception)
-                raise RuntimeError("storage_client.create_bucket failed.")
+                raise RuntimeError("storage_client.create_bucket failed.") from exception
 
         LOGGER.debug("init_bucket completed successfully.")
 

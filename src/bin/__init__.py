@@ -1,4 +1,4 @@
-"""Platform information module"""
+"""base module"""
 # Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
@@ -13,24 +13,9 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-import sys
 
 
-class PlatformInfo:
-    """Class for capturing information about the platform where images are being built"""
-
-    # pylint: disable=R0903
-    def __init__(self):
-        """
-        """
-        self.platform = {}
-        self.platform["os"] = get_os(sys.platform)
-
-
-def get_os(platform):
-    """Queries the system for the operating system."""
-    if platform == "win32":
-        return "Windows"
-    if platform == "darwin":
-        return "OS X"
-    return "Linux"
+# Extend pkgutil search path to include modules from implicit namespace packages with the same name.
+# This allows source and test code to co-exist on the PYTHONPATH when running tests.
+from pkgutil import extend_path
+__path__ = extend_path(__path__, __name__)
