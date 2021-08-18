@@ -1,5 +1,5 @@
 """Alibaba image module"""
-# Copyright (C) 2019-2020 F5 Networks, Inc
+# Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -143,10 +143,11 @@ class AlibabaImage(BaseImage):
                     exc.get_error_msg().startswith('The specified parameter "AddAccount.n" or ' +
                                                    '"RemoveAccount.n"  does not exist.'):
                     raise RuntimeError('InvalidAccount.NotFound: Check if the account IDs are ' +
-                                       'correct')
+                                       'correct') from exc
                 if exc.get_error_code() == 'InvalidImageId.NotFound' and \
                     exc.get_error_msg().startswith('The specified ImageId does not exist'):
-                    raise RuntimeError('InvalidImageId.NotFound: Check if the Image ID exists')
+                    raise RuntimeError('InvalidImageId.NotFound: Check if the Image ID exists') \
+                        from exc
                 raise exc
 
             # Acknowledge all the account-ids that the image was shared with.
@@ -168,7 +169,8 @@ class AlibabaImage(BaseImage):
             LOGGER.exception(exc)
             if exc.get_error_code() == 'InvalidImageId.NotFound' and \
                 exc.get_error_msg().startswith('The specified ImageId does not exist'):
-                raise RuntimeError('InvalidImageId.NotFound: Check if the Image ID exists')
+                raise RuntimeError('InvalidImageId.NotFound: Check if the Image ID exists') \
+                    from exc
             raise exc
 
         num_accounts = len(response_json['Accounts']['Account'])

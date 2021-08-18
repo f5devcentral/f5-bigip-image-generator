@@ -1,5 +1,5 @@
 """Platform information module"""
-# Copyright (C) 2020 F5 Networks, Inc
+# Copyright (C) 2020-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -17,6 +17,7 @@ import os
 import json
 import subprocess
 import re
+import ast
 
 from util.config import get_config_value
 
@@ -42,6 +43,9 @@ class OperationInfo:
         self.operation["resultSummary"] = get_result_summary()
         self.operation["startTime"] = get_start_time()
         self.operation["endTime"] = get_end_time()
+        self.operation["disableSplash"] = get_disable_splash()
+        self.operation["consoleDevicesInput"] = get_console_devices_input()
+
 
 def get_product():
     """Gets the product that the image generator is being used to build"""
@@ -62,7 +66,6 @@ def get_product_build():
     """
     return read_file_value("VersionFile.json", "version_build")
 
-
 def get_platform():
     """Gets the platform (example: azure)."""
     return get_config_value("platform")
@@ -77,12 +80,12 @@ def get_boot_locations():
 
 def get_nested_virt():
     """returns enabled or disabled for nested virtualization on system."""
-    process = subprocess.Popen(["grep", "-c", "-E", "svm|vmx", "/proc/cpuinfo"],
-                               stdout=subprocess.PIPE)
-    output = re.findall(r'\d+', str(process.communicate()[0]))
-    if output[0] != '0':
-        return "enabled"
-    return "disabled"
+    with subprocess.Popen(["grep", "-c", "-E", "svm|vmx", "/proc/cpuinfo"],
+            stdout=subprocess.PIPE) as process:
+        output = re.findall(r'\d+', str(process.communicate()[0]))
+        if output[0] != '0':
+            return "enabled"
+        return "disabled"
 
 def get_update_image_files():
     """returns enabled or disabled for if files are being updated."""
@@ -113,6 +116,24 @@ def get_start_time():
 def get_end_time():
     """returns at what time the build finished."""
     return read_file_value("end_file.json", "build_end_time")
+
+def get_disable_splash():
+    """Get the config value for disable_splash."""
+    return get_config_value("disable_splash")
+
+def get_console_devices_input():
+    """Gets the config value for console_devices."""
+    console_input = get_config_value("console_devices")
+    if console_input is None:
+        return ""
+    list_consoles = ast.literal_eval(console_input)
+
+    # ttyS0 is required and should be removed from user-defined consoles.
+    if 'ttyS0' in list_consoles:
+        list_consoles.remove('ttyS0')
+
+    string_list = " console=".join(list_consoles)
+    return string_list
 
 def read_file_value(file_name, value_name):
     """Reads a file from the artifacts directory and returns a value."""

@@ -1,5 +1,5 @@
 """Module to read info about injected files"""
-# Copyright (C) 2019-2020 F5 Networks, Inc
+# Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -144,12 +144,12 @@ def download_file(url, dest_file):
         raise RuntimeError(
             'Cannot access \'{}\' due to TLS problems! '.format(url) +
             'Consider abandoning TLS verification by usage of ' +
-            '\'IGNORE_DOWNLOAD_URL_TLS\' parameter.')
+            '\'IGNORE_DOWNLOAD_URL_TLS\' parameter.') from exc
     except requests.exceptions.RequestException as exc:
         LOGGER.exception(exc)
         raise RuntimeError(
             '\'{}\' is neither a file nor a directory nor a valid url, cannot inject it!'
-            .format(url))
+            .format(url)) from exc
     if remote_file.status_code != 200:
         LOGGER.info('requests.get response status: %s', remote_file.status_code)
         LOGGER.info('requests.get response headers: %s', remote_file.headers)

@@ -85,12 +85,12 @@ function main {
         check_setup_json_dir="$CHECK_SETUP_JSON_DIR"
         log_info "Use CHECK_SETUP_JSON_DIR for check_setup_json_dir:$check_setup_json_dir"
     fi
-    check_setup "$check_setup_json_dir"
 
     # Config setup.
     if ! init_config "validate" "$@"; then
         error_and_exit "init_config has failed"
     fi
+    check_setup "$check_setup_json_dir"
 
     local cloud iso iso_sig ehf_iso ehf_iso_sig pub_key modules boot_locations platform artifacts_directory \
           config_file cloud_image_name add_ova_eula
@@ -510,9 +510,10 @@ function main {
     log_info "------======[ Finished disk generation for '$platform' '$modules'" \
             "'$boot_locations' boot-locations. ]======------"
 
-    if [[ -n "$cloud" ]]; then
-        case "$cloud" in
-        alibaba | azure | aws | gce)
+    local no_upload
+    no_upload="$(get_config_value "NO_UPLOAD")"
+    if is_supported_cloud "$cloud"; then
+        if [[ -z "$no_upload" ]]; then
             # If user didn't supply a cloud image name, create one.
             if [[ -z "$cloud_image_name" ]]; then
                 cloud_image_opt="--seed-image-name"
@@ -525,14 +526,12 @@ function main {
             "${script_dir}"/src/bin/prepare_image.py --artifacts-dir "$artifacts_directory" \
                 --platform "$platform" --input "$staged_disk" \
                 "$cloud_image_opt" "$cloud_image_name"
-            ;;
-        *)
-            error_and_exit "Unimplemented cloud platform $cloud"
-            ;;
-        esac
+        else
+            log_info "The cloud image will be created but not uploaded, due to the --no-upload parameter."
+        fi
     else
-	set_config_value "HYPERVISOR_IMAGE_NAME" "$(basename "$output_disk")"
-	local location_file="${artifacts_directory}/location.json"
+        set_config_value "HYPERVISOR_IMAGE_NAME" "$(basename "$output_disk")"
+        local location_file="${artifacts_directory}/location.json"
         if ! jq -M -n \
               --arg output_dir "$output_dir" \
               '{ location_dir: $output_dir }' \

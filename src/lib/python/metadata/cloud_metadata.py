@@ -1,5 +1,5 @@
 """Image Metadata"""
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -35,7 +35,7 @@ class CloudImageMetadata(Metadata):
         self.artifacts_dir = artifacts_dir
 
         metadata_files = MetadataFileUtil(artifacts_dir).get_all_metadata_filenames()
-        if metadata_files is None:
-            LOGGER.debug('No metadata files to load')
-        else:
+        if metadata_files:
             super().load_files(metadata_files)
+        else:
+            LOGGER.debug('No metadata files to load')

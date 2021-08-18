@@ -1,5 +1,5 @@
 """Azure Image module"""
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -50,7 +50,7 @@ class AzureImage(BaseImage):
         # if an image with the same name exists, delete it
         if self.does_image_exist():
             LOGGER.info('Delete an old image named \'%s\'.', self.image_name)
-            resp = self.compute_client.images.delete(
+            self.compute_client.images.delete(
                 get_config_value('AZURE_RESOURCE_GROUP'), self.image_name)
             if self.wait_for_image_deletion():
                 raise RuntimeError('Failed to delete old \'{}\' image'.format(self.image_name))
@@ -86,7 +86,7 @@ class AzureImage(BaseImage):
                 if bad_parameter:
                     azure_failure_msg = 'Azure did not accept the request. Possible fix:'
                     raise RuntimeError('{} verify that \'{}\' is correct.'.format(
-                        azure_failure_msg, bad_parameter))
+                        azure_failure_msg, bad_parameter)) from exc
             raise
         self.compute_client = ComputeManagementClient(credentials,
                                                       get_config_value('AZURE_SUBSCRIPTION_ID'))
@@ -111,11 +111,13 @@ class AzureImage(BaseImage):
                     # the image is on the last stage of its existence
                     return True
                 if exc.error.error == 'SubscriptionNotFound':
-                    raise RuntimeError(('Azure could not find the subscription, '
-                                        'check value of \'AZURE_SUBSCRIPTION_ID\'.'))
-                raise RuntimeError(('Unexpected CloudError type: \'{}\', '
-                                    'while checking about \'{}\' image.').
-                                   format(exc.error.error, self.image_name))
+                    raise RuntimeError((
+                        'Azure could not find the subscription, '
+                        'check value of \'AZURE_SUBSCRIPTION_ID\'.')) from exc
+                raise RuntimeError(
+                    ('Unexpected CloudError type: \'{}\', '
+                     'while checking about \'{}\' image.').
+                     format(exc.error.error, self.image_name)) from exc
             raise
         return True
 

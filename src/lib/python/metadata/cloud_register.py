@@ -1,5 +1,5 @@
 """Cloud image registration handler."""
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -79,7 +79,7 @@ class CloudImageRegister(MetadataFilter):
 
         return '{}-{}boot-loc'.format(modules, boot_locations)
 
-    def register_image(self, skip_post=False):
+    def register_image(self, skip_post=False, timeout=60.0):
         """Register image."""
 
         # Check for URL
@@ -119,15 +119,15 @@ class CloudImageRegister(MetadataFilter):
             return
 
         # Register image
-        self.post_to_url(cir_url)
+        self.post_to_url(cir_url, timeout)
 
-    def post_to_url(self, cir_url):
+    def post_to_url(self, cir_url, timeout):
         """Post data to URL with retries"""
         def _post_to_url():
             try:
                 # Note: Total retry time is timeout (in the requests.post call) + retrier.delay
                 LOGGER.debug('Post to URL:%s', cir_url)
-                response = requests.post(url=cir_url, data=self.registration_data, timeout=60.0)
+                response = requests.post(url=cir_url, data=self.registration_data, timeout=timeout)
                 LOGGER.debug('Response: %s:%s', response, response.text)
             except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as exception:
                 LOGGER.debug('Caught exception:%s', exception)

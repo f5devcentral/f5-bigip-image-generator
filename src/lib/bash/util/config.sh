@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2019-2020 F5 Networks, Inc
+# Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -118,10 +118,26 @@ function init_config {
             # iso alternations are independent of modules and boot locations
             _config_init_var_definitions "${script_dir}/../../../resource/vars/vm_vars.yml"
         fi
-        _config_init_var_definitions "${script_dir}/../../../resource/vars/${platform}_vars.yml"
         if [[ "$platform" =~ ${CONFIG_ACCEPTED[CLOUD]} ]]; then
             # If the specified platform is a cloud then we'll also set the CLOUD variable.
             set_config_value "CLOUD" "$platform"
+        fi
+        _config_init_bootstrap_key "NO_UPLOAD" "$@"
+        local no_upload
+        no_upload="$(get_config_value "NO_UPLOAD")"
+        local cloud
+        cloud="$(get_config_value "CLOUD")"
+        if [[ -n "$cloud" ]]; then
+            if [[ -n "$no_upload" ]]; then
+                log_info "The cloud image will be created but not uploaded, due to the --no-upload parameter."
+            else
+                _config_init_var_definitions "${script_dir}/../../../resource/vars/${platform}_vars.yml"
+            fi
+        else
+            _config_init_var_definitions "${script_dir}/../../../resource/vars/${platform}_vars.yml"
+            if [[ -n "$no_upload" ]]; then
+                error_and_exit "$platform is not a cloud, and --no-upload parameter should not be used. Use --help to view the help."
+            fi
         fi
     else
         log_info "PLATFORM not set"

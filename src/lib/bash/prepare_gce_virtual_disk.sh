@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2019-2020 F5 Networks, Inc
+# Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -30,7 +30,6 @@ function gce_init_vars {
         return 0
     fi
     log_info "Initializing variables for GCE."
-    GCE_REQUIRED_DISK_NAME="$(get_config_value "GCE_REQUIRED_DISK_NAME")"
     GCE_VARS_INITIALIZED="true"
     log_info "SUCCESS - Finished initializing variables for GCE"
 }
@@ -48,11 +47,12 @@ function gce_ensure_trailing_slash {
 }
 
 # Package the provided raw disk file into a tar archive which can be used to create an image on gcloud.  raw_disk_name
-# must equal GCE_REQUIRED_DISK_NAME.  artifacts_dir must be an absolute path to the directory containing the raw disk.
+# must equal "disk.raw".  artifacts_dir must be an absolute path to the directory containing the raw disk.
 # bundle_name must be the name of the tar archive to generate.  prepare_vdisk_json must be a path to the json file used
 # to record the status of this step.  log_file must be the name of the log_file used by the previous step.
 function gce_disk_package {
     gce_init_vars
+    local required_disk_name="disk.raw"
     if [[ $# -ne 5 ]]; then
         log_error "Must call ${FUNCNAME[0]} with [raw_disk_name, artifacts_dir, bundle_name, prepare_vdisk_json, \
 log_file]!"
@@ -60,8 +60,8 @@ log_file]!"
     elif [[ -z "$1" ]] || [[ -z "$2" ]] || [[ -z "$3" ]] || [[ -z "$4" ]] || [[ -z "$5" ]]; then
         log_error "raw_disk_name, artifacts_dir, bundle_name, prepare_vdisk_json, and log_file must not be empty!"
         return 1
-    elif [[ "$1" != "$GCE_REQUIRED_DISK_NAME" ]]; then
-        log_error "raw_disk_name for GCE must be $GCE_REQUIRED_DISK_NAME!"
+    elif [[ "$1" != "$required_disk_name" ]]; then
+        log_error "raw_disk_name for GCE must be $required_disk_name!"
         return 1
     fi
     local raw_disk_name="$1"

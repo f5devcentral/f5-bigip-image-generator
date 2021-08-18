@@ -1,7 +1,7 @@
 """Version file handler
 
    Creates version file metadata file and config file from version file in product ISO."""
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -37,6 +37,13 @@ class VersionFile():
         self.config_dir = get_metadata_config_dir(artifacts_dir)
 
         self.version = {}
+
+        if version_file is None:
+            raise ValueError('Version file is required')
+
+        if not os.path.exists(version_file):
+            raise ValueError('Missing version file: {}'.format(version_file))
+
         self.version_file = version_file
 
     def load(self):
@@ -58,10 +65,6 @@ class VersionFile():
         version_metadata = copy.deepcopy(self.version)
         version_metadata['build_source'] = self.__class__.__name__
 
-        # Create metadata dir if needed
-        if not os.path.exists(self.artifacts_dir):
-            os.makedirs(self.artifacts_dir)
-
         # Create version metadata file
         metadata_file = '{}/{}.json'.format(self.artifacts_dir, self.__class__.__name__)
         LOGGER.debug('Create metadata file:%s', metadata_file)
@@ -75,10 +78,6 @@ class VersionFile():
         version_config = {}
         version_config['all'] = {}
         version_config['all'][self.__class__.__name__] = list(self.version.keys())
-
-        # Create config dir if needed
-        if not os.path.exists(self.config_dir):
-            os.makedirs(self.config_dir)
 
         # Create version config file
         config_file = '{}/{}.yml'.format(self.config_dir, self.__class__.__name__)

@@ -41,6 +41,11 @@ CONFIG_FILE:
     generation.
   flag: c
 
+CONSOLE_DEVICES:
+  description: >-
+    Used to identify the locally attached devices to your generated VE image.  The default value ttyS0
+    is required to build images. Start numbering your serial devices/consoles using ttyS1.
+
 CONSOLE_PROGRESS_BAR_UPDATE_DELAY:
   accepted: "^[0-9]+$"
   default: 5
@@ -56,6 +61,11 @@ DEFAULT_SIG_FILE_EXTENSION:
     If ISO_SIG or EHF_ISO_SIG are unset, then the tool searches for a file with 
     this extension in the same directory as the provided ISO or EHF_ISO.
   internal: true
+
+DISABLE_SPLASH:
+  description: >-
+    Used to disable the boot screen, which can cause automation processes to stall.
+  parameters: 0
 
 DISABLE_TELEMETRY:
   description: >-
@@ -197,6 +207,11 @@ MIN_FREE_DISK_STORAGE_MB:
     Minimum storage needed to create an image
   internal: true
 
+NO_UPLOAD:
+  description: >-
+    Create the cloud image without uploading to the cloud.
+  parameters: 0
+
 OUTPUT_JSON_FILE:
   description: >-
     Define this parameter to produce an output json file
@@ -265,7 +280,7 @@ VERSION:
 
 # Note: This is a string because jq/yq drops trailing zeroes for floating point (e.g. 1.10 --> 1.1)
 VERSION_NUMBER:
-  default: "1.11"
+  default: "1.14"
   description: >-
     This is the current version of BIG-IP Image Generator.
   internal: true

@@ -1,5 +1,5 @@
 """Azure disk module"""
-# Copyright (C) 2019-2020 F5 Networks, Inc
+# Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -44,10 +44,10 @@ class AzureDisk(BaseDisk):
 
         try:
             self.svc = PageBlobService(connection_string=self.connection_string)
-        except ValueError:
+        except ValueError as exc:
             LOGGER.error("Could not create a PageBlobService with connection_string=%s",
                          self.connection_string)
-            raise RuntimeError("Runtime Error during Instantiating Azure Blob Service")
+            raise RuntimeError("Runtime Error during Instantiating Azure Blob Service") from exc
 
         self.progress_cb_lu = 0
         self.metadata = CloudImageMetadata()
