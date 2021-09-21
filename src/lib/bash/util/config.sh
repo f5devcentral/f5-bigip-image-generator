@@ -152,6 +152,7 @@ function init_config {
 
     # Perform remaining initialization.
     _config_export_accepted_values
+    _config_export_protected_values
     _config_parse_command_line_arguments 1 "$@"
     _config_parse_config_file_values
     _config_read_variables_from_environment
@@ -275,6 +276,20 @@ function _config_export_accepted_values {
     for key in "${!CONFIG_ACCEPTED[@]}"; do
         local value="${CONFIG_ACCEPTED[${key}]}"
         local env_key="${env_prefix}${accepted_prefix}${key}"
+        local -n env_key_ref="$env_key"
+        export env_key_ref="$value"
+    done
+}
+
+# Some of our code needs access to the protected value strings.  This function exports those values in order to
+# make them readable by sub-processes.
+function _config_export_protected_values {
+    local env_prefix="${CONFIG_VALUES[ENVIRONMENT_VARIABLE_PREFIX]}"
+    local protected_prefix="PROTECTED_"
+    local key
+    for key in "${!CONFIG_PROTECTED[@]}"; do
+        local value="${CONFIG_PROTECTED[${key}]}"
+        local env_key="${env_prefix}${protected_prefix}${key}"
         local -n env_key_ref="$env_key"
         export env_key_ref="$value"
     done
