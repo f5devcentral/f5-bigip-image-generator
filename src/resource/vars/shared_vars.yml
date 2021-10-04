@@ -280,7 +280,7 @@ VERSION:
 
 # Note: This is a string because jq/yq drops trailing zeroes for floating point (e.g. 1.10 --> 1.1)
 VERSION_NUMBER:
-  default: "1.14"
+  default: "1.15"
   description: >-
     This is the current version of BIG-IP Image Generator.
   internal: true

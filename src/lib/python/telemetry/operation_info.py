@@ -128,9 +128,12 @@ def get_console_devices_input():
         return ""
     list_consoles = ast.literal_eval(console_input)
 
-    # ttyS0 is required and should be removed from user-defined consoles.
+    # ttyS0 is required for monitoring during the selinux relabel
+    # and should be at the end of the list. Remove ttyS0 from the
+    # list (if it exists) and append it to the end of the list.
     if 'ttyS0' in list_consoles:
         list_consoles.remove('ttyS0')
+    list_consoles.append('ttyS0')
 
     string_list = " console=".join(list_consoles)
     return string_list

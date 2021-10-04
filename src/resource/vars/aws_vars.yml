@@ -1,4 +1,4 @@
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -76,6 +76,11 @@ AWS_SECRET_ACCESS_KEY:
     Public key string used for AWS account access.
   protected: true
   required: true
+
+AWS_SESSION_TOKEN:
+  description: >-
+    Temporary session token used for AWS account access.
+  protected: true
 
 AWS_IMAGE_SHARE_ACCOUNT_IDS:
   accepted: "^[[0-9]+(,? ?[0-9]+)+]$"

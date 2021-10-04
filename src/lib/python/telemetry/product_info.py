@@ -140,6 +140,8 @@ def get_installed_components(operating_system):
                     elif tool == "linux":
                         component_return[package] = get_linux_version(package, operating_system)
                 install_components[component] = component_return
+    if not install_components:
+        return " "
     return install_components
 
 def get_python_version(package):
@@ -148,15 +150,22 @@ def get_python_version(package):
     with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                           shell=True) as stream:
         output = stream.communicate()[0].decode("utf-8")
+    if not any(char.isdigit() for char in output):
+        return "not found"
     return output
 
 def get_linux_version(package, operating_system):
     """Returns Ubuntu version number of package."""
     if operating_system == "Ubuntu":
-        with subprocess.Popen(["apt", "show", package], stdout=subprocess.PIPE,
+        with subprocess.Popen(["dpkg", "-s", package], stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE) as process:
-            output = str(process.communicate()[0])
-            version = output.split("\\n")[1].split(" ")[1]
+            output = process.communicate()
+            LOGGER.error("dpkg response:")
+            LOGGER.error(output[0])
+            LOGGER.error(output[1])
+            if b"not installed" in output[1]:
+                return "not installed"
+            version = str(output[0])
             return version
     elif operating_system == "Alpine":
         with subprocess.Popen(["sudo", "apk", "search",
