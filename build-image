@@ -26,11 +26,16 @@ source "$(realpath "$(dirname "${BASH_SOURCE[0]}")")/src/lib/bash/util/logger.sh
 
 
 function trap_cleanup() {
+    local artifacts_dir
+    artifacts_dir="$(get_config_value "ARTIFACTS_DIR")"
+
+    # Output config before taking snapshot
+    "$(realpath "$(dirname "${BASH_SOURCE[0]}")")"/src/bin/output_config.py --artifacts-dir "$artifacts_dir"
+
     # Take the snapshot of the workspace before cleaning.
     take_snapshot
 
-    local artifacts_dir reuse cleaning_msg
-    artifacts_dir="$(get_config_value "ARTIFACTS_DIR")"
+    local reuse cleaning_msg
     reuse="$(get_config_value "REUSE")"
     cleaning_msg="Cleaning up before EXIT."
 

@@ -25,6 +25,15 @@ from yaml import YAMLError
 
 from util.logger import LOGGER
 
+def set_config_variable_prefix():
+    """ Set the config env var prefix.
+
+    ENVIRONMENT_VARIABLE_PREFIX is implemented as an internal configuration variable that
+    is loaded as a part of the configuration.  This function is used for test environments
+    that don't load the config.
+
+    """
+    os.environ['ENVIRONMENT_VARIABLE_PREFIX'] = 'F5_'
 
 # pylint: disable=pointless-string-statement
 def get_config_accepted(key):
@@ -148,3 +157,53 @@ def get_list_from_config_yaml(key):
 
     # Return the list
     return value_list
+
+
+def get_config_vars():
+    """Retrieves a list of all config vars
+
+       Accepted env vars are used for validation and have ACCEPTED in their name.
+       Protected env vars contain sensitive data and have a parallel marker env var
+       that mirror the env var name along with PROTECTED in their name.
+       While both ACCEPTED and PROTECTED env vars are env vars, they are not user
+       inputs which is what this function means to capture.  Instead, they are env vars
+       used to support the bash config implementation.  For this reason ACCEPTED and
+       PROTECTED env vars are excluded from list of config vars.
+    """
+
+    # Set up search prefixes
+    prefix = os.getenv('ENVIRONMENT_VARIABLE_PREFIX') or ''
+    accepted_prefix = prefix + "ACCEPTED_"
+    protected_prefix = prefix + "PROTECTED_"
+
+    # Initialize dictionary
+    config_vars = {}
+
+    # Walk through all env vars
+    for name, value in os.environ.items():
+
+        # If env var name starts with our prefix, process it
+        if name.startswith(prefix):
+
+            # Strip internal prefix
+            name_without_prefix = name[len(prefix):]
+
+            # Skip protected marker env var
+            if name.startswith(protected_prefix):
+                LOGGER.debug('Skip protected marker config env var: %s', name_without_prefix)
+                continue
+
+            # Skip accepted env var
+            if name.startswith(accepted_prefix):
+                LOGGER.debug('Skip accepted config env var: %s', name_without_prefix)
+                continue
+
+            # Determine if env var is protected by looking for a corresponding
+            # protected env var marker.  If so, hide value.
+            protected_marker_var = protected_prefix + name_without_prefix
+            if protected_marker_var in os.environ:
+                value = '<protected>'
+
+            config_vars[name_without_prefix] = value
+
+    return config_vars

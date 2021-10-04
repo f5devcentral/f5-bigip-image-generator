@@ -28,6 +28,7 @@ Define the following parameters in a config file or set as an environment variab
 |AWS_IMAGE_SHARE_ACCOUNT_IDS|No|[value]|List of AWS account IDs with which you want the generated image shared.|
 |AWS_REGION|Yes|[value]|Region to use for AWS image generation.|
 |AWS_SECRET_ACCESS_KEY|Yes|[value]|Public key string used for AWS account access.|
+|AWS_SESSION_TOKEN|No|[value]|Temporary session token used for AWS account access.|
 
 ##### NOTE:
 ------------

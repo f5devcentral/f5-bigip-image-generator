@@ -40,6 +40,7 @@ class AWSImage(BaseImage):
         self.session = Session(
             aws_access_key_id=get_config_value('AWS_ACCESS_KEY_ID'),
             aws_secret_access_key=get_config_value('AWS_SECRET_ACCESS_KEY'),
+            aws_session_token=get_config_value('AWS_SESSION_TOKEN'),
             region_name=get_config_value('AWS_REGION')
         )
 

@@ -368,15 +368,22 @@ function hot_patch_post_i2b_fixup {
         log_echo "No changes to grub.conf splash screen image."
     fi
 
-    # Add a line to the fixup file to alter console values when requested.  ttySO is required
-    # to check status of selinux relabel.  So, the ttyS0 entry is not altered.
+    # Add a line to the fixup file to alter the BIG-IP entry console values when requested.
     #
     if [ -n "$CONSOLES_VALUE" ]; then
         log_echo "Modify grub.conf console value(s)."
         # Note: Disable shellcheck warning.  We don't want $WORK_DIR to expand here. $WORK_DIR in
         # the sed command written to the fixup file should expand when run in the fixup file.
         # shellcheck disable=SC2016
+
+        # Most releases have entries for tty0 and ttyS0.  v13.1.x only has tty0.
+        # Console entry ordering is different for different platforms.  So, this code
+        # clears the ttyS0 console entry and then replaces the tty0 console entry
+        # with the console values.
+        #
+        # Note: Because of how these lines are inserted after a marker, the order is reversed here.
         sed -i "/Content of grub.conf/a sed -i 's/tty0/$CONSOLES_VALUE/g' \$WORK_DIR/mnt/grub/grub.conf" "$fixup_file"
+        sed -i "/Content of grub.conf/a sed -i 's/console=ttyS0//g' \$WORK_DIR/mnt/grub/grub.conf" "$fixup_file"
     else
         log_echo "No changes to grub.conf console value(s)."
     fi
