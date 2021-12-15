@@ -1,5 +1,5 @@
 """alibaba_image_name module"""
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -31,8 +31,7 @@ class AlibabaImageName(ImageName):
 
         min_chars = int(get_config_value('ALIBABA_IMAGE_NAME_LENGTH_MIN'))
         max_chars = int(get_config_value('ALIBABA_IMAGE_NAME_LENGTH_MAX'))
-        rules = ImageNameRules(min_chars, max_chars,
-                               match_regex=r'^(?!(https://|http://))[a-zA-Z][a-zA-Z0-9\-_]+$')
+        rules = ImageNameRules(min_chars, max_chars, match_regex=r'^[a-zA-Z][a-zA-Z0-9\.\-_]+$')
 
         transform = ImageNameTransform(disallowed_regex=r'[^a-zA-Z0-9\-_]', replacement_char='-',
                                        to_lower=False)

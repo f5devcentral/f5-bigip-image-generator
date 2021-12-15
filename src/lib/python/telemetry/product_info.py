@@ -160,9 +160,9 @@ def get_linux_version(package, operating_system):
         with subprocess.Popen(["dpkg", "-s", package], stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE) as process:
             output = process.communicate()
-            LOGGER.error("dpkg response:")
-            LOGGER.error(output[0])
-            LOGGER.error(output[1])
+            LOGGER.info("dpkg response:")
+            LOGGER.info(output[0])
+            LOGGER.info(output[1])
             if b"not installed" in output[1]:
                 return "not installed"
             version = str(output[0])

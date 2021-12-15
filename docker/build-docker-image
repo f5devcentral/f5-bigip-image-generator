@@ -99,7 +99,10 @@ function base_image {
 	BASE_REPO="alpine:3.11.5"
 	DOCKERFILE="Dockerfile"
     elif [ "$BASE_IMAGE" = "ubuntu" ]; then
-	BASE_REPO="ubuntu:18.04"
+        BASE_REPO="ubuntu:20.04"
+        DOCKERFILE="Dockerfile.ubuntu"
+    elif [ "$BASE_IMAGE" = "ubuntu18" ]; then
+        BASE_REPO="ubuntu:18.04"
 	DOCKERFILE="Dockerfile.ubuntu"
     else
 	echo "$BASE_IMAGE is not a supported docker base image"

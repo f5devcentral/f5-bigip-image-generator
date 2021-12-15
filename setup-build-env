@@ -195,6 +195,9 @@ apt-get)
     # Install the build/development tools like make/gcc etc.
     sudo $PACKAGE_INSTALLER install -y build-essential
 
+    # Installing the rpm package requires us to set a timezone
+    ln -snf /usr/share/zoneinfo/"$TZ" /etc/localtime && echo "$TZ" > /etc/timezone
+
     # Some ubuntu distributions don't have rpm2cpio and cpio installed by default.
     sudo $PACKAGE_INSTALLER install -y --no-install-recommends rpm2cpio cpio
 
@@ -303,7 +306,7 @@ fi
 # shellcheck disable=SC1090
 source "$VENV_DIR/bin/activate"
 
-python3 -m pip install pip==21.2.3
+python3 -m pip install pip==21.2.4
 
 pip3 install wheel
 export CRYPTOGRAPHY_DONT_BUILD_RUST=1
@@ -341,25 +344,36 @@ if [ "$INSTALL_GCE" == "true" ] || [ "$INSTALL_ALL" == "true" ]; then
 	# Create an environment variable for the correct distribution:
 	sudo $PACKAGE_INSTALLER install -y lsb-release
 	lsb_rel=$(lsb_release -c -s)
-	export CLOUD_SDK_REPO="cloud-sdk-$lsb_rel"
+	lsb_rel_version=$(lsb_release -r)
+	echo "OS version is: $lsb_rel_version"
 
-	# If not already defined, add the Cloud SDK distribution URI as a package source:
-	google_sdk_uri="deb http://packages.cloud.google.com/apt $CLOUD_SDK_REPO main"
-	google_sources_file="/etc/apt/sources.list.d/google-cloud-sdk.list"
-	if ! grep -Fxq "$google_sdk_uri" "$google_sources_file"; then
-	    echo "$google_sdk_uri" | sudo tee -a "$google_sources_file"
+        if [[ "$lsb_rel_version" == *"20.04"* ]]; then
+		wget https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-307.0.0-linux-x86_64.tar.gz
+		tar -xf google-cloud-sdk-307.0.0-linux-x86_64.tar.gz
+		(cd google-cloud-sdk && yes | ./install.sh)
+		rm -rf google-cloud-sdk
+		rm google-cloud-sdk-307.0.0-linux-x86_64.tar.gz
+	else
+		export CLOUD_SDK_REPO="cloud-sdk-$lsb_rel"
+
+		# If not already defined, add the Cloud SDK distribution URI as a package source:
+		google_sdk_uri="deb http://packages.cloud.google.com/apt $CLOUD_SDK_REPO main"
+		google_sources_file="/etc/apt/sources.list.d/google-cloud-sdk.list"
+		if ! grep -Fxq "$google_sdk_uri" "$google_sources_file"; then
+		    echo "$google_sdk_uri" | sudo tee -a "$google_sources_file"
+		fi
+
+		# Import the Google Cloud public key:
+		curl https://packages.cloud.google.com/apt/doc/apt-key.gpg \
+			| sudo apt-key add -
+
+		# Refresh the list of packages as per the updated gcloud package source
+		# in the above two steps.
+		sudo $PACKAGE_INSTALLER update
+
+		# Install the Cloud SDK:
+		sudo $PACKAGE_INSTALLER install -y google-cloud-sdk
 	fi
-
-	# Import the Google Cloud public key:
-	curl https://packages.cloud.google.com/apt/doc/apt-key.gpg \
-		| sudo apt-key add -
-
-	# Refresh the list of packages as per the updated gcloud package source
-	# in the above two steps.
-	sudo $PACKAGE_INSTALLER update
-
-	# Install the Cloud SDK:
-	sudo $PACKAGE_INSTALLER install -y google-cloud-sdk
 	;;
     apk)
 	# THe is no specific distribution for alpine

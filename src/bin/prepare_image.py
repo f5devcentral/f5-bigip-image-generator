@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Image preparation command handler"""
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -15,6 +15,8 @@
 # the License.
 
 import argparse
+import sys
+
 from image.image_controller import ImageController
 from util.config import get_config_value
 from util.logger import LOGGER
@@ -72,7 +74,8 @@ def main():
             else:
                 LOGGER.warning("FAILURE: Check the log file '%s' and fix the problem "
                                "before re-running.", get_config_value('LOG_FILE'))
-
+                sys.exit(1)
+    sys.exit(0)
 
 if __name__ == "__main__":
     main()

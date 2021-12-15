@@ -49,7 +49,7 @@ class OperationInfo:
 
 def get_product():
     """Gets the product that the image generator is being used to build"""
-    return "BIG-IP"
+    return read_file_value("VersionFile.json", "version_product")
 
 def get_product_version():
     """Gets the version of the product that is being built."""
