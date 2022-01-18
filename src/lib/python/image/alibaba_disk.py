@@ -118,10 +118,22 @@ class AlibabaDisk(BaseDisk):
 
         region = get_config_value('ALIBABA_REGION')
         bucket_name = get_config_value('ALIBABA_BUCKET')
-        self.bucket = oss2.Bucket(auth, 'https://oss-' + region + '.aliyuncs.com', bucket_name)
+        upload_internal_oss_endpoint = get_config_value('ALIBABA_UPLOAD_INTERNAL_OSS_ENDPOINT')
+
+        if upload_internal_oss_endpoint:
+            LOGGER.info('ALIBABA_UPLOAD_INTERNAL_OSS_ENDPOINT was set. Using internal endpoint.')
+            internal = '-internal'
+        else:
+            LOGGER.info('ALIBABA_UPLOAD_INTERNAL_OSS_ENDPOINT was not set. Upload via internet.')
+            internal = ''
+
+        oss_endpoint = 'https://oss-{}{}.aliyuncs.com'.format(region, internal)
+        LOGGER.info("OSS Endpoint: '%s'", oss_endpoint)
+
+        self.bucket = oss2.Bucket(auth, oss_endpoint, bucket_name)
 
         # save bucket in artifacts dir json file
-        alibaba_location_json = {"alibaba_location": 'https://oss-{}.aliyuncs.com'.format(region)}
+        alibaba_location_json = {"alibaba_location": oss_endpoint}
         artifacts_dir = get_config_value("ARTIFACTS_DIR")
         with open(artifacts_dir + "/alibaba_location.json", "w") as alibaba_location_json_file:
             json.dump(alibaba_location_json, alibaba_location_json_file)

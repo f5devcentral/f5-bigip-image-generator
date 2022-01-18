@@ -1,5 +1,5 @@
 """Cloud image tagging handler."""
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -21,6 +21,7 @@ import re
 from metadata.metadata_util import MetadataConfigFileUtil
 from metadata.metadata_filter import MetadataFilter
 from util.config import get_list_from_config_yaml
+from util.logger import LOGGER
 
 class CloudImageTags(MetadataFilter):
     """Class used to generate image tags"""
@@ -43,6 +44,15 @@ class CloudImageTags(MetadataFilter):
         for user_tag in user_tags:
             for key, value in user_tag.items():
                 self.metadata[key] = value
+
+        # Remove tags user requested to exclude
+        user_exclude_tags = get_list_from_config_yaml('IMAGE_TAGS_EXCLUDE')
+        for key in user_exclude_tags:
+            if key in self.metadata:
+                del self.metadata[key]
+                LOGGER.info('Excluded key [%s] from image tags.', key)
+            else:
+                LOGGER.info('Key [%s] does not exist in image tags and cannot be excluded.', key)
 
 
     def format(self, pair_separator=',', kv_separator='=', label_kv=False, sub_chars=None):

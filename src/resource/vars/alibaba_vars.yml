@@ -1,4 +1,4 @@
-# Copyright (C) 2019 F5 Networks, Inc
+# Copyright (C) 2019-2021 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -88,3 +88,8 @@ ALIBABA_UPLOAD_FILE_RETRY_DELAY:
   description: >-
     Sleep duration (in seconds) between retries for Alibaba file upload.
   internal: true
+
+ALIBABA_UPLOAD_INTERNAL_OSS_ENDPOINT:
+  description: >-
+    Define if using an internal OSS endpoint within the Alibaba Cloud.
+    Do NOT use this variable if building images outside Alibaba Cloud.
