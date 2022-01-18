@@ -31,6 +31,7 @@ Define the following parameters in a config file or set as an environment variab
 |ALIBABA_BUCKET|Yes|[value]|Alibaba OSS bucket used for image storage.|
 |ALIBABA_REGION|Yes|[value]|Alibaba ECS region used for image generation.|
 |ALIBABA_IMAGE_SHARE_ACCOUNT_IDS|No|[value]|List of Alibaba account IDs with which you want the generated image shared.|
+|ALIBABA_UPLOAD_INTERNAL_OSS_ENDPOINT|No|[value]|Define if using an OSS internal endpoint within the Alibaba Cloud. Do NOT use this variable if building images outside Alibaba Cloud.|
 
 
 ##### NOTE
@@ -82,6 +83,7 @@ completed and submitted the F5 Contributor License Agreement.
 [9]: https://www.alibabacloud.com/help/doc-detail/92270.htm?spm=a2c63.p38356.b99.123.319c412aF3kxA0
 [4]: https://www.alibabacloud.com/help/doc-detail/25542.htm
 [5]: https://support.f5.com/csp/article/K14946
+
 
 
 

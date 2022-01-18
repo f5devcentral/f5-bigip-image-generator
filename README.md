@@ -54,10 +54,11 @@ The following table lists system requirements for using the Image Generator to c
 
 The following table lists supported operating systems:
 
-| Operating System                     | Version                                                                                                                                                                        
-|--------------------------------------| :---------------------------------------------------------------
-| Ubuntu (F5 Image Generator-validated)| 18.04 LTS operating system                                      
-| Alpine (F5 Image Generator-validated)| 3.11.5                                                          
+| Operating System                     | Version                         | F5 IGT Version                                                                                                                                              
+|:-------------------------------------|:--------------------------------|:-------------------------------
+| Ubuntu (F5 Image Generator-validated)| 18.04 LTS operating system      | 1.0+
+| Ubuntu (F5 Image Generator-validated)| 20.04 LTS operating system      | 1.16+                              
+| Alpine (F5 Image Generator-validated)| 3.11.5                          | 1.0+                                
 
 
 These operating systems require a unified [setup script][2] containing the following tools package:
@@ -189,6 +190,7 @@ command line >  configuration file >  environment variable. To access the Image 
     |IMAGE_SIG_PRIVATE_KEY| |No|[value]|Path to private key file used to sign images.|
     |IMAGE_SIG_PUBLIC_KEY| |No|[value]|Path to public key file used to verify images.|
     |IMAGE_TAGS| |No|[value]|List of key value pairs to set as tags/labels for the image.|
+    |IMAGE_TAGS_EXCLUDE| |No| [value]|List of keys to exclude from the tags/labels for the image.| 
     |INFO| |No|[value]|Display image generator environment information.|
     |ISO|-i|Yes|[value]|Full path or URL to a BIG-IP ISO file used as a basis for image generation.|
     |ISO_SIG|-s|No|[value]|Full path or URL to an ISO signature file used to validate the ISO.|
@@ -266,13 +268,22 @@ command line >  configuration file >  environment variable. To access the Image 
       - name: "my-custom-ami-v15.0.0"
       - org: "shared-services"
       - project: "alpha"
+      IMAGE_TAGS_EXCLUDE:
+      - build_source
+      - build_type
+      - version_basebuild
+      - version_build
+      - version_edition
+      - version_version
     ```
     
     Command line:
 
     ```
      –-image-tags ‘{"name":"my-custom-ami-v15.0.0"},{"org":"shared-services"},{"project":"alpha"}’
+     --image-tags-exclude '["build_source","build_type","version_basebuild","version_build","version_edition","version_version"]'
     ``` 
+
 7. OPTIONAL: If you experience disk size limitations, then increase logical volume sizes for your configurations by using the UPDATE_LV_SIZES variable for the following logical volumes (ONLY):
 
    * appdata 
@@ -381,19 +392,16 @@ This section provides troubleshooting information for setting up the environment
 
 **Low disk space**:
 
-
 ```
 At least 20000 MB storage is needed.  Only <space remaining> MB found.
 ```
 
-**Remedy**:
+**Solution**:
 
-```
 Free up local disk space, so you have more than 20GB (20000 MB) free.
 
-```
-
 **Docker error message**:
+
 ```
 Temporary location for injected files: '/workdir/artifacts/BIGIP-15.1.0-0.0.31/aws/ltm_1slot/tmp.CgrVUToDbf/stage.initrd/etc/injected_files'
 Collecting information about installed software on the build machine
@@ -401,7 +409,7 @@ copy 'authorized_keys' to a temporary location for '/home/admin/.ssh/authorized_
 Invalid URL 'authorized_keys': No schema supplied.
 ```
 
-**Remedy**:
+**Solution**:
 
 You see this message when your asset files reside in a local directory, or a relative directory from where you are running the Docker command. Relocate your asset files to a Docker file directory or mount a different volume and include those files in the volume BEFORE building your image.
 
@@ -413,16 +421,19 @@ package using the following command.
 
 `apt-get install python3-venv`
 
-**Remedy**:
+**Solution**:
+
 You see this error, when you have not run the Setup Script. Run the [setup script][2].
 
 **Environment error message**:
 `qemu-system-x86_64: cannot set up guest memory 'pc.ram': Cannot allocate memory`
 
-**Remedy**:
+**Solution**:
+
 You see this error when you run in an environment with minimal memory. Increase memory for the environment.
 
 **Environment error message**:
+
 ```
   Watchdog timer expired! (7201 seconds).
        Killing 'qemu' with pid 6073!
@@ -434,10 +445,12 @@ You see this error when you run in an environment with minimal memory. Increase 
   the next build will complete successfully.
 ```
 
-**Remedy**:
+**Solution**:
+
 Likely caused by either running in an environment that does not support virtualization or running in a lightweight environment. See [Prerequisites](#prerequisites).
 
 **Missing packages error message**:
+
 ```
   Traceback (most recent call last):
    File "/home/ubuntu/ve-image-generator/src/lib/bash/../../bin/read_injected_files.py", line 22, in <module>
@@ -446,16 +459,18 @@ Likely caused by either running in an environment that does not support virtuali
      import distro
 ```
 
-**Remedy**:
+**Solution**:
+
 It is possible that the setup script encountered an error and did not complete, or was run as a different user. Run the setup script again, and then review the output.
 
 **KVM permissions error message**:
+
 ```
   Could not access KVM kernel module: Permission denied
   qemu-system-x86_64: failed to initialize KVM: Permission denied
 ```
 
-**Remedy**:
+**Solutions**:
 
 * Restart your system or log out and back in to your system.
 * Check that the user is in the kvm group in: <br/>
@@ -482,15 +497,19 @@ It is possible that the setup script encountered an error and did not complete, 
 * Change the log level. For troubleshooting, consider changing the log level to DEBUG or TRACE.
 
 **AWS error message**:
+
 `The service role <vmimport> does not exist or does not have sufficient permissions for the service to continue.`
 
-**Remedy**:
+**Solution**:
+
 AWS requires an **IAM Role** with import permissions (see the [AWS User Guide][3] for more information).
 
 **VMware and AWS error message**:
+
 `ovftool isn't installed or missing from PATH. Please install it before trying again.`
 
-**Remedy**:
+**Solution**:
+
 Download and install the [ovftool][22] before trying again.
 
 ## Support guide
@@ -502,7 +521,7 @@ To report defects and security vulnerabilties, or submit enhancements and genera
 2. Enter a title, a description, and then click **Submit new issue**.
 
 ### Known issues
-All known issues are now on the GitHub **Issues** tab for better tracking and visibility. Sort the [issues list][27] by expanding the **Label** column and selecting **Known issue**.
+All [known issues][27] are now on the GitHub **Issues** tab for better tracking and visibility. Sort the [issues list][27] by expanding the **Label** column and selecting **Known issue**.
 
 ## Appendix
 This section contains sample configuration code and output data referenced elsewhere in this document.
