@@ -8,6 +8,9 @@ You will find the following information:
   * [Supported platforms and prerequisites](#supported-platforms-and-prerequisites)
   * [Environment recommendations](#environment-recommendations)
 * [Setup guide](#setup-guide)
+  * [Install image generator](#install-image-generator)
+  * [Run the setup script](#run-the-setup-script)
+  * [Build the image from the command line](#build-the-image-from-the-command-line)
   * [Docker container setup](#docker-container-setup) 
 * [User guide](#user-guide)
   * [Create config file](#create-config-file)
@@ -25,7 +28,13 @@ The F5 Virtual Edition (VE) team developed the F5 BIG-IP Image Generator interna
 
 * Create custom images from the .ISO file for F5 BIG-IP VE releases or for hot-fixes that are not available on the various public cloud marketplaces.
 * Provide pre-deployment file customization of BIG-IP (for example, SSH keys, trusted certificates, custom packages, and so forth).
-* Automatically publish images to public cloud providers.
+* Automatically publish images to public cloud providers:
+
+  * [Alibaba][38] - consult the [Alibaba Quick Start Guide][26].
+  * [AWS][39] - consult the [AWS Quick Start Guide][6].
+  * [Azure][40] - consult the [Azure Quick Start Guide][7].  
+  * [GCE ][41] - consult the [Google Quick Start Guide][8]. 
+
 * Simplify deployment workflows, such as encrypting custom images in AWS (prevents launching an instance in the marketplace first).
 
 ##### SECURITY WARNING
@@ -101,52 +110,85 @@ For more information about virtualization support, see [KVM Virtualization][4].
 -------------------------------------------------------------------------------
 
 ### Environment recommendations
-Due to several required tools/SDKs to generate images, F5 Networks recommends using a standalone machine/environment for the BIG-IP Image Generator. F5 provides a [setup script][2] to assist in setting up that environment. The script installs Python packages in a virtual environment to isolate them from the rest of the system; however, the script also installs other tools, such as zip, directly into the base environment. These packages are not downloaded from F5 repositories, but come from the respective project repositories. It is your responsibility to verify that these packages are safe to use. 
+Due to several required tools/SDKs to generate images, F5 Inc. recommends using a standalone machine/environment for the BIG-IP Image Generator. F5 provides a [setup script][2] to assist in setting up that environment. The script installs Python packages in a virtual environment to isolate them from the rest of the system; however, the script also installs other tools, such as zip, directly into the base environment. These packages are not downloaded from F5 repositories, but come from the respective project repositories. It is your responsibility to verify that these packages are safe to use. 
 
 
 ## Setup guide
 
-This section provides steps for installing the generator tool, and then using the setup script. The setup script installs tools/SDKs required to generate images for all supported platforms, and takes several minutes to complete. During this setup process, certain services will require a restart.
+This section provides steps for installing the generator tool, running the setup script, and building an image file. The setup script installs tools/SDKs required to generate images for all supported platforms, and takes several minutes to complete. During this setup process, certain services will require a restart.
 
-1. Do one of the following to install the BIG-IP Image Generator source code.
+### Dowload image generator source code
 
-   * Clone
+Do one of the following to download the BIG-IP Image Generator source code to your Ubuntu VM:
+
+* Clone
      
-     `$ git init` <br/>
-     `$ git clone https://github.com/f5devcentral/f5-bigip-image-generator.git` <br/>
-     `or` <br/>
-     `$ git clone git@github.com:f5devcentral/f5-bigip-image-generator.git` <br/>
-     `$ cd f5-bigip-image-generator` <br/>
-     `$ git checkout v1.0` (checkout the tag associated with the release version you want to install)
+  `$ git init` <br/>
+  `$ git clone https://github.com/f5devcentral/f5-bigip-image-generator.git` <br/>
+
+  Or
+
+  `$ git clone git@github.com:f5devcentral/f5-bigip-image-generator.git` <br/>
+  `$ cd f5-bigip-image-generator` <br/>
+  `$ git checkout v1.0` (Checkout the tag associated with the release version you want to install.)
      
-   * Download
-   
-     1. Point your browser to https://github.com/f5devcentral/f5-bigip-image-generator, open the branch with the tag associated with the release you want to install, click **Download**, and then select the file type (zip, tar.gz, tar.bz2, or tar) you want to install.
-     2. At your command line, type the following (this example is uses tar.gz file type):
+* Download from HTTPS
+  
+  1. Point your browser to ``https://github.com/f5devcentral/f5-bigip-image-generator``, open the branch with the tag associated with the release you want to install, click **Download**, and then select the file type (zip or tar.gz) you want to download. Or, download using curl, for example:  
+
+        `curl -OL https://github.com/f5devcentral/f5-bigip-image-generator/archive/refs/tags/v1.16.zip` <br/>
+
+  2. Type the following (this example uses tar.gz file type) to extract the source code:
+
     
-        `$ scp -i ~/.ssh/my_key Downloads/f5-bigip-image-generator-1.0.tar.gz ubuntu@image-generator-ip:/home/ubuntu/` <br/>
-        `$ ssh -i ~/.ssh/my_key ubuntu@image-generator-ip` <br/>
-        `ubuntu@image-generator-ip:~$ tar -xzvf f5-bigip-image-generator-1.0.tar.gz` <br/>
-        `ubuntu@image-generator-ip:~$ cd f5-bigip-image-generator-1.0`  
+     `unzip v1.16.zip` <br/> 
+     `or ` <br/> 
+     `tar -xzvf v1.16.tar.gz` <br/>
+     `cd f5-bigip-image-generator-1.16`
+  
 
-2. To run the [setup script][2], type:  `./setup-build-env` which installs all tools required for all supported platforms. To reduce the footprint required for development tools that you install based on the platform for which you are building, use the supported Platform variable options; for example, ``./setup-build-env --qcow2``, ``./setup-build-env --aws``,  ``./setup-build-env --vhd``, and other supported platforms. Consult the [User Guide](#create-config-file) for the complete ``PLATFORM`` parameter description.
+### Install Image Generator running the setup script
+
+1. To run the [setup script][2], type:  `./setup-build-env` 
+
+   This script installs all tools required for all supported platforms. 
    
-   Options include:
+   To reduce the footprint required for development tools that you install based on the platform for which you are building, use the supported Platform variable options. For example:
+   
+   * ``./setup-build-env --qcow2``
+   * ``./setup-build-env --aws``
+   * ``./setup-build-env --vhd``
+
+   Consult the [User Guide](#create-config-file) for complete ``PLATFORM`` parameter descriptions.
+   
+   Other options include:
    
    * `--add-dev-tools` - installs additional tools used during development, such as pylint, shellcheck, and bats
 
-3. Restart your computer, or log out, and then log back into your system.
-4. To view the Image Generator operating environment use ``./build-image --info``. This will collect information such as, installed software on the build machine. 
+2. Restart your computer, or log out, and then log back into your system.
+3. To view the Image Generator operating environment type:
 
+   ``./build-image --info``
+
+   This will collect information such as, installed software on the build machine. 
+
+
+### Build the BIG-IP image
+
+1.	To build the image, type: 
+
+   `$ ./build-image -i ~/images/BIGIP-15.1.4-0.0.47.iso -p qcow2 -m ltm -b 1`
+ 
+To build an image using a configuration file, see the [User Guide](#create-config-file).
 
 ### Docker container setup
 
-To avoid installing programs to your environment and enable running simultaneous image-builds on the same computer, you can utilize the [F5 container on Docker Hub][34] that provides a convenient pre-built runtime with many of the tool’s package dependencies pre-installed (with the exception of VMware’s ovftool). For complete information, consult [Docker Hub][34].
+Alternatively, to avoid installing programs to your environment and enable running simultaneous image-builds on the same computer, you can utilize the [F5 container on Docker Hub][34] that provides a convenient pre-built runtime with many of the tool’s package dependencies pre-installed (with the exception of VMware’s ovftool). For complete information, consult [Docker Hub][34].
 
 
 ## User guide
 
-This section provides steps for creating a [config.yml][5] file that defines frequently used settings and shared variables that the BIG-IP Image Generator will use for creating custom images, running the Image Generator tool, and then customizing log details for monitoring progress. 
+This section provides steps for creating a [config.yaml][5] file that defines frequently used settings and shared variables that the BIG-IP Image Generator will use for creating custom images, running the Image Generator tool, and then customizing log details for monitoring progress. 
 
 ##### TIP
 
@@ -165,7 +207,7 @@ To define the LTM and ALL templates, use the MODULES parameter in the following 
 
 #### Create config file
 
-1. Create a [config.yml][5] for frequently used settings and shared variables. The BIG-IP Image Generator will only use the variable definitions applicable to the specified provider and ignores other variables.
+1. Create a [config.yaml][5] for frequently used settings and shared variables. The BIG-IP Image Generator will only use the variable definitions applicable to the specified provider and ignores other variables.
 
 2. Define the following shared parameters or set as an environment variable. Optionally, use these parameters on the command line with leading dashes (for example, `--platform`). In some cases, you can use a shorthand flag. If a parameter is defined in multiple places, then the priority in descending order is:
 command line >  configuration file >  environment variable. To access the Image Generator help file, run `-h/--help`.
@@ -210,10 +252,10 @@ command line >  configuration file >  environment variable. To access the Image 
 
 3. When specifying a cloud provider, supply the following provider-specific information:
 
-   * [Alibaba][26]
-   * [AWS][6]
-   * [Azure][7] - When creating BIG-IP images in Azure, you must also [create an application][31]. Consult the [Azure ReadMe][7] file for more information.
-   * [GCE ][8]  
+   * [Alibaba][42]
+   * [AWS][43]
+   * [Azure][44] - When creating BIG-IP images in Azure, you must also [create an application][31]. Consult the [Azure Quick Start Guide][40] for more information.
+   * [GCE ][45]  
     
    The following platforms do not currently require platform-specific configuration:
    
@@ -221,27 +263,33 @@ command line >  configuration file >  environment variable. To access the Image 
    * VHD (Microsoft Hyper-V)
    * VMware (ESX/i Server)
 
-4. OPTIONAL: The Image Generator tool can inject additional files (for example, keys, certs, [Declarative Onboarding][37], and language extension (lx) packages) and optionally designate file permissions into the virtual disk image to allow for image customization. You can do this using the command line; however, the syntax is simpler using the configuration file:
+4. OPTIONAL: The Image Generator tool can inject additional files (for example, keys, certs, language extension (lx) packages like  [Declarative Onboarding][37] startup scripts, and optionally designate file permissions into the virtual disk image to allow for image customization. You can do this using the command line; however, the syntax is simpler using the configuration file:
 
    ```
-      UPDATE_IMAGE_FILES:   
-      -  source: "/home/ubuntu/custom/authorized_keys"
-         destination: "/home/admin/.ssh/authorized_keys"
-         mode: "600"
+      UPDATE_IMAGE_FILES:
       -  source: "/home/ubuntu/custom/trusted-ca.pem"
          destination: "/config/ssl/ssl.crt/trusted-ca.pem"
-      -  source: "https://github.com/F5Networks/f5-declarative-onboarding/releases/download/v1.8.0/f5-declarative-onboarding-1.8.0-2.noarch.rpm"
-         destination: "/var/config/rest/downloads/f5-declarative-onboarding-1.8.0-2.noarch.rpm"
-      -  source: "https://github.com/F5Networks/f5-appsvcs-extension/releases/download/v3.15.0/f5-appsvcs-3.15.0-6.noarch.rpm"
-         destination: "/var/config/rest/downloads/f5-appsvcs-3.15.0-6.noarch.rpm"
-      -  source: "https://github.com/F5Networks/f5-telemetry-streaming/releases/download/v1.7.0/f5-telemetry-1.7.0-1.noarch.rpm"
-         destination: "/var/config/rest/downloads/f5-telemetry-1.7.0-1.noarch.rpm"   
+      -  source: "/home/ubuntu/custom/authorized_keys"
+         destination: "/home/admin/.ssh/authorized_keys"
+      -  source: "https://github.com/F5Networks/f5-declarative-onboarding/releases/download/v1.27.0/f5-declarative-onboarding-1.27.0-6.noarch.rpm"
+         destination: "/var/config/rest/downloads/f5-declarative-onboarding-1.27.0-6.noarch.rpm"
+      -  source: "https://github.com/F5Networks/f5-appsvcs-extension/releases/download//v3.34.0/f5-appsvcs-3.34.0-4.noarch.rpm"
+         destination: "/var/config/rest/downloads/f5-appsvcs-3.34.0-4.noarch.rpm"
+      -  source: "https://github.com/F5Networks/f5-telemetry-streaming/releases/download/v1.26.0/f5-telemetry-1.26.0-3.noarch.rpm"
+         destination: "/var/config/rest/downloads/f5-telemetry-1.26.0-3.noarch.rpm"
+      -  source: "https://github.com/F5Networks/f5-bigip-runtime-init/releases/download/1.4.1/f5-bigip-runtime-init-1.4.1-1.gz.run"
+         destination: "/var/config/rest/downloads/f5-bigip-runtime-init-1.4.1-1.gz.run"
+      -  source: "/home/ubuntu/custom/startup-script.sh"
+         destination: "/config/cloud/startup-script.sh"
+         mode: "0755"
+      -  source: "/home/ubuntu/custom/startup"
+         destination: "/config/startup"  
    ```
        
 
    ##### IMPORTANT
    -----------------------
-   Avoid overwriting existing system related files unless directed by F5 networks. Place these additional files in typical locations where you store customizations. For example, place files in the `/var/config/rest/downloads/` directory where they can be included in the user configuration set (UCS) file or in the `/shared` directory, so each slot can access the customizations. Otherwise, you will lose these changes during an upgrade. For more information about UCS, see the  *file inclusion into UCS archives* topic on [AskF5][24].  
+   Avoid overwriting existing system related files unless directed by F5 Inc. Place these additional files in typical locations where you store customizations. For example, place files in the `/var/config/rest/downloads/` directory where they can be included in the user configuration set (UCS) file or in the `/shared` directory, so each slot can access the customizations. Otherwise, you will lose these changes during an upgrade. For more information about UCS, see the  *file inclusion into UCS archives* topic on [AskF5][24].  
 
    --------------------------------
 
@@ -251,14 +299,14 @@ command line >  configuration file >  environment variable. To access the Image 
    
    To benefit from the `--reuse` parameter, you must run the Image Generator at least twice using the `--reuse` parameter for the same [PLATFORM, MODULES, BOOT_LOCATIONS] combination. In the first run, `--reuse` parameter will guarantee that the intermediary files are preserved. In the second run (when necessary), the `--reuse` parameter enables consumption of the intermediary files.
    
-   1. Build an image, type: `./build-image --reuse -i /var/tmp/BIGIP-15.0.0-0.0.39.iso -c config.yml -p qcow2 -m ltm -b 1 --image-tag "Name: my-custom-vm-v12.1.1" --image-tag "org: shared-services"`
-   2. To reuse the environment associated with the specified source image, platform, modules, and boot locations, type the exact same command used in Step 1: `./build-image --reuse -i /var/tmp/BIGIP-15.0.0-0.0.39.iso -c config.yml -p qcow2 -m ltm -b 1 --image-tag "Name: my-custom-vm-v12.1.1" --image-tag "org: shared-services"`.
+   1. Build an image, type: `./build-image --reuse -i /var/tmp/BIGIP-15.0.0-0.0.39.iso -c config.yaml -p qcow2 -m ltm -b 1 --image-tag "Name: my-custom-vm-v12.1.1" --image-tag "org: shared-services"`
+   2. To reuse the environment associated with the specified source image, platform, modules, and boot locations, type the exact same command used in Step 1: `./build-image --reuse -i /var/tmp/BIGIP-15.0.0-0.0.39.iso -c config.yaml -p qcow2 -m ltm -b 1 --image-tag "Name: my-custom-vm-v12.1.1" --image-tag "org: shared-services"`.
 
    For debugging purposes, this tool captures the contents of the PLATFORM, MODULES, BOOT_LOCATIONS artifacts directory in a `.snapshot.zip` file (excluding large binary files). Find this `.snapshot.zip` file in the same directory as the log file (for example, `logs/image-qcow2-ltm-1slot` for log file and `logs/image-qcow2-ltm-1slot.snapshot.zip` for the artifact files). 
 
 6.	OPTIONAL: You can assign image tags to published images; however, rules for image tag definitions change depending upon the target, cloud provider ([Alibaba][26], [AWS][21], [Azure][19], and [GCE ][20]). 
-    Currently, the Image Generator tool does not validate for each cloud provider's image tag:key and image tag:value pairing. Therefore, if you do NOT 
-    properly define your image tag:key/value pair for the target cloud platform, then your image is created, but your image will not have the tags that 
+    Currently, the Image Generator tool does not validate for each cloud provider's image ``tag:key`` and image ``tag:value`` pairing. Therefore, if you do NOT 
+    properly define your image ``tag:key/value`` pair for the target cloud platform, then your image is created, but your image will not have the tags that 
     you defined. To define image tags, consult one of the following examples:
     
     Configuration file (recommended):
@@ -353,7 +401,7 @@ command line >  configuration file >  environment variable. To access the Image 
    For example:
 
    ```
-      ./build-image -i /var/tmp/BIGIP-15.1.1-0.0.6.iso -c config.yml -p vmware -m ltm -b 1 --ova-prop-net-user
+      ./build-image -i /var/tmp/BIGIP-15.1.1-0.0.6.iso -c config.yaml -p vmware -m ltm -b 1 --ova-prop-net-user
 
    ```
 
@@ -367,9 +415,9 @@ command line >  configuration file >  environment variable. To access the Image 
       - ttyS1
       - tty1
       
-      ```
+      ``` 
       
-      
+
 ### Monitor progress
 
 1. The Image Generator will provide high-level progress information on the console. For more details, see the log file associated with the job, located in the logs directory. Log files use the following naming convention: 
@@ -385,6 +433,11 @@ You can locate files in the following directories:
 * **images** - The Image Generator tool generates a virtual disk image from the BIG-IP product ISO in the default, `images` directory. Use the `IMAGE_DIR` parameter to override this default value and store images in a different directory.
 * **logs** - Log files. The `LOG_FILE` parameter can be used to override this default value. Default log file name is based on platform, modules, and boot locations.
 * **src** - build-image script and other source files.
+
+
+
+ 
+
 
 ## Troubleshooting guide
 
@@ -615,9 +668,9 @@ This section contains sample configuration code and output data referenced elsew
 
 
 
-### Copyright
+#### Copyright
 
-Copyright (C) 2019-2021 F5 Networks, Inc.
+Copyright (C) 2019-2022 F5 Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not
 use this file except in compliance with the License. You may obtain a copy of
@@ -632,7 +685,7 @@ License for the specific language governing permissions and limitations under
 the License.
 
 
-### Contributor License Agreement
+#### Contributor License Agreement
 
 Individuals or business entities who contribute to this project must have
 completed and submitted the F5 Contributor License Agreement.
@@ -647,10 +700,10 @@ completed and submitted the F5 Contributor License Agreement.
 [2]: https://github.com/f5devcentral/f5-bigip-image-generator/blob/master/setup-build-env
 [3]: https://docs.aws.amazon.com/vm-import/latest/userguide/vmimport-image-import.html
 [4]: http://manpages.ubuntu.com/manpages/bionic/man1/kvm-ok.1.html
-[5]: https://github.com/f5devcentral/f5-bigip-image-generator/blob/master/docs/examples/config.yml
-[6]: https://github.com/f5devcentral/f5-bigip-image-generator/tree/master/docs/providers/aws
-[7]: https://github.com/f5devcentral/f5-bigip-image-generator/tree/master/docs/providers/azure
-[8]: https://github.com/f5devcentral/f5-bigip-image-generator/tree/master/docs/providers/gce
+[5]: https://github.com/f5devcentral/f5-bigip-image-generator/blob/master/docs/examples/config.yaml
+[6]: https://github.com/f5devcentral/f5-bigip-image-generator/tree/master/docs/providers/aws#create-image-for-aws-using-docker-container
+[7]: https://github.com/f5devcentral/f5-bigip-image-generator/tree/master/docs/providers/azure#create-image-for-azure-using-docker-container
+[8]: https://github.com/f5devcentral/f5-bigip-image-generator/tree/master/docs/providers/gce#create-image-for-gce-using-docker-container
 [9]: https://cloud.google.com/iam/docs/creating-managing-service-accounts
 [10]: https://docs.microsoft.com/en-us/cli/azure/create-an-azure-service-principal-azure-cli?view=azure-cli-latest
 [11]: https://docs.microsoft.com/en-us/rest/api/storageservices/create-container 
@@ -668,7 +721,7 @@ completed and submitted the F5 Contributor License Agreement.
 [23]: https://www.f5.com/company/contact/regional-offices#product-support
 [24]: https://support.f5.com/csp/article/K4422
 [25]: https://cloud.google.com/compute/docs/instances/enable-nested-virtualization-vm-instances#enablenestedvirt
-[26]: https://github.com/f5devcentral/f5-bigip-image-generator/tree/master/docs/providers/alibaba
+[26]: https://github.com/f5devcentral/f5-bigip-image-generator/tree/master/docs/providers/alibaba#create-image-for-alibaba-using-docker-container
 [27]: https://github.com/f5devcentral/f5-bigip-image-generator/issues?q=is%3Aopen+is%3Aissue+label%3A%22known+issue%22
 [28]: https://docs.microsoft.com/en-us/azure/storage/common/storage-configure-connection-string
 [29]: https://www.alibabacloud.com/help/doc-detail/31885.htm
@@ -680,3 +733,11 @@ completed and submitted the F5 Contributor License Agreement.
 [35]: https://clouddocs.f5.com/products/extensions/f5-telemetry-streaming/latest/faq.html
 [36]: https://clouddocs.f5.com/cloud/public/v1/vmware/vmware_setup.html#ova-properties-file-for-setting-management-ip-address-and-default-passwords
 [37]: https://clouddocs.f5.com/products/extensions/f5-declarative-onboarding/latest/
+[38]: https://github.com/f5devcentral/f5-bigip-image-generator/tree/master/docs/providers/alibaba
+[39]: https://github.com/f5devcentral/f5-bigip-image-generator/tree/master/docs/providers/aws
+[40]: https://github.com/f5devcentral/f5-bigip-image-generator/tree/master/docs/providers/azure
+[41]: https://github.com/f5devcentral/f5-bigip-image-generator/tree/master/docs/providers/gce
+[42]: https://github.com/f5devcentral/f5-bigip-image-generator/tree/master/docs/providers/alibaba#parameter-definitions
+[43]: https://github.com/f5devcentral/f5-bigip-image-generator/tree/master/docs/providers/aws#parameter-definitions
+[44]: https://github.com/f5devcentral/f5-bigip-image-generator/tree/master/docs/providers/azure#parameter-definitions
+[45]: https://github.com/f5devcentral/f5-bigip-image-generator/tree/master/docs/providers/gce#parameter-definitions
