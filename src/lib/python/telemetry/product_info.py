@@ -1,5 +1,5 @@
 """Product information module"""
-# Copyright (C) 2020-2021 F5 Networks, Inc
+# Copyright (C) 2020-2022 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -139,6 +139,7 @@ def get_installed_components(operating_system):
                         component_return[package] = get_python_version(package)
                     elif tool == "linux":
                         component_return[package] = get_linux_version(package, operating_system)
+                    component_return[package] = component_return[package].split('\n')[0]
                 install_components[component] = component_return
     if not install_components:
         return " "
@@ -160,18 +161,26 @@ def get_linux_version(package, operating_system):
         with subprocess.Popen(["dpkg", "-s", package], stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE) as process:
             output = process.communicate()
-            LOGGER.info("dpkg response:")
-            LOGGER.info(output[0])
-            LOGGER.info(output[1])
+            LOGGER.debug("dpkg response:")
+            LOGGER.debug(output[0])
+            LOGGER.debug(output[1])
             if b"not installed" in output[1]:
                 return "not installed"
+            # Get Version from output
             version = str(output[0])
+            if version.find("Version:"):
+                version = str(output[0]).split("Version: ")[1]
+                version = version.split('\\n', 1)[0]
             return version
     elif operating_system == "Alpine":
         with subprocess.Popen(["sudo", "apk", "search",
                                     "-v", "-x", package],
                                     stdout=subprocess.PIPE) as process:
             output = str(process.communicate()[0])
+            if output == "b''":
+                return "not installed"
+            if output.startswith("b'"):
+                output = output.split("b'")[1]
             return output.split(" ")[0]
     else:
         LOGGER.error("operating system %s not supported", operating_system)

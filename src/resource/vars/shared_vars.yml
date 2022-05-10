@@ -1,4 +1,4 @@
-# Copyright (C) 2019-2021 F5 Networks, Inc
+# Copyright (C) 2019-2022 F5 Networks, Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -198,8 +198,8 @@ LOG_FILE:
     If filename, then the tool creates a log file in the logs directory using the specified filename.
 
 LOG_LEVEL:
-  accepted: "^CRITICAL$|^ERROR$|^WARNING$|^INFO$|^DEBUG$|^TRACE$"
-  default: "DEBUG"
+  accepted: "^critical$|^CRITICAL$|^error$|^ERROR$|^warning$|^WARNING$|^info$|^INFO$|^debug$|^DEBUG$|^trace$|^TRACE$"
+  default: "INFO"
   description: >-
     Log level to use for the log file, indicating the lowest message severity level that can
     appear in the log file.
@@ -284,7 +284,7 @@ VERSION:
 
 # Note: This is a string because jq/yq drops trailing zeroes for floating point (e.g. 1.10 --> 1.1)
 VERSION_NUMBER:
-  default: "1.16"
+  default: "1.17"
   description: >-
     This is the current version of BIG-IP Image Generator.
   internal: true
