@@ -1,5 +1,5 @@
 """Azure Image module"""
-# Copyright (C) 2019-2021 F5 Networks, Inc
+# Copyright (C) 2019-2022 F5 Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -16,10 +16,15 @@
 
 from datetime import datetime
 from time import time
-from azure.common.credentials import ServicePrincipalCredentials
-from azure.mgmt.compute import ComputeManagementClient
-from msrestazure import azure_exceptions
+
 from msrest import exceptions
+from azure.identity import ClientSecretCredential
+from azure.mgmt.compute import ComputeManagementClient
+from azure.core.exceptions import (
+    ResourceNotFoundError,
+    AzureError
+    )
+
 from image.azure_disk import AzureDisk
 from image.base_image import BaseImage
 from metadata.cloud_metadata import CloudImageMetadata
@@ -50,8 +55,8 @@ class AzureImage(BaseImage):
         # if an image with the same name exists, delete it
         if self.does_image_exist():
             LOGGER.info('Delete an old image named \'%s\'.', self.image_name)
-            self.compute_client.images.delete(
-                get_config_value('AZURE_RESOURCE_GROUP'), self.image_name)
+            self.compute_client.images.begin_delete(
+                get_config_value('AZURE_RESOURCE_GROUP'), self.image_name + '.vhd')
             if self.wait_for_image_deletion():
                 raise RuntimeError('Failed to delete old \'{}\' image'.format(self.image_name))
 
@@ -65,10 +70,14 @@ class AzureImage(BaseImage):
     def open_compute_client(self):
         """ Open compute management client """
         try:
-            credentials = ServicePrincipalCredentials(
-                tenant=get_config_value('AZURE_TENANT_ID'),
+            credentials = ClientSecretCredential(
+                tenant_id=get_config_value('AZURE_TENANT_ID'),
                 client_id=get_config_value('AZURE_APPLICATION_ID'),
-                secret=get_config_value('AZURE_APPLICATION_SECRET'))
+                client_secret=get_config_value('AZURE_APPLICATION_SECRET'))
+            self.compute_client = ComputeManagementClient(
+                credential=credentials,
+                subscription_id=get_config_value('AZURE_SUBSCRIPTION_ID')
+            )
         except exceptions.AuthenticationError as exc:
             # check if more specific message can be provided
             error_key = 'error'
@@ -88,9 +97,7 @@ class AzureImage(BaseImage):
                     raise RuntimeError('{} verify that \'{}\' is correct.'.format(
                         azure_failure_msg, bad_parameter)) from exc
             raise
-        self.compute_client = ComputeManagementClient(credentials,
-                                                      get_config_value('AZURE_SUBSCRIPTION_ID'))
-
+        return True
 
     def does_image_exist(self):
         """ Wrap around get method to determine whether the image exists.
@@ -99,26 +106,20 @@ class AzureImage(BaseImage):
             or error.error equal to 'NotFound' when image is on the last stage of its existence.
             Also providing a particular subscription exception, since it is likely to be
             a first Azure compute call that is issued.
-            Returns True or False. """
+            Returns True or False.
+        """
         try:
             self.compute_client.images.get(get_config_value('AZURE_RESOURCE_GROUP'),
                                            self.image_name)
-        except azure_exceptions.CloudError as exc:
-            if hasattr(exc, 'error') and hasattr(exc.error, 'error'):
-                if exc.error.error == 'ResourceNotFound':
-                    return False
-                if exc.error.error == 'NotFound':
-                    # the image is on the last stage of its existence
-                    return True
-                if exc.error.error == 'SubscriptionNotFound':
-                    raise RuntimeError((
-                        'Azure could not find the subscription, '
-                        'check value of \'AZURE_SUBSCRIPTION_ID\'.')) from exc
-                raise RuntimeError(
-                    ('Unexpected CloudError type: \'{}\', '
-                     'while checking about \'{}\' image.').
-                     format(exc.error.error, self.image_name)) from exc
+        except ResourceNotFoundError:
+            LOGGER.info("Image does not already exist.")
+            return False
+        except AzureError as az_error:
+            LOGGER.error("Azure error: %s", az_error)
             raise
+        # azure exception "NotFound" was removed
+
+        LOGGER.info('Image already exists')
         return True
 
 
@@ -147,7 +148,7 @@ class AzureImage(BaseImage):
         LOGGER.info('Started creation of image \'%s\' at %s.', self.image_name,
                     datetime.now().strftime('%H:%M:%S'))
         start_time = time()
-        async_create_image = self.compute_client.images.create_or_update(
+        async_create_image = self.compute_client.images.begin_create_or_update(
             get_config_value('AZURE_RESOURCE_GROUP'),
             self.image_name,
             {
@@ -159,7 +160,8 @@ class AzureImage(BaseImage):
                         'blob_uri': self.disk.uploaded_disk_url,
                         'caching': "ReadWrite"
                     }
-                }
+                },
+                'hyperVGeneration': 'V1'
             }
         )
 

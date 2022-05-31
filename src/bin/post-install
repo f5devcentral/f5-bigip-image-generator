@@ -1,5 +1,5 @@
 #!/bin/bash -e
-# Copyright (C) 2018-2021 F5 Networks, Inc
+# Copyright (C) 2018-2022 F5 Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -25,7 +25,7 @@ INST_ROOT=$1
 INST_TEMP_DATA=$2
 DEBUG=0
 
-# shellcheck disable=SC1090
+# shellcheck disable=SC1090,SC1091
 source "$2"/parameters.sh
 
 VADC_PLATFORM_FILE="$INST_ROOT/lib/f5-platform/id-Z100"

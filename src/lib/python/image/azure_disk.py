@@ -1,5 +1,5 @@
 """Azure disk module"""
-# Copyright (C) 2019-2021 F5 Networks, Inc
+# Copyright (C) 2019-2022 F5 Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -15,11 +15,13 @@
 
 
 import json
-from os.path import getsize
-from time import time
+from multiprocessing import Process
+import os
+from time import time, sleep
 
 from azure.common import AzureException, AzureMissingResourceHttpError
-from azure.storage.blob.pageblobservice import PageBlobService
+
+from azure.storage.blob import BlobClient
 from image.base_disk import BaseDisk
 from metadata.cloud_metadata import CloudImageMetadata
 from metadata.cloud_tag import CloudImageTags
@@ -41,14 +43,7 @@ class AzureDisk(BaseDisk):
 
         self.connection_string = get_config_value('AZURE_STORAGE_CONNECTION_STRING')
         self.container_name = get_config_value('AZURE_STORAGE_CONTAINER_NAME')
-
-        try:
-            self.svc = PageBlobService(connection_string=self.connection_string)
-        except ValueError as exc:
-            LOGGER.error("Could not create a PageBlobService with connection_string=%s",
-                         self.connection_string)
-            raise RuntimeError("Runtime Error during Instantiating Azure Blob Service") from exc
-
+        self.blob = None
         self.progress_cb_lu = 0
         self.metadata = CloudImageMetadata()
 
@@ -86,26 +81,48 @@ class AzureDisk(BaseDisk):
     def upload(self):
         """ Upload a F5 BIG-IP VE image to provided container """
 
+        def upload_azure():
+            with open(self.disk_to_upload,'rb') as vhd_file:
+                self.blob.upload_blob(
+                    vhd_file.read(),
+                    blob_type="PageBlob",
+                    metadata=self._get_tags()
+                    )
+
         def _upload_impl():
             """ Azure blob upload implementation """
-            cnum = int(get_config_value('AZURE_BLOB_UPLOAD_CONCURRENT_THREAD_COUNT'))
             timeout = int(get_config_value('AZURE_BLOB_UPLOAD_TIMEOUT'))
 
             try:
-                self.svc.create_blob_from_path(self.container_name, self.uploaded_disk_name, \
-                         self.disk_to_upload, max_connections=cnum, \
-                         metadata=self._get_tags(), progress_callback=self._progress_cb, \
-                         timeout=timeout)
+                self.connection_string = get_config_value('AZURE_STORAGE_CONNECTION_STRING')
+                LOGGER.info("create blob client")
+                self.blob = BlobClient.from_connection_string(
+                    conn_str=self.connection_string,
+                    container_name=self.container_name,
+                    blob_name=self.uploaded_disk_name,
+                    connection_timeout=timeout
+                    )
 
-                uploaded_blob = self.svc.get_blob_properties(self.container_name, \
-                                                             self.uploaded_disk_name)
+                LOGGER.info(self._get_tags())
+                nonlocal upload_azure
+                upload_azure_p = Process(target=upload_azure)
+                upload_azure_p.start()
+                limit = int(timeout/10)
+                for _ in range(limit):
+                    if not upload_azure_p.is_alive():
+                        break
+                    sleep(10)
+                    os.write(1, b".")
+                else:
+                    raise TimeoutError
 
-                uploaded_blob_size = uploaded_blob.properties.content_length
-                local_blob_size = getsize(self.disk_to_upload)
+                LOGGER.info(self.blob.get_blob_properties())
+                local_blob_size = os.stat(self.disk_to_upload).st_size
+
+                uploaded_blob_size = self.blob.get_blob_properties().get("size")
 
                 LOGGER.info("uploaded blob size: %s and local blob_size: %s", \
                             str(uploaded_blob_size), str(local_blob_size))
-
                 if uploaded_blob_size != local_blob_size:
                     return False
 
@@ -115,10 +132,11 @@ class AzureDisk(BaseDisk):
             except AzureException:
                 LOGGER.error("Exception during uploading %s", self.disk_to_upload)
                 return False
+            except TimeoutError:
+                LOGGER.error("Timeout while uploading")
+                return False
 
-            self.uploaded_disk_url = self.svc.make_blob_url(self.container_name,
-                                                            self.uploaded_disk_name)
-
+            self.uploaded_disk_url = self.blob.url
             # save uploaded disk in artifacts dir json file
             vhd_url_json = {"vhd_url": self.uploaded_disk_url}
             artifacts_dir = get_config_value("ARTIFACTS_DIR")

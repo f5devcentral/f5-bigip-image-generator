@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2018-2022 F5 Networks, Inc
+# Copyright (C) 2018-2022 F5 Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -303,14 +303,14 @@ if [[ ! -f "$VENV_DIR/pyvenv.cfg" ]]; then
 fi
 
 # Active the Python virtual environment
-# shellcheck disable=SC1090
+# shellcheck disable=SC1090,SC1091
 source "$VENV_DIR/bin/activate"
 
 python3 -m pip install --upgrade pip
 
 pip3 install wheel
 export CRYPTOGRAPHY_DONT_BUILD_RUST=1
-pip3 install cryptography==3.4.7
+pip3 install cryptography==37.0.1
 
 #-----------------------------------------------------------------------------#
 
@@ -348,12 +348,15 @@ if [ "$INSTALL_GCE" == "true" ] || [ "$INSTALL_ALL" == "true" ]; then
 	echo "OS version is: $lsb_rel_version"
 
         if [[ "$lsb_rel_version" == *"20.04"* ]]; then
-		wget https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-307.0.0-linux-x86_64.tar.gz
-		tar -xf google-cloud-sdk-307.0.0-linux-x86_64.tar.gz
+		wget https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-380.0.0-linux-x86_64.tar.gz
+		tar -xf google-cloud-sdk-380.0.0-linux-x86_64.tar.gz
 		(cd google-cloud-sdk && yes | ./install.sh)
 		rm -rf google-cloud-sdk
-		rm google-cloud-sdk-307.0.0-linux-x86_64.tar.gz
-	else
+		rm google-cloud-sdk-380.0.0-linux-x86_64.tar.gz
+
+        # google-cloud-storage package version
+        GOOGLE_CLOUD_STORAGE_VERSION="2.2.1"
+	else # 18.04
 		export CLOUD_SDK_REPO="cloud-sdk-$lsb_rel"
 
 		# If not already defined, add the Cloud SDK distribution URI as a package source:
@@ -373,11 +376,17 @@ if [ "$INSTALL_GCE" == "true" ] || [ "$INSTALL_ALL" == "true" ]; then
 
 		# Install the Cloud SDK:
 		sudo $PACKAGE_INSTALLER install -y google-cloud-sdk
+
+        # google-cloud-storage package version
+        GOOGLE_CLOUD_STORAGE_VERSION="2.0.0"
 	fi
 	;;
     apk)
-	# THe is no specific distribution for alpine
-	sudo pip install -U gsutil
+        # There is no specific distribution for alpine
+        sudo pip install -U gsutil
+
+        # google-cloud-storage package version
+        GOOGLE_CLOUD_STORAGE_VERSION="2.2.1"
 	;;
 
     *)
@@ -397,9 +406,9 @@ if [ "$INSTALL_GCE" == "true" ] || [ "$INSTALL_ALL" == "true" ]; then
     #  oauth2 credentials.  This is a replacement for the deprecated oauth2client
     #  module)
 
-    pip3 install google-api-python-client==2.2.0 google-cloud-storage==1.37.1 google-auth==1.29.0
+    pip3 install google-api-python-client==2.43.0 google-cloud-storage==$GOOGLE_CLOUD_STORAGE_VERSION google-auth==2.6.3
 
-    pip3 install google-cloud-core==1.6.0
+    pip3 install google-cloud-core==2.3.0
 fi 
 
 #-----------------------------------------------------------------------------#
@@ -407,14 +416,13 @@ fi
 #------------------------------#
 
 if [ "$INSTALL_AZURE" == "true" ] || [ "$INSTALL_ALL" == "true" ]; then
-    # for use when azure pip is upgraded
+    
+    # Azure SDK for Python 	
     pip3 install azure-identity==1.5.0
-    pip3 install msrestazure
-
-    # python based azure-cli ARM tool
-    pip3 install azure-storage-blob==2.1.0
-    # Azure SDK for Python
-    pip3 install azure-mgmt-compute==4.4.0   #20.0.0 in future when credential issues are resolved
+    pip3 install msrestazure==0.6.4
+    pip3 install azure-storage-blob==12.11.0
+    pip3 install azure-mgmt-compute==26.1.0
+    
 fi
 #-----------------------------------------------------------------------------#
 

@@ -1,7 +1,7 @@
 """Module containing functionality for the config system.  The config system is currently
 initialized by BASH code, so there's not much to do here.  If/when we migrate the config system to
 Python we'll expand this module into a full class."""
-# Copyright (C) 2019-2021 F5 Networks, Inc
+# Copyright (C) 2019-2022 F5 Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
