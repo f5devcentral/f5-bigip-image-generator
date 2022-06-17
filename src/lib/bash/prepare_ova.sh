@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2019-2021 F5 Networks, Inc
+# Copyright (C) 2019-2022 F5 Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -526,7 +526,7 @@ function update_ovf_file_fields {
         <AnnotationSection>\n\
           <Info>F5 $ve_product_name Virtual Edition</Info>\n\
           <Annotation>$ve_product_descr\n\
-    Copyright 2009-2016 F5 Networks (http://www.f5.com)\n\
+    Copyright 2009-2022 F5 Inc (http://www.f5.com)\n\
     \n\
     For support please visit http://support.f5.com\n\
           </Annotation>\n\

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2018-2021 F5 Networks, Inc
+# Copyright (C) 2018-2022 F5 Inc
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -26,6 +26,13 @@ source "$(realpath "$(dirname "${BASH_SOURCE[0]}")")/src/lib/bash/util/logger.sh
 
 
 function trap_cleanup() {
+    # No snapshot when user has requested --help
+    local help
+    help="$(get_config_value "HELP")"
+    if [[ "$help" ]]; then
+        return
+    fi
+
     local artifacts_dir
     artifacts_dir="$(get_config_value "ARTIFACTS_DIR")"
 
