@@ -300,8 +300,8 @@ command line >  configuration file >  environment variable. To access the Image 
    
    To benefit from the `--reuse` parameter, you must run the Image Generator at least twice using the `--reuse` parameter for the same [PLATFORM, MODULES, BOOT_LOCATIONS] combination. In the first run, `--reuse` parameter will guarantee that the intermediary files are preserved. In the second run (when necessary), the `--reuse` parameter enables consumption of the intermediary files.
    
-   1. Build an image, type: `./build-image --reuse -i /var/tmp/BIGIP-15.0.0-0.0.39.iso -c config.yaml -p qcow2 -m ltm -b 1 --image-tag "Name: my-custom-vm-v12.1.1" --image-tag "org: shared-services"`
-   2. To reuse the environment associated with the specified source image, platform, modules, and boot locations, type the exact same command used in Step 1: `./build-image --reuse -i /var/tmp/BIGIP-15.0.0-0.0.39.iso -c config.yaml -p qcow2 -m ltm -b 1 --image-tag "Name: my-custom-vm-v12.1.1" --image-tag "org: shared-services"`.
+   1. Build an image, type: `./build-image --reuse -i /var/tmp/BIGIP-15.0.0-0.0.39.iso -c config.yml -p qcow2 -m ltm -b 1 --image-tag "Name: my-custom-vm-v12.1.1" --image-tag "org: shared-services"`
+   2. To reuse the environment associated with the specified source image, platform, modules, and boot locations, type the exact same command used in Step 1: `./build-image --reuse -i /var/tmp/BIGIP-15.0.0-0.0.39.iso -c config.yml -p qcow2 -m ltm -b 1 --image-tag "Name: my-custom-vm-v12.1.1" --image-tag "org: shared-services"`.
 
    For debugging purposes, this tool captures the contents of the PLATFORM, MODULES, BOOT_LOCATIONS artifacts directory in a `.snapshot.zip` file (excluding large binary files). Find this `.snapshot.zip` file in the same directory as the log file (for example, `logs/image-qcow2-ltm-1slot` for log file and `logs/image-qcow2-ltm-1slot.snapshot.zip` for the artifact files). 
 
@@ -402,7 +402,7 @@ command line >  configuration file >  environment variable. To access the Image 
    For example:
 
    ```
-      ./build-image -i /var/tmp/BIGIP-15.1.1-0.0.6.iso -c config.yaml -p vmware -m ltm -b 1 --ova-prop-net-user
+      ./build-image -i /var/tmp/BIGIP-15.1.1-0.0.6.iso -c config.yml -p vmware -m ltm -b 1 --ova-prop-net-user
 
    ```
 
@@ -701,7 +701,7 @@ completed and submitted the F5 Contributor License Agreement.
 [2]: https://github.com/f5devcentral/f5-bigip-image-generator/blob/master/setup-build-env
 [3]: https://docs.aws.amazon.com/vm-import/latest/userguide/vmimport-image-import.html
 [4]: http://manpages.ubuntu.com/manpages/bionic/man1/kvm-ok.1.html
-[5]: https://github.com/f5devcentral/f5-bigip-image-generator/blob/master/docs/examples/config.yaml
+[5]: https://github.com/f5devcentral/f5-bigip-image-generator/blob/master/docs/examples/config.yml
 [6]: https://github.com/f5devcentral/f5-bigip-image-generator/tree/master/docs/providers/aws#create-image-for-aws-using-docker-container
 [7]: https://github.com/f5devcentral/f5-bigip-image-generator/tree/master/docs/providers/azure#create-image-for-azure-using-docker-container
 [8]: https://github.com/f5devcentral/f5-bigip-image-generator/tree/master/docs/providers/gce#create-image-for-gce-using-docker-container
