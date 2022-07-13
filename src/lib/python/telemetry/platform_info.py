@@ -15,7 +15,6 @@
 
 import sys
 
-
 class PlatformInfo:
     """Class for capturing information about the platform where images are being built"""
 
@@ -33,4 +32,11 @@ def get_os(platform):
         return "Windows"
     if platform == "darwin":
         return "OS X"
-    return "Linux"
+    pretty_name = "Linux"
+    with open('/etc/os-release', 'r') as os_release:
+        lines = os_release.readlines()
+        for line in lines:
+            if "PRETTY_NAME" in line:
+                # Take off everything before and after quotes
+                pretty_name = line.strip().split("\"",1)[1].split("\"",1)[0]
+        return pretty_name

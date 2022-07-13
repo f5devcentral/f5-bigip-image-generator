@@ -91,7 +91,8 @@ class AWSDisk(BaseDisk):
                                                'LocationConstraint': self.session.region_name})
         except ClientError as client_error:
             # Suppress the error around trying to create an already existing bucket.
-            if client_error.response['Error']['Code'] == 'BucketAlreadyExists':
+            if client_error.response['Error']['Code'] == 'BucketAlreadyExists' or \
+               client_error.response['Error']['Code'] == 'BucketAlreadyOwnedByYou':
                 LOGGER.error("Tried to create an already existing bucket '%s'.",
                              self.bucket_name)
             else:

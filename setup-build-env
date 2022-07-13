@@ -261,13 +261,18 @@ if [ -d "$OEM_DIR" ] && [ "$PACKAGE_INSTALLER" == "apt-get" ]; then
 fi
 
 # Add the current user to "kvm" group if "kvm" group exists, and the user is not a member.
+USER="$(whoami)"
 if getent group kvm | grep -E &>/dev/null "(.*:){3}.*?\b${USER}\b"; then
     echo "User '${USER}' is a member of the 'kvm' group"
     ADDED_USER_TO_KVM_GROUP=false
 else
     echo "Adding user '${USER}' to the 'kvm' group"
-    case $PACKAGE_MANAGER in
+    case $PACKAGE_INSTALLER in
     apt-get)
+        if ! getent group kvm; then
+            echo "Create the 'kvm' group"
+            sudo addgroup kvm
+        fi
         sudo usermod -aG kvm "$(id -un)"
         ;;
     apk)
@@ -324,8 +329,8 @@ pip3 install f5-teem
 #        dolphin which lives in the Amazon rain forest.
 #------------------------------#
 if [ "$INSTALL_AWS" == "true" ] || [ "$INSTALL_ALL" == "true" ]; then
-    pip3 install boto3==1.17.57
-    pip3 install moto==1.3.13
+    pip3 install boto3==1.23.10
+    pip3 install moto==3.1.14
     pip3 install pyyaml==5.4.1
 fi   
 #-----------------------------------------------------------------------------#

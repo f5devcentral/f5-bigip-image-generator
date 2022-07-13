@@ -389,6 +389,16 @@ function modify_template_vmx_file {
         -e 's/[ ]*#.*$//' \
         -e '/^$/d' \
         "$input_vmx_file" > "$output_vmx_file"
+
+    #Check bigip version and change virtualHW version to 13 if supported
+    #   v15.1.6.1+
+    #   v16.1.2.2+
+    #   v17.0+
+    if { [[ "$BIGIP_VERSION_NUMBER" -gt 15010601 ]] && [[ "$BIGIP_VERSION_NUMBER" -lt 16000000 ]]; } \
+       || [[ $BIGIP_VERSION_NUMBER -ge 16010202 ]]; then
+       sed -i 's/virtualHW.version = \"10/virtualHW.version = \"13/g' "$output_vmx_file"
+    fi
+
     # shellcheck disable=SC2181
     if [[ $? -ne 0 ]] ; then
         log_error "Error while modifying $input_vmx_file"
