@@ -54,7 +54,7 @@ The following table lists system requirements for using the Image Generator to c
 
 | Component                 | Version                                                         | Recommended System Requirements|                                                      
 |---------------------------| :---------------------------------------------------------------| :------------------------------|
-| F5 BIG-IP Image Generator | 1.0                                                             | - **Memory**: 1GB memory <br> - **Disk space**: depends on number of images you want to create.<br> See following BIG-IP VE system requirements.|                                                             
+| F5 BIG-IP Image Generator | 1.0                                                             | - **Memory**: 4GB memory <br> - **Disk space**: depends on number of images you want to create.<br> See following BIG-IP VE system requirements.|                                                             
 | [F5 BIG-IP VE][1]         | - BIG-IP 13.1.0.2+ (except Alibaba) <br>- BIG-IP 14.X<br> - BIG-IP 14.1.0.3+ (for Alibaba ONLY)<br> - BIG-IP 15.X          | A minimum of 20GB per image <br> The image generator uses sparse file systems, which results in local images that are smaller than deployed images.  For more information about images and deployed image sizes, see the [K14946][33] article.|    
 | Open Virtualization Format Tool (ovftool) | 4.3.0 | If you deploy in VMware (ESX/i Server) or AWS cloud, you must install the [ovftool][22] for creating the virtual disk. |
 	 
@@ -444,6 +444,26 @@ You can locate files in the following directories:
 
 This section provides troubleshooting information for setting up the environment and running the Image Generator tool, as well as common issues with supported cloud providers.
 
+**Selinux relabel error**
+
+```
+Inserting VM installation environment for 'RTM' -- elapsed time: 0:00:57
+qemu-system installing RTM Image -- start time: 15:07:15
+..........................................................................................
+qemu-system installing RTM Image -- elapsed time: 0:07:31
+qemu-system performing selinux relabeling -- start time: 15:14:46
+.........................
+qemu-system performing selinux relabeling -- elapsed time: 0:02:05
+SELinux labeling failed or skipped. Check /home/user1/dev/ve-image-generator/src/lib/bash/../../../artifacts/BIGIP-13.1.5-0.0.32/gce/ltm_1slot/tmp.QgbFigOMVN/qemu.selinux_relabeling.log for complete logs
+Wrote config to: /home/user1/dev/ve-image-generator/src/lib/bash/../../../artifacts/BIGIP-13.1.5-0.0.32/gce/ltm_1slot/build_config.json
+Outputting json file has not been requested.
+
+```
+
+**Solution**
+
+This error message can occur using Image Generator Tool (IGT) versions 1.14 and later, building BIG-IP VE 13.1.X images. If you experience this error, use IGT version 1.13.
+
 **Low disk space**:
 
 ```
@@ -584,85 +604,91 @@ This section contains sample configuration code and output data referenced elsew
 
 ```
 {
-  "platform": {
-    "os": "Linux"
-  },
-  "environment": {
-    "pythonVersion": "3.6.9",
-    "pythonVersionDetailed": "3.6.9 (default, Apr 18 2020, 01:56:04) \n[GCC 8.4.0]",
-    "nodeVersion": None,
-    "goVersion": None,
-    "libraries": {
-      "git": "git version 2.17.1",
-      "ssh": "OpenSSH_7.6p1 Ubuntu-4ubuntu0.3, OpenSSL 1.0.2n  7 Dec 2017"
+
+    "Operation": {
+       "bootLocations": "1",
+        "consoleDevicesInput": "tty7 console=tty12 console=ttyS0",
+        "disableSplash": null,
+        "endTime": null,
+        "module": "ltm",
+        "nestedVirtualization": "enabled",
+        "platform": "vhd",
+        "product": "BIG-IP",
+        "productBaseBuild": "0.0.1420",
+        "productBuild": "0.0.1420",
+        "productVersion": "16.0.0",
+        "result": null,
+        "resultSummary": "",
+        "startTime": "2022-07-08T17:29:09",
+        "updateImageFiles": "disabled",
+        "updateLvSizes": "disabled"
+    },
+    "additional": {
+        "gitHash": "5ddb6213b2c1655f570942a5d5a2fe664793873c"
+    },
+    "environment": {
+        "goVersion": null,
+        "libraries": {
+            "git": "git version 2.25.1",
+            "ssh": "OpenSSH_8.2p1 Ubuntu-4ubuntu0.5, OpenSSL 1.1.1f  31 Mar 2020"
+        },
+        "nodeVersion": null,
+        "pythonVersion": "3.8.10",
+        "pythonVersionDetailed": "3.8.10 (default, Mar 15 2022, 12:22:08) \n[GCC 9.4.0]"
+    },
+    "platform": {
+        "os": "Ubuntu 20.04.4 LTS"
+    },
+    "product": {
+        "installDate": "2020-05-10 23:37:25.355259",
+        "installationId": "fde0cdd8-d0d6-11e9-8307-0242ac110002",
+        "installedComponents": {
+            "alibaba": {
+                "aliyun-python-sdk-core": "2.13.33",
+                "aliyun-python-sdk-ecs": "4.23.11",
+                "oss2": "2.14.0"
+            },
+            "aws": {
+                "boto3": "1.23.10",
+                "moto": "3.1.14"
+            },
+            "azure": {
+                "azure-mgmt-compute": "26.1.0",
+                "azure-storage-blob": "12.11.0"
+            },
+            "gcp": {
+                "google-cloud-sdk": "not installed"
+            },
+            "miscPythonTools": {
+                "distro": "1.5.0",
+                "pycdlib": "1.11.0"
+            },
+            "pythonRequests": {
+                "requests": "2.25.0"
+            },
+            "retryPackage": {
+                "retry": "0.9.2"
+            },
+            "verifyingCodeTools": {
+                "anybadge": "not found",
+                "bats": "1.1.0+git104-g1c83a1b-1",
+                "bc": "1.07.1-2build1",
+                "dc": "1.07.1-2build1",
+                "git": "1:2.25.1-1ubuntu3.4",
+                "kmod": "27-1ubuntu2.1",
+                "parted": "3.3-4ubuntu0.20.04.1",
+                "pylint": "2.4.4-2",
+                "shellcheck": "0.7.0-2build2",
+                "udev": "245.4-4ubuntu3.17"
+            },
+            "yaml": {
+                "pyyaml": "5.4.1",
+                "yq": "2.12.0"
+            }
+        },
+        "locale": "en_US.UTF-8",
+        "version": "1.19"
     }
-  },
-  "product": {
-    "version": 1.7,
-    "locale": "en_US.UTF-8",
-    "installDate": "2020-05-10 23:37:25.355259",
-    "installationId": "fde0cdd8-d0d6-11e9-8307-0242ac110002",
-    "installedComponents": {
-      "gcp": {
-        "google-cloud-sdk": "301.0.0-0"
-      },
-      "alibaba": {
-        "oss2": "2.8.0",
-        "aliyun-python-sdk-core": "2.13.10",
-        "aliyun-python-sdk-ecs": "4.17.6"
-      },
-      "aws": {
-        "boto3": "1.10.10",
-        "moto": "1.3.13"
-      },
-      "azure": {
-        "azure-storage-blob": "2.1.0",
-        "azure-mgmt-compute": "4.4.0"
-      },
-      "pythonRequests": {
-        "requests": "2.22.0"
-      },
-      "retryPackage": {
-        "retry": "0.9.2"
-      },
-      "yaml": {
-        "yq": "2.9.2",
-        "pyyaml": "5.1.2"
-      },
-      "miscPythonTools": {
-        "distro": "1.4.0\nApache",
-        "pycdlib": "1.8.0"
-      },
-      "verifyingCodeTools": {
-        "git": "1:2.17.1-1ubuntu0.7",
-        "shellcheck": "0.4.6-1",
-        "pylint": "1.8.3-1",
-        "anybadge": "1.5.1",
-        "bats": "0.4.0-1.1",
-        "bc": "1.07.1-2",
-        "dc": "1.07.1-2",
-        "parted": "3.2-20ubuntu0.2",
-        "udev": "237-3ubuntu10.41",
-        "kmod": "24-1ubuntu3.4"
-      }
-    }
-  },
-  "Operation": {
-    "product": "BIG-IP",
-    "productVersion": "15.1.0.3",
-    "productBaseBuild": "0.0.12",
-    "productBuild": "0.0.12",
-    "platform": "qcow2",
-    "module": "ltm",
-    "bootLocations": "1",
-    "nestedVirtualization": "enabled",
-    "updateImageFiles": "disabled",
-    "updateLvSizes": "disabled",
-    "result": "SUCCESS",
-    "resultSummary": "",
-    "startTime": "2020-07-16T18:57:31",
-    "endTime": "2020-07-16T18:57:47"
-  }
 }
 
 ```
