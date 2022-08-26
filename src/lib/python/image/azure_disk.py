@@ -84,7 +84,7 @@ class AzureDisk(BaseDisk):
         def upload_azure():
             with open(self.disk_to_upload,'rb') as vhd_file:
                 self.blob.upload_blob(
-                    vhd_file.read(),
+                    vhd_file,
                     blob_type="PageBlob",
                     metadata=self._get_tags()
                     )
