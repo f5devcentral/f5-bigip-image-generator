@@ -117,7 +117,7 @@ The following procedure demonstrates using a private image with the [Docker][15]
       VMware ovftool 4.4.3 (build-18663434) 
       ```
 
-7. Create/upload [config.yaml file](5) and store this config.yaml file in your host’s ``/home/ubuntu`` directory, which you must mount and make visible to the running container under ``/mnt`` or directly on the container file system.  For example:
+7. Create/upload [config.yaml file][5] and store this config.yaml file in your host’s ``/home/ubuntu`` directory, which you must mount and make visible to the running container under ``/mnt`` or directly on the container file system.  For example:
 
    ```
    cat << EOF > config.yaml 
