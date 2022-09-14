@@ -148,10 +148,10 @@ The following procedure demonstrates using a private image with the [Docker][15]
 
    EOF 
    ```
-   Consult the main [ReadMe file here](5) for complete config file details.
+   Consult the main [ReadMe file here][5] for complete config file details.
 
 
-8. Run the config file. The following example generates an  ALL (All Modules, 2 Slots) image for a BIG-IP VE 15.X. For deployed image sizes for various BIG-IP VE versions, see the [K14946](4) article.
+8. Run the config file. The following example generates an  ALL (All Modules, 2 Slots) image for a BIG-IP VE 15.X. For deployed image sizes for various BIG-IP VE versions, see the [K14946][4] article.
 
    ```
    build-image -c config.yaml
