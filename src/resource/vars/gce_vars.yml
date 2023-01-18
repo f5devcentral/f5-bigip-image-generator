@@ -38,7 +38,6 @@ GOOGLE_APPLICATION_CREDENTIALS:
     For help with generating these credentials, refer to bit.ly/2MYQpHN.
     .
   protected: true
-  required: true
 
 GCE_IMAGE_CREATE_COMPLETED_RETRY_COUNT:
   accepted: "^[0-9]+$"
@@ -67,3 +66,22 @@ GCE_IMAGE_DELETE_COMPLETED_RETRY_DELAY:
   description: >-
     Sleep duration (in seconds) between retries when checking for the image deletion to succeed.
   internal: true
+
+GCE_PROJECT_ID:
+  accepted: "^[a-z][a-z0-9-]{4,28}[a-z]$"
+  description: >-
+    The GCP project id to use for image creation; set this when the GCE images
+    will be created in a different project than the one associated with the
+    service account.
+
+GCE_IMAGE_UPLOAD_CHUNK_SIZE:
+  accepted: "^[0-9]+$"
+  default: 0
+  description: >-
+    Chunk-size in bytes to use for image upload to GCS. Set this to the number
+    of bytes that your network connection can deliver in 60s or less.
+
+GCE_IMAGE_FAMILY_NAME:
+  accepted: "^[a-z]([a-z0-9-]{0,62}[a-z0-9])?$"
+  description: >-
+    An image family name to apply in GCP. E.g. 'bigip-15-1-custom'

@@ -29,6 +29,9 @@ from util.config import get_dict_from_config_json
 from util.logger import LOGGER
 
 class GoogleDisk(BaseDisk):
+    # GCS storage API requires chunk-size to be a multiple of 256Kb
+    GCS_UPLOAD_CHUNK_SIZE_FACTOR = 256 * 1024
+
     """
     Manage Google disk
     """
@@ -37,6 +40,14 @@ class GoogleDisk(BaseDisk):
         # First initialize the super class.
         super().__init__(input_disk_path)
         self.bucket = None
+        # Allow users to specify an upload chunk-size to work around timeouts on
+        # networks with throughput and latency issues.
+        chunk_size = max(int(get_config_value('GCE_IMAGE_UPLOAD_CHUNK_SIZE') or 0), 0)
+        if chunk_size:
+            # GCS API requires chunk_size to be a multiple of 256Kb
+            chunk_size = chunk_size = self.GCS_UPLOAD_CHUNK_SIZE_FACTOR * (chunk_size // self.GCS_UPLOAD_CHUNK_SIZE_FACTOR)
+            LOGGER.info("GCS blob upload chunk-size will be %d.", chunk_size)
+        self.chunk_size = chunk_size or None
 
     def clean_up(self):
         """Clean-up the uploaded disk after image generation."""
@@ -80,14 +91,28 @@ class GoogleDisk(BaseDisk):
         Populate the bucket object based on GCE credential and GCE_BUCKET.
         """
         try:
-            # start storage client
-            creds_dict = get_dict_from_config_json('GOOGLE_APPLICATION_CREDENTIALS')
-            credentials = service_account.Credentials.from_service_account_info(creds_dict)
-            project = ensure_value_from_dict(creds_dict, "project_id")
+            # start storage client; if explicit GOOGLE_APPLICATION_CREDENTIALS
+            # are not set, fall back to ADC context to support native auth on GCP
+            if get_config_value('GOOGLE_APPLICATION_CREDENTIALS'):
+                creds_dict = get_dict_from_config_json('GOOGLE_APPLICATION_CREDENTIALS')
+                credentials = service_account.Credentials.from_service_account_info(creds_dict)
+                project = ensure_value_from_dict(creds_dict, "project_id")
+            else:
+                LOGGER.info("Falling back to ADC for authentication")
+                credentials, project = google.auth.default()
+            
+            # Allow configuration to override the default project id from auth
+            if get_config_value('GCE_PROJECT_ID'):
+                project = get_config_value('GCE_PROJECT_ID')
+                LOGGER.info("Setting project_id explicitly from configuration: %s", project)
         except ValueError as value_exc:
             LOGGER.exception(value_exc)
             raise RuntimeError("Failed to initialize GOOGLE_APPLICATION_CREDENTIALS credentials.") \
                 from value_exc
+        except google.auth.exceptions.DefaultCredentialsErrror as exception:
+            LOGGER.exception(exception)
+            raise RuntimeError("Failed to authenticate using ADC credentials.") \
+                from exception
 
         try:
             storage_client = storage.Client(credentials=credentials, project=project)
@@ -159,9 +184,9 @@ class GoogleDisk(BaseDisk):
 
             # delete the blob if it exists
             self.delete_blob()
-
-            # create blob
-            blob = self.bucket.blob(self.uploaded_disk_name)
+            
+            # create blob, optionally setting an upload chunk-size
+            blob = self.bucket.blob(self.uploaded_disk_name, chunk_size=self.chunk_size)
             if blob is None:
                 raise RuntimeError("Factory constructor for blob '{}' failed."
                                    .format(self.uploaded_disk_name))
