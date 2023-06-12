@@ -1,5 +1,7 @@
 # Welcome to the F5 BIG-IP Image Generator Tool
 
+### ALERT: This tool has reached end of software development and is no longer supported with active updates. F5 will not provide software fixes (hotfixes) or consulting services for a version that has reached the EoSD milestone. For details, consult the [K5903][46] article.
+
 You will find the following information:
 
 * [Introduction](#introduction)
@@ -768,4 +770,5 @@ completed and submitted the F5 Contributor License Agreement.
 [43]: https://github.com/f5devcentral/f5-bigip-image-generator/tree/master/docs/providers/aws#parameter-definitions
 [44]: https://github.com/f5devcentral/f5-bigip-image-generator/tree/master/docs/providers/azure#parameter-definitions
 [45]: https://github.com/f5devcentral/f5-bigip-image-generator/tree/master/docs/providers/gce#parameter-definitions
+[46]: https://my.f5.com/manage/s/article/K5903
 
